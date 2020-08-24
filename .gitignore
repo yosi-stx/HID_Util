@@ -123,3 +123,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# yg added:
+*pcapng
+*C_TAG-USB
+.vscode
+__pycache__
+test-*.py
+yg*.py
+*csv
+*.dat
+clicker_log.txt
