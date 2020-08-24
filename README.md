@@ -1,4 +1,4 @@
-# C-TAG HID
+# HID_UTILL
 
 ## Prerequisites
 ```pip3 install hid```
@@ -8,7 +8,7 @@ Your installtion folder should look like this:
 ```
 .
 ├── install_folder
-│   ├── ctag-hid.py
+│   ├── HID_UTILL.py
 │   ├── include_dll_path
 │   │   └── __init__.py
 │   ├── x64
