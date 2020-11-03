@@ -128,6 +128,7 @@ def gui_loop(device):
     # prev_cnt = None
     # value = None
     global special_cmd
+    # global print_flag
     
     while True:
         # Reset the counter
@@ -144,6 +145,7 @@ def gui_loop(device):
             WRITE_DATA = WRITE_DATA_CMD_GET_BOARD_TYPE
             device.write(WRITE_DATA)
             print("special_cmd CMD_GET_BOARD_TYPE")
+            # print_flag = 1
             special_cmd = 0
         elif special_cmd == 'A':
             WRITE_DATA = WRITE_DATA_CMD_A
@@ -182,8 +184,14 @@ def gui_loop(device):
         do_print = (timer() - print_time) >= PRINT_TIME
 
 def handler(value, do_print=False):
+    # global print_flag
+
     if do_print:
         print("Received data: %s" % hexlify(value))
+        
+    # if print_flag:
+        # print("command response: %s" % hexlify(value))
+        # print_flag = 0
 
     global hid_util_fault
     hid_util_fault = (int(value[START_INDEX+1]) & 0xF )
@@ -818,7 +826,7 @@ def main():
     # Initialize the flags according from the command line arguments
     avail_vid = args.vendor_id != None
     avail_pid = args.product_id != None
-    avail_path = args.product_id != None
+    avail_path = args.path != None
     id_mode = avail_pid and avail_vid
     path_mode = avail_path
     default_mode = (not avail_vid) and (not avail_pid) and (not avail_path)
