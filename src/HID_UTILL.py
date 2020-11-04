@@ -48,6 +48,10 @@ WRITE_DATA_CMD_S = bytes.fromhex("3f3ebb00b127ff00ff00ff0053ff33ff00000000000000
 WRITE_DATA_CMD_A = bytes.fromhex("3f3ebb00b127ff00ff00ff0041ff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # moderate BLE update rate every 50 mSec by 'M' command
 WRITE_DATA_CMD_M = bytes.fromhex("3f3ebb00b127ff00ff00ff004dff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+# set_BSL_mode
+# WRITE_DATA_CMD_B = bytes.fromhex("3f3eaa00b127ff00ff00ff004dff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+#0xAA	Run BSL
+WRITE_DATA_CMD_B = bytes.fromhex("3f04aa00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 
 
 SLEEP_AMOUNT = 0.002 # Read from HID every 2 milliseconds
@@ -119,6 +123,9 @@ def moderate_button_CallBack():
     global special_cmd
     special_cmd = 'M'
 
+def BSL_mode_button_CallBack():
+    global special_cmd
+    special_cmd = 'B'
 	
 def gui_loop(device):
     do_print = True
@@ -155,10 +162,17 @@ def gui_loop(device):
             WRITE_DATA = WRITE_DATA_CMD_M
             print("special_cmd M -> moderate BLE update rate every 50 mSec")
             special_cmd = 0
+        elif special_cmd == 'B':
+            WRITE_DATA = WRITE_DATA_CMD_B
+            device.write(WRITE_DATA)
+            print("special_cmd B -> set_BSL_mode  --- this will stop HID communication with this GUI")
+            special_cmd = 0
         else:
             WRITE_DATA = DEFAULT_WRITE_DATA
         
         # device.write(WRITE_DATA)
+        if WRITE_DATA == WRITE_DATA_CMD_B:
+            root. destroy() 
 
         # If not enough time has passed, sleep for SLEEP_AMOUNT seconds
         if (timer() - time) < SLEEP_AMOUNT:
@@ -777,7 +791,11 @@ def my_widgets(frame):
     red_handle_ignore = tk.Button(frame,text ="Moderate BLE",command = moderate_button_CallBack)
     red_handle_ignore.grid(row=row,column=2)
 
+    row += 1
 
+    row = my_seperator(frame, row)
+    red_handle_ignore = tk.Button(frame,text ="BSL !!!(DONT PRESS)",command = BSL_mode_button_CallBack)
+    red_handle_ignore.grid(row=row,column=2)
 def init_parser():
     parser = argparse.ArgumentParser(
         description="Read the HID data from target board.\nIf no argument is given, the program exits."
