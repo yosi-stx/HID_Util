@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+# C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
 from binascii import hexlify
 import sys
@@ -36,6 +37,10 @@ WRITE_DATA_CMD_I = bytes.fromhex("3f3ebb00b127ff00ff00ff0049ff33ff00000000000000
 # start streaming command:
 # 3f 04 82 00 00
 WRITE_DATA_CMD_START = bytes.fromhex("3f048200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+WRITE_DATA_CMD_START_ = bytes.fromhex("3f048200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+# start streaming command for station 0x303:
+WRITE_DATA_CMD_START_0x303 = bytes.fromhex("3f048d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+
 # Get Board Type command:
 # 01h 00h 00h 01h
 WRITE_DATA_CMD_GET_BOARD_TYPE = bytes.fromhex("3f040100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
@@ -144,7 +149,10 @@ def gui_loop(device):
 
         # Write to the device (request data; keep alive)
         if special_cmd == 'I':
-            WRITE_DATA = WRITE_DATA_CMD_START
+            if PRODUCT_ID == 0x304:
+                WRITE_DATA = WRITE_DATA_CMD_START_0x303
+            else:
+                WRITE_DATA = WRITE_DATA_CMD_START
             device.write(WRITE_DATA)
             print("special_cmd Start")
             special_cmd = 0
@@ -862,7 +870,7 @@ def main():
         id_mode = True
     elif (id_mode):
         VENDOR_ID = args.vendor_id[0]
-        PRODUCT_ID = args.product_id[0]
+        PRODUCT_ID = args.product_id[0]  #run over with 772 == 0x304
     elif (path_mode):
         PATH = args.path[0]
     else:
