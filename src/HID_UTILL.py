@@ -21,6 +21,7 @@ VENDOR_ID = 0x2047 # Texas Instruments
 PRODUCT_ID = 0x0302 # Joystick.
 PRODUCT_ID_JOYSTICK = 0x0302 # Joystick.
 PRODUCT_ID_ROUTER   = 0x0301 # Router
+PRODUCT_ID_STATION = 0x0304
 
 # file1 = None
 # open recording log file:
@@ -39,7 +40,7 @@ WRITE_DATA_CMD_I = bytes.fromhex("3f3ebb00b127ff00ff00ff0049ff33ff00000000000000
 WRITE_DATA_CMD_START = bytes.fromhex("3f048200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 WRITE_DATA_CMD_START_ = bytes.fromhex("3f048200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # start streaming command for station 0x303:
-WRITE_DATA_CMD_START_0x303 = bytes.fromhex("3f048d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+WRITE_DATA_CMD_START_0x304 = bytes.fromhex("3f048d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 
 # Get Board Type command:
 # 01h 00h 00h 01h
@@ -66,9 +67,10 @@ START_INDEX = 2 + 4 # Ignore the first two bytes, then skip the version (4 bytes
 # ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 4 * 2 + 1, 2)) + [START_INDEX + 6 * 2,]
 ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 8 * 2 + 1, 2)) 
 COUNTER_INDEX = 2 + 22 + 18 # Ignore the first two bytes, then skip XData1 (22 bytes) and OverSample (==XDataSlave1; 18 bytes)
+CMOS_INDEX = 2 + 2   # maybe + 4???
 
-OUTER_HANDLE_CHANNEL1_STYLE = "OuterHandleChannel1"
-OUTER_HANDLE_CHANNEL2_STYLE = "OuterHandleChannel2"
+HID_STREAM_CHANNEL1_STYLE = "HIDStreamChannel1"
+HID_STREAM_CHANNEL2_STYLE = "HIDStreamChannel2"
 INNER_HANDLE_CHANNEL1_STYLE = "InnerHandleChannel1"
 INNER_HANDLE_CHANNEL2_STYLE = "InnerHandleChannel2"
 CLICKER_STYLE = "Clicker"
@@ -77,8 +79,8 @@ BATTERY_LEVEL_STYLE = "batteryLevel"
 MOTOR_CURRENT_STYLE = "motorCurrent"
 
 style_names = [
-    OUTER_HANDLE_CHANNEL1_STYLE,
-    OUTER_HANDLE_CHANNEL2_STYLE,
+    HID_STREAM_CHANNEL1_STYLE,
+    HID_STREAM_CHANNEL2_STYLE,
     INNER_HANDLE_CHANNEL1_STYLE,
     INNER_HANDLE_CHANNEL2_STYLE,
     CLICKER_STYLE,
@@ -90,7 +92,6 @@ style_names = [
 # global variables
 progressbar_styles = list()
 progressbars = list()
-isopen = list()
 inner_clicker = list()
 red_handle = list()
 reset_check = list()
@@ -149,8 +150,8 @@ def gui_loop(device):
 
         # Write to the device (request data; keep alive)
         if special_cmd == 'I':
-            if PRODUCT_ID == 0x304:
-                WRITE_DATA = WRITE_DATA_CMD_START_0x303
+            if PRODUCT_ID == PRODUCT_ID_STATION:
+                WRITE_DATA = WRITE_DATA_CMD_START_0x304
             else:
                 WRITE_DATA = WRITE_DATA_CMD_START
             device.write(WRITE_DATA)
@@ -208,18 +209,24 @@ def gui_loop(device):
 def handler(value, do_print=False):
     # global print_flag
 
-    if do_print:
-        print("Received data: %s" % hexlify(value))
         
     # if print_flag:
         # print("command response: %s" % hexlify(value))
         # print_flag = 0
+
+#   tool_size from CMOS: bytes 5..6
+#   3f260000370b
 
     global hid_util_fault
     hid_util_fault = (int(value[START_INDEX+1]) & 0xF )
     digital = (int(value[START_INDEX + 1]) << 8) + int(value[START_INDEX + 0])
     analog = [(int(value[i + 1]) << 8) + int(value[i]) for i in ANALOG_INDEX_LIST]
     counter = (int(value[COUNTER_INDEX + 1]) << 8) + int(value[COUNTER_INDEX])
+    tool_size = (int(value[CMOS_INDEX + 1]) << 8) + int(value[CMOS_INDEX])
+
+    if do_print:
+        print("Received data: %s" % hexlify(value))
+        # print("tool_size    : %d" % tool_size)
     
     
     clicker_counter = (int(value[COUNTER_INDEX+2 + 1]) << 8) + int(value[COUNTER_INDEX+2])
@@ -245,14 +252,12 @@ def handler(value, do_print=False):
 
 
 
-    bool_inner_isopen = bool((digital >> 0) & 0x0001)
-    bool_outer_isopen = bool((digital >> 1) & 0x0001)
     bool_clicker = bool((digital >> 2) & 0x0001)
     bool_reset = bool((digital >> 4) & 0x0001)
     bool_red_handle = bool((digital >> 7) & 0x0001)
     bool_ignore_red_handle = ignore_red_handle_state
-    int_outer_handle_channel1 = analog[1]
-    int_outer_handle_channel2 = analog[2]
+    int_hid_stream_channel1 = analog[1]
+    int_hid_stream_channel2 = tool_size
     int_inner_handle_channel1 = analog[0]
     int_inner_handle_channel2 = analog[3]
     int_clicker = clicker_analog
@@ -262,8 +267,8 @@ def handler(value, do_print=False):
     int_counter = counter
     int_hid_util_fault = hid_util_fault
     int_clicker_counter = clicker_counter
-    precentage_outer_handle_channel1 = int((int_outer_handle_channel1 / 4096) * 100)
-    precentage_outer_handle_channel2 = int((int_outer_handle_channel2 / 4096) * 100)
+    precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
+    precentage_hid_stream_channel2 = int((int_hid_stream_channel2 / 4096) * 100)
     precentage_inner_handle_channel1 = int((int_inner_handle_channel1 / 4096) * 100)
     precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 4096) * 100)
     precentage_clicker = int((int_clicker / 4096) * 100)
@@ -271,24 +276,22 @@ def handler(value, do_print=False):
     precentage_sleepTimer = int(int_sleepTimer )
     precentage_batteryLevel = int((int_batteryLevel / 4096) * 100)
     precentage_MotorCur = int((int_MotorCur / 4096) * 100)
-    progressbar_style_outer_handle_channel1 = progressbar_styles[0]
-    progressbar_style_outer_handle_channel2 = progressbar_styles[1]
+    progressbar_style_hid_stream_channel1 = progressbar_styles[0]
+    progressbar_style_hid_stream_channel2 = progressbar_styles[1]
     progressbar_style_inner_handle_channel1 = progressbar_styles[2]
     progressbar_style_inner_handle_channel2 = progressbar_styles[3]
     progressbar_style_clicker = progressbar_styles[4]
     progressbar_style_sleepTimer = progressbar_styles[5]
     progressbar_style_batteryLevel = progressbar_styles[6]
     progressbar_style_MotorCur = progressbar_styles[7]
-    progressbar_outer_handle_channel1 = progressbars[0]
-    progressbar_outer_handle_channel2 = progressbars[1]
+    progressbar_hid_stream_channel1 = progressbars[0]
+    progressbar_hid_stream_channel2 = progressbars[1]
     progressbar_inner_handle_channel1 = progressbars[2]
     progressbar_inner_handle_channel2 = progressbars[3]
     progressbar_clicker = progressbars[4]
     progressbar_sleepTimer = progressbars[5]
     progressbar_batteryLevel = progressbars[6]
     progressbar_MotorCur = progressbars[7]
-    checkbox_outer_handle_isopen = isopen[0]
-    checkbox_inner_handle_isopen = isopen[1]
     checkbox_inner_clicker = inner_clicker
     checkbox_red_handle = red_handle
     checkbox_reset_check = reset_check
@@ -297,13 +300,13 @@ def handler(value, do_print=False):
     entry_clicker_counter = clicker_counter_entry
     entry_fault = fault_entry
     
-    progressbar_style_outer_handle_channel1.configure(
-        OUTER_HANDLE_CHANNEL1_STYLE,
-        text=("%d" % int_outer_handle_channel1)
+    progressbar_style_hid_stream_channel1.configure(
+        HID_STREAM_CHANNEL1_STYLE,
+        text=("%d" % int_hid_stream_channel1)
     )
-    progressbar_style_outer_handle_channel2.configure(
-        OUTER_HANDLE_CHANNEL2_STYLE,
-        text=("%d" % int_outer_handle_channel2)
+    progressbar_style_hid_stream_channel2.configure(
+        HID_STREAM_CHANNEL2_STYLE,
+        text=("%d" % int_hid_stream_channel2)
     )
     progressbar_style_inner_handle_channel1.configure(
         INNER_HANDLE_CHANNEL1_STYLE,
@@ -336,8 +339,8 @@ def handler(value, do_print=False):
         progressbar_style_batteryLevel.configure(BATTERY_LEVEL_STYLE, foreground="white", background="blue")
     
 
-    progressbar_outer_handle_channel1["value"] = precentage_outer_handle_channel1
-    progressbar_outer_handle_channel2["value"] = precentage_outer_handle_channel2
+    progressbar_hid_stream_channel1["value"] = precentage_hid_stream_channel1
+    progressbar_hid_stream_channel2["value"] = precentage_hid_stream_channel2
     progressbar_inner_handle_channel1["value"] = precentage_inner_handle_channel1
     progressbar_inner_handle_channel2["value"] = precentage_inner_handle_channel2
     progressbar_clicker["value"] = precentage_clicker
@@ -346,8 +349,6 @@ def handler(value, do_print=False):
     progressbar_batteryLevel["value"] = precentage_batteryLevel
     progressbar_MotorCur["value"] = precentage_MotorCur
 
-    update_checkbox(checkbox_outer_handle_isopen, bool_outer_isopen)
-    update_checkbox(checkbox_inner_handle_isopen, bool_inner_isopen)
     update_checkbox(checkbox_inner_clicker, bool_clicker)
     update_checkbox(checkbox_red_handle, bool_red_handle)
     update_checkbox(checkbox_reset_check, bool_reset)
@@ -380,38 +381,21 @@ def my_channel_row(frame, row, label, style):
 
     ttk.Label(
         frame,
-        text="Is Open"
-    ).grid(
-        row=row,
-        column=0,
-        sticky=tk.W
-    )
-    ttk.Label(
-        frame,
         text="Channel 1"
     ).grid(
         row=row,
-        column=1
+        column=0
     )
     ttk.Label(
         frame,
         text="Channel 2"
     ).grid(
         row=row,
-        column=2
+        column=1
     )
 
     row += 1
 
-    w = tk.Checkbutton(
-        frame,
-        state=tk.DISABLED
-    )
-    isopen.append(w)
-    w.grid(
-        row=row,
-        column=0
-    )
     w = ttk.Progressbar(
         frame,
         orient=tk.HORIZONTAL,
@@ -421,7 +405,7 @@ def my_channel_row(frame, row, label, style):
     progressbars.append(w)
     w.grid(
         row=row,
-        column=1
+        column=0
     )
     w = ttk.Progressbar(
         frame,
@@ -432,7 +416,7 @@ def my_channel_row(frame, row, label, style):
     progressbars.append(w)
     w.grid(
         row=row,
-        column=2
+        column=1
     )
 
     return row + 1
@@ -489,14 +473,63 @@ def my_widgets(frame):
             style.configure(name, background="#06B025")
 
 
-    # Outer Handle
     row = 0
-    row = my_channel_row(
-        frame=frame,
+
+    # Outer Handle
+    ttk.Label(
+        frame,
+        text="HID Streaming Values"
+    ).grid(
         row=row,
-        label="Outer Handle",
-        style="OuterHandle"
+        sticky=tk.W
     )
+
+    row += 1
+
+    ttk.Label(
+        frame,
+        text="Channel 1"
+    ).grid(
+        row=row,
+        column=0
+    )
+    channel2_name = "Channel 2"
+    if PRODUCT_ID == PRODUCT_ID_STATION:
+        channel2_name = "Tool Size"
+    ttk.Label(
+        frame,
+        text=channel2_name
+    ).grid(
+        row=row,
+        column=1
+    )
+
+    row += 1
+
+    w = ttk.Progressbar(
+        frame,
+        orient=tk.HORIZONTAL,
+        length=PROGRESS_BAR_LEN,
+        style=("HIDStreamChannel1")
+    )
+    progressbars.append(w)
+    w.grid(
+        row=row,
+        column=0
+    )
+    w = ttk.Progressbar(
+        frame,
+        orient=tk.HORIZONTAL,
+        length=PROGRESS_BAR_LEN,
+        style=("HIDStreamChannel2")
+    )
+    progressbars.append(w)
+    w.grid(
+        row=row,
+        column=1
+    )
+
+    row += 1
 
     # Seperator
     row = my_seperator(frame, row)
