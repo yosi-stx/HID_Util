@@ -22,6 +22,22 @@ PRODUCT_ID = 0x0302 # Joystick.
 PRODUCT_ID_JOYSTICK = 0x0302 # Joystick.
 PRODUCT_ID_ROUTER   = 0x0301 # Router
 PRODUCT_ID_STATION = 0x0304
+# 2021_01_24
+# USB\VID_24B3&PID_2005&REV_0200
+# 0x24B3 = 9395
+# 0x2005 = 8197
+# VENDOR_ID = 0x24b3 # Simbionix
+# PRODUCT_ID = 0x2005 # LAP_NEW_CAMERA.
+PRODUCT_ID_types =  {
+  0x0302: "BOARD_TYPE: Joystick/Universal",
+  0x0301: "BOARD_TYPE: Router/Main",
+  0x0304: "BOARD_TYPE: STATION",
+  0x0303: "BOARD_TYPE: TOOLS_MASTER",
+  0x0305: "BOARD_TYPE: SUITE2PRIPH",
+  0x0306: "BOARD_TYPE: TOOLS_SLAVE",
+  0x1965: "yosi"
+}
+
 
 # file1 = None
 # open recording log file:
@@ -913,7 +929,62 @@ def main():
 
     try:
         if (id_mode):
-            device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+            try:
+                print("try with default device:")
+                print("VENDOR_ID = %X" % VENDOR_ID)
+                print("PRODUCT_ID = %X" % PRODUCT_ID)
+                device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+            except:
+                print("wrong ID")
+                print(" ")
+            
+            # 0x24B3 = 9395
+            # 0x2005 = 8197
+            for n in range(7):
+                if device is None:
+                    try:
+                        # print("try with other device")
+                        VENDOR_ID = 0x24b3 # Simbionix
+                        PRODUCT_ID = 0x2000 + n # LAP_NEW_CAMERA. is 0x2005
+                        # print("VID = %X PID = %X " % VENDOR_ID, PRODUCT_ID)
+                        print("try with PID = %X " % PRODUCT_ID)
+                        # print("PRODUCT_ID = %X" % PRODUCT_ID)
+                        device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+                        # device = hid.Device(vid=0x24B3, pid=0x2005)
+                        # print("success vid=0x24B3, pid=0x2005 !!")
+                    except:
+                        print("wrong ID2")
+                    
+            # VENDOR_ID = 2047
+            # PRODUCT_ID = 304
+            # 0x2047 = 8263
+            # 0x304 = 772
+            # 0x0301    // Product ID (PID) - base for Prime products family
+            for n in range(7):
+                if device is None:
+                    try:
+                        # print("try with other device")
+                        VENDOR_ID = 0x2047 # Texas Instrument
+                        PRODUCT_ID = 0x301 + n # BOARD_TYPE_MAIN is 0x301
+                        # print("VID = %X PID = %X " % VENDOR_ID, PRODUCT_ID)
+                        print("try with PID = %X " % PRODUCT_ID)
+                        # print("PRODUCT_ID = %X" % PRODUCT_ID)
+                        device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+                        # device = hid.Device(vid=0x24B3, pid=0x2005)
+                        # print("success vid=0x24B3, pid=0x2005 !!")
+                    except:
+                        print("wrong ID2")
+                    
+            if device is None:
+                print("no device attached")
+            else:
+                print("VENDOR_ID = %X" % VENDOR_ID)
+                print("PRODUCT_ID = %X" % PRODUCT_ID)
+                if PRODUCT_ID in PRODUCT_ID_types:
+                    print(PRODUCT_ID_types[PRODUCT_ID])
+
+            
+
         elif (path_mode):
             device = hid.Device(path=PATH)
         else:
