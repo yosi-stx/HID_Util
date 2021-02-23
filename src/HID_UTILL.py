@@ -77,13 +77,20 @@ WRITE_DATA_CMD_B = bytes.fromhex("3f04aa0000000000000000000000000000000000000000
 
 
 SLEEP_AMOUNT = 0.002 # Read from HID every 2 milliseconds
-PRINT_TIME = 1.0 # Print every 1 second
+# PRINT_TIME = 1.0 # Print every 1 second
+# PRINT_TIME = 0.5 # Print every 0.5 second
+PRINT_TIME = 2 # Print every 2 second
 
 START_INDEX = 2 + 4 # Ignore the first two bytes, then skip the version (4 bytes)
 # ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 4 * 2 + 1, 2)) + [START_INDEX + 6 * 2,]
 ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 8 * 2 + 1, 2)) 
 COUNTER_INDEX = 2 + 22 + 18 # Ignore the first two bytes, then skip XData1 (22 bytes) and OverSample (==XDataSlave1; 18 bytes)
 CMOS_INDEX = 2 + 2   # maybe + 4???
+#                       0  1  2  3  4 5 6 7  8 9 1011
+# Received data: b'3f26 00 00 00 00 0674fc41 3f4efc70 0033a4513c5a0101210001000000650000000000000000000000167f070dd7aee89baff63fedcfcccb763acf041b00000010'
+#                                   TORQUE   INSERTION
+INSERTION_INDEX = 2 + 8
+TORQUE_INDEX = 2 + 4
 
 HID_STREAM_CHANNEL1_STYLE = "HIDStreamChannel1"
 HID_STREAM_CHANNEL2_STYLE = "HIDStreamChannel2"
@@ -239,10 +246,19 @@ def handler(value, do_print=False):
     analog = [(int(value[i + 1]) << 8) + int(value[i]) for i in ANALOG_INDEX_LIST]
     counter = (int(value[COUNTER_INDEX + 1]) << 8) + int(value[COUNTER_INDEX])
     tool_size = (int(value[CMOS_INDEX + 1]) << 8) + int(value[CMOS_INDEX])
+# Received data: b'3f26 00 00 00 00 0674fc41 3f4efc70 0033a4513c5a0101210001000000650000000000000000000000167f070dd7aee89baff63fedcfcccb763acf041b00000010'
+#                                   TORQUE   INSERTION
+            # 0674 fc41
+# -62847372 = FC41 0674
+#   torque from Avago: bytes 6..9
+    torque = (int(value[TORQUE_INDEX + 2]) << 24) + (int(value[TORQUE_INDEX+3]) <<16) + (int(value[TORQUE_INDEX]) <<8) + int(value[TORQUE_INDEX+1])  
 
     if do_print:
         print("Received data: %s" % hexlify(value))
         # print("tool_size    : %d" % tool_size)
+        if torque > 2**31:
+            torque = torque - 2**32
+        print("torque    : %d" % torque)
     
     
     clicker_counter = (int(value[COUNTER_INDEX+2 + 1]) << 8) + int(value[COUNTER_INDEX+2])
