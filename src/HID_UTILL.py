@@ -14,6 +14,15 @@ from tkinter import ttk
 import include_dll_path
 import hid
 
+# BOARD_TYPE_MAIN = 0,
+# BOARD_TYPE_JOYSTICKS = 1,
+# BOARD_TYPE_TOOLS_MASTER = 2,
+# BOARD_TYPE_STATION = 3,
+# BOARD_TYPE_SUITE2PRIPH = 4,
+# BOARD_TYPE_TOOLS_SLAVE = 5,
+# BOARD_TYPE_GBU = 6,
+# BOARD_TYPE_LAP = 7
+
 # VENDOR_ID = 0x24b3 # Simbionix
 # PRODUCT_ID = 0x1005 # Simbionix MSP430 Controller
 # USB\VID_2047&PID_0302&REV_0200
@@ -35,6 +44,8 @@ PRODUCT_ID_types =  {
   0x0303: "BOARD_TYPE: TOOLS_MASTER",
   0x0305: "BOARD_TYPE: SUITE2PRIPH",
   0x0306: "BOARD_TYPE: TOOLS_SLAVE",
+  0x0307: "BOARD_TYPE: GBU",
+  0x0308: "BOARD_TYPE: LAP camera",
   0x1965: "yosi"
 }
 
@@ -252,13 +263,15 @@ def handler(value, do_print=False):
 # -62847372 = FC41 0674
 #   torque from Avago: bytes 6..9
     torque = (int(value[TORQUE_INDEX + 2]) << 24) + (int(value[TORQUE_INDEX+3]) <<16) + (int(value[TORQUE_INDEX]) <<8) + int(value[TORQUE_INDEX+1])  
+    insertion = (int(value[INSERTION_INDEX + 2]) << 24) + (int(value[INSERTION_INDEX+3]) <<16) + (int(value[INSERTION_INDEX]) <<8) + int(value[INSERTION_INDEX+1])  
 
     if do_print:
         print("Received data: %s" % hexlify(value))
         # print("tool_size    : %d" % tool_size)
         if torque > 2**31:
             torque = torque - 2**32
-        print("torque    : %d" % torque)
+        print("insertion : %d" % insertion , end="")
+        print("   torque : %d" % torque)
     
     
     clicker_counter = (int(value[COUNTER_INDEX+2 + 1]) << 8) + int(value[COUNTER_INDEX+2])
@@ -453,6 +466,61 @@ def my_channel_row(frame, row, label, style):
 
     return row + 1
 
+def my_channel_row2(frame, row, label, style):
+    row += 1
+
+    text_name = "Channel 1"
+    if PRODUCT_ID == PRODUCT_ID_STATION:
+        text_name = "Insertion"
+    ttk.Label(
+        frame,
+        text=text_name
+    ).grid(
+        row=row,
+        column=0
+    )
+    
+    row += 1
+    w = ttk.Progressbar(
+        frame,
+        orient=tk.HORIZONTAL,
+        length=PROGRESS_BAR_LEN,
+        style=("HIDStreamChannel1")
+    )
+    progressbars.append(w)
+    w.grid(
+        row=row,
+        column=0
+    )
+
+    row += 1
+
+    text_name = "Channel 2"
+    if PRODUCT_ID == PRODUCT_ID_STATION:
+        text_name = "Tool Size"
+    ttk.Label(
+        frame,
+        text=text_name
+    ).grid(
+        row=row,
+        column=0
+    )
+
+    row += 1
+
+    w = ttk.Progressbar(
+        frame,
+        orient=tk.HORIZONTAL,
+        length=PROGRESS_BAR_LEN,
+        style=("HIDStreamChannel2")
+    )
+    progressbars.append(w)
+    w.grid(
+        row=row,
+        column=0
+    )
+    return row + 1
+
 def my_seperator(frame, row):
     ttk.Separator(
         frame,
@@ -508,137 +576,72 @@ def my_widgets(frame):
     row = 0
 
     # Outer Handle
-    ttk.Label(
-        frame,
-        text="HID Streaming Values"
-    ).grid(
-        row=row,
-        sticky=tk.W
-    )
+    ttk.Label(frame,text="HID Streaming Values").grid(row=row,sticky=tk.W)
 
     row += 1
 
-    ttk.Label(
-        frame,
-        text="Channel 1"
-    ).grid(
-        row=row,
-        column=0
-    )
-    channel2_name = "Channel 2"
+    text_name = "Channel 1"
     if PRODUCT_ID == PRODUCT_ID_STATION:
-        channel2_name = "Tool Size"
-    ttk.Label(
-        frame,
-        text=channel2_name
-    ).grid(
-        row=row,
-        column=1
-    )
+        text_name = "Insertion"
+    ttk.Label(frame,text=text_name).grid(row=row,column=0)
+    
+    row += 1
+    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("HIDStreamChannel1"))
+    progressbars.append(w)
+    w.grid(row=row,column=0)
 
     row += 1
 
-    w = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=PROGRESS_BAR_LEN,
-        style=("HIDStreamChannel1")
-    )
+    text_name = "Channel 2"
+    if PRODUCT_ID == PRODUCT_ID_STATION:
+        text_name = "Tool Size"
+    ttk.Label(frame,text=text_name).grid(row=row,column=0)
+
+    row += 1
+
+    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("HIDStreamChannel2"))
     progressbars.append(w)
-    w.grid(
-        row=row,
-        column=0
-    )
-    w = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=PROGRESS_BAR_LEN,
-        style=("HIDStreamChannel2")
-    )
-    progressbars.append(w)
-    w.grid(
-        row=row,
-        column=1
-    )
+    w.grid(row=row,column=0)
 
     row += 1
 
     # Seperator
     row = my_seperator(frame, row)
 
-    # Inner Handle
-    row = my_channel_row(
-        frame=frame,
-        row=row,
-        label="Inner Handle",
-        style="InnerHandle"
-    )
+    if PRODUCT_ID != PRODUCT_ID_STATION:
+        # Inner Handle
+        row = my_channel_row(frame=frame,row=row,label="InnerHandle",style="InnerHandle")
+    else:
+        row = my_channel_row2(frame=frame,row=row,label="PRODUCT_ID_STATION",style="InnerHandle")
+        
 
     # Seperator
     row = my_seperator(frame, row)
 
     # Clicker labels
-    ttk.Label(
-        frame,
-        text="Inner Clicker"
-    ).grid(
-        row=row,
-        column=0,
-        sticky=tk.W
-    )
-    ttk.Label(
-        frame,
-        text="Clicker"
-    ).grid(
-        row=row,
-        column=1
-    )
-    ttk.Label(
-        frame,
-        text="Clicker Counter"
-    ).grid(
-        row=row,
-        column=2
-    )
+    ttk.Label(frame,text="InnerClicker").grid(row=row,column=0,sticky=tk.W)
+    ttk.Label(frame,text="Clicker").grid(row=row,column=1)
+    ttk.Label(frame,text="ClickerCounter").grid(row=row,column=2)
 
     row += 1
 
     # Clicker data
-    w = tk.Checkbutton(
-        frame,
-        state=tk.DISABLED
-    )
+    w = tk.Checkbutton(frame,state=tk.DISABLED)
     global inner_clicker
     inner_clicker = w
-    w.grid(
-        row=row,
-        column=0
-    )
-    w = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=PROGRESS_BAR_LEN,
-        style="Clicker"
-    )
+    w.grid(row=row,column=0)
+    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style="Clicker")
     progressbars.append(w)
-    w.grid(
-        row=row,
-        column=1
-    )
+    w.grid(row=row,column=1)
     # yg: adding clicker counter display
-    w = ttk.Entry(
-        frame,
-        width=20,
-    )
+    w = ttk.Entry(frame,width=20,)
     global clicker_counter_entry
     clicker_counter_entry = w
     w.grid(
-        # padx=10,
-        # pady=5,
+        #padx=10,#pady=5,
         row=row,
-        column=2,
-        # sticky=tk.W,
-    )
+        column=2,#sticky=tk.W,
+        )
 
     row += 1
 
@@ -646,70 +649,33 @@ def my_widgets(frame):
     row = my_seperator(frame, row)
 
     # Red handle and reset button labels
-    ttk.Label(
-        frame,
-        text="Red Handle"
-    ).grid(
-        row=row,
-        column=0,
-        sticky=tk.W
-    )
-    ttk.Label(
-        frame,
-        text="Reset Button"
-    ).grid(
-        row=row,
-        column=1
-    )
+    ttk.Label(frame,text="RedHandle").grid(row=row,column=0,sticky=tk.W)
+    ttk.Label(frame,text="ResetButton").grid(row=row,column=1)
 
-    ttk.Label(
-        frame,
-        text="Ignore RedHandle fault"
-    ).grid(
-        row=row,
-        column=2
-    )
+    ttk.Label(frame,text="IgnoreRedHandlefault").grid(row=row,column=2)
 
     row += 1
 
     # Red handle and reset button data
-    w = tk.Checkbutton(
-        frame,
-        state=tk.DISABLED
-    )
+    w = tk.Checkbutton(frame,state=tk.DISABLED)
     global red_handle
     red_handle = w
-    w.grid(
-        row=row,
-        column=0
-    )
-    w = tk.Checkbutton(
-        frame,
-        state=tk.DISABLED
-    )
+    w.grid(row=row,column=0)
+    w = tk.Checkbutton(frame,state=tk.DISABLED)
     global reset_check
     reset_check = w
-    w.grid(
-        row=row,
-        column=1
-    )
+    w.grid(row=row,column=1)
 
     red_handle_ignore = tk.Button(frame,text ="Start streaming",command = streaming_button_CallBack)
     red_handle_ignore.grid(row=row,column=3)
     
     # checkbox for the ignore red handle 
-    w = tk.Checkbutton(
-        frame,
-        state=tk.DISABLED
-    )
+    w = tk.Checkbutton(frame,state=tk.DISABLED)
     # global ignore_red
     # ignore_red = w
     global ignore_red_handle_checkbutton
     ignore_red_handle_checkbutton = w
-    w.grid(
-        row=row,
-        column=2
-    )
+    w.grid(row=row,column=2)
 
     row += 1
 
@@ -717,40 +683,16 @@ def my_widgets(frame):
     row = my_seperator(frame, row)
 
     # Counter
-    ttk.Label(
-        frame,
-        text="Packets Counter:"
-    ).grid(
-        row=row,
-        column=0,
-        sticky=tk.E,
-    )
-    w = ttk.Entry(
-        frame,
-        width=20,
-        # state=tk.DISABLED
-    )
+    ttk.Label(frame,text="PacketsCounter:").grid(row=row,column=0,sticky=tk.E,)
+    w = ttk.Entry(frame,width=20,
+        #state=tk.DISABLED
+        )
     global counter_entry
     counter_entry = w
-    w.grid(
-        padx=10,
-        pady=5,
-        row=row,
-        column=1,
-        columnspan=2,
-        sticky=tk.W,
-    )
-
+    w.grid(padx=10,pady=5,row=row,column=1,columnspan=2,sticky=tk.W,)
     
     # HID_Util Fault indication
-    ttk.Label(
-        frame,
-        text="Fault indication:"
-    ).grid(
-        row=row,
-        column=1,
-        sticky=tk.E,
-    )
+    ttk.Label(frame,text="Faultindication:").grid(row=row,column=1,sticky=tk.E,)
     w = ttk.Entry(
         frame,
         width=20,
@@ -976,7 +918,7 @@ def main():
             # 0x2047 = 8263
             # 0x304 = 772
             # 0x0301    // Product ID (PID) - base for Prime products family
-            for n in range(7):
+            for n in range(len(PRODUCT_ID_types)):
                 if device is None:
                     try:
                         # print("try with other device")
