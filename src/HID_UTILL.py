@@ -264,14 +264,14 @@ def handler(value, do_print=False):
 #   torque from Avago: bytes 6..9
     torque = (int(value[TORQUE_INDEX + 2]) << 24) + (int(value[TORQUE_INDEX+3]) <<16) + (int(value[TORQUE_INDEX]) <<8) + int(value[TORQUE_INDEX+1])  
     insertion = (int(value[INSERTION_INDEX + 2]) << 24) + (int(value[INSERTION_INDEX+3]) <<16) + (int(value[INSERTION_INDEX]) <<8) + int(value[INSERTION_INDEX+1])  
+    if torque > 2**31:
+        torque = torque - 2**32
 
     if do_print:
         print("Received data: %s" % hexlify(value))
         # print("tool_size    : %d" % tool_size)
-        if torque > 2**31:
-            torque = torque - 2**32
-        print("insertion : %d" % insertion , end="")
-        print("   torque : %d" % torque)
+        # print("insertion : %d" % insertion , end="")
+        # print("   torque : %d" % torque)
     
     
     clicker_counter = (int(value[COUNTER_INDEX+2 + 1]) << 8) + int(value[COUNTER_INDEX+2])
@@ -301,9 +301,13 @@ def handler(value, do_print=False):
     bool_reset = bool((digital >> 4) & 0x0001)
     bool_red_handle = bool((digital >> 7) & 0x0001)
     bool_ignore_red_handle = ignore_red_handle_state
-    int_hid_stream_channel1 = analog[1]
+    if PRODUCT_ID != PRODUCT_ID_STATION:
+        int_hid_stream_channel1 = analog[1]
+        int_inner_handle_channel1 = analog[0]
+    else:
+        int_hid_stream_channel1 = insertion
+        int_inner_handle_channel1 = torque
     int_hid_stream_channel2 = tool_size
-    int_inner_handle_channel1 = analog[0]
     int_inner_handle_channel2 = analog[3]
     int_clicker = clicker_analog
     int_sleepTimer = sleepTimer
@@ -312,9 +316,14 @@ def handler(value, do_print=False):
     int_counter = counter
     int_hid_util_fault = hid_util_fault
     int_clicker_counter = clicker_counter
-    precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
+    int_hid_stream_insertion = insertion
+    if PRODUCT_ID != PRODUCT_ID_STATION:
+        precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
+        precentage_inner_handle_channel1 = int((int_inner_handle_channel1 / 4096) * 100)
+    else:
+        precentage_hid_stream_channel1 = abs(int((int_hid_stream_channel1 / 1000) * 100))
+        precentage_inner_handle_channel1 = abs(int((int_inner_handle_channel1 / 1000) * 100))
     precentage_hid_stream_channel2 = int((int_hid_stream_channel2 / 4096) * 100)
-    precentage_inner_handle_channel1 = int((int_inner_handle_channel1 / 4096) * 100)
     precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 4096) * 100)
     precentage_clicker = int((int_clicker / 4096) * 100)
     # precentage_sleepTimer = int((int_sleepTimer / 600) * 100)
@@ -330,6 +339,7 @@ def handler(value, do_print=False):
     progressbar_style_batteryLevel = progressbar_styles[6]
     progressbar_style_MotorCur = progressbar_styles[7]
     progressbar_hid_stream_channel1 = progressbars[0]
+    progressbar_hid_insertion = progressbars[0] #can I duplicate it?
     progressbar_hid_stream_channel2 = progressbars[1]
     progressbar_inner_handle_channel1 = progressbars[2]
     progressbar_inner_handle_channel2 = progressbars[3]
@@ -414,112 +424,29 @@ PROGRESS_BAR_LEN = 300
 LONG_PROGRESS_BAR_LEN = 590
 
 def my_channel_row(frame, row, label, style):
-    ttk.Label(
-        frame,
-        text=label
-    ).grid(
-        row=row,
-        sticky=tk.W
-    )
+    ttk.Label(frame,text=label).grid(row=row,sticky=tk.W)
 
     row += 1
 
-    ttk.Label(
-        frame,
-        text="Channel 1"
-    ).grid(
-        row=row,
-        column=0
-    )
-    ttk.Label(
-        frame,
-        text="Channel 2"
-    ).grid(
-        row=row,
-        column=1
-    )
+    if PRODUCT_ID != PRODUCT_ID_STATION:
+        # Inner Handle
+        ttk.Label(frame,text="Channel 1").grid(row=row,column=0)
+        ttk.Label(frame,text="Channel 2").grid(row=row,column=1)
+    else:
+        ttk.Label(frame,text="Torque").grid(row=row,column=0)
+        ttk.Label(frame,text="Channel 2").grid(row=row,column=1)
 
     row += 1
 
-    w = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=PROGRESS_BAR_LEN,
-        style=("%sChannel1" % style)
-    )
+    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("%sChannel1"%style))
     progressbars.append(w)
-    w.grid(
-        row=row,
-        column=0
-    )
-    w = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=PROGRESS_BAR_LEN,
-        style=("%sChannel2" % style)
-    )
+    w.grid(row=row,column=0)
+    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("%sChannel2"%style))
     progressbars.append(w)
-    w.grid(
-        row=row,
-        column=1
-    )
+    w.grid(row=row,column=1)
 
     return row + 1
 
-def my_channel_row2(frame, row, label, style):
-    row += 1
-
-    text_name = "Channel 1"
-    if PRODUCT_ID == PRODUCT_ID_STATION:
-        text_name = "Insertion"
-    ttk.Label(
-        frame,
-        text=text_name
-    ).grid(
-        row=row,
-        column=0
-    )
-    
-    row += 1
-    w = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=PROGRESS_BAR_LEN,
-        style=("HIDStreamChannel1")
-    )
-    progressbars.append(w)
-    w.grid(
-        row=row,
-        column=0
-    )
-
-    row += 1
-
-    text_name = "Channel 2"
-    if PRODUCT_ID == PRODUCT_ID_STATION:
-        text_name = "Tool Size"
-    ttk.Label(
-        frame,
-        text=text_name
-    ).grid(
-        row=row,
-        column=0
-    )
-
-    row += 1
-
-    w = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=PROGRESS_BAR_LEN,
-        style=("HIDStreamChannel2")
-    )
-    progressbars.append(w)
-    w.grid(
-        row=row,
-        column=0
-    )
-    return row + 1
 
 def my_seperator(frame, row):
     ttk.Separator(
@@ -571,6 +498,7 @@ def my_widgets(frame):
         else:
             # style.configure(name, background="lime")
             style.configure(name, background="#06B025")
+        # print(style)
 
 
     row = 0
@@ -590,18 +518,18 @@ def my_widgets(frame):
     progressbars.append(w)
     w.grid(row=row,column=0)
 
-    row += 1
+    row -= 1    # go line back for text header
 
     text_name = "Channel 2"
     if PRODUCT_ID == PRODUCT_ID_STATION:
         text_name = "Tool Size"
-    ttk.Label(frame,text=text_name).grid(row=row,column=0)
+    ttk.Label(frame,text=text_name).grid(row=row,column=1)
 
     row += 1
 
     w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("HIDStreamChannel2"))
     progressbars.append(w)
-    w.grid(row=row,column=0)
+    w.grid(row=row,column=1)
 
     row += 1
 
@@ -612,7 +540,7 @@ def my_widgets(frame):
         # Inner Handle
         row = my_channel_row(frame=frame,row=row,label="InnerHandle",style="InnerHandle")
     else:
-        row = my_channel_row2(frame=frame,row=row,label="PRODUCT_ID_STATION",style="InnerHandle")
+        row = my_channel_row(frame=frame,row=row,label="PRODUCT_ID_STATION",style="InnerHandle")
         
 
     # Seperator
@@ -685,12 +613,11 @@ def my_widgets(frame):
     # Counter
     ttk.Label(frame,text="PacketsCounter:").grid(row=row,column=0,sticky=tk.E,)
     w = ttk.Entry(frame,width=20,
-        #state=tk.DISABLED
+        # """state=tk.DISABLED"""
         )
     global counter_entry
     counter_entry = w
     w.grid(padx=10,pady=5,row=row,column=1,columnspan=2,sticky=tk.W,)
-    
     # HID_Util Fault indication
     ttk.Label(frame,text="Faultindication:").grid(row=row,column=1,sticky=tk.E,)
     w = ttk.Entry(
