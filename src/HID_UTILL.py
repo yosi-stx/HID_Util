@@ -31,6 +31,7 @@ PRODUCT_ID = 0x0302 # Joystick.
 PRODUCT_ID_JOYSTICK = 0x0302 # Joystick.
 PRODUCT_ID_ROUTER   = 0x0301 # Router
 PRODUCT_ID_STATION = 0x0304
+PRODUCT_ID_LAP_NEW_CAMERA = 0x2005
 # 2021_01_24
 # USB\VID_24B3&PID_2005&REV_0200
 # 0x24B3 = 9395
@@ -46,6 +47,7 @@ PRODUCT_ID_types =  {
   0x0306: "BOARD_TYPE: TOOLS_SLAVE",
   0x0307: "BOARD_TYPE: GBU",
   0x0308: "BOARD_TYPE: LAP camera",
+  0x2005: "BOARD_TYPE: PRODUCT_ID_LAP_NEW_CAMERA",  #board type is enforced in FW (descriptors.h)
   0x1965: "yosi"
 }
 
@@ -79,6 +81,7 @@ WRITE_DATA_CMD_GET_BOARD_TYPE = bytes.fromhex("3f0401000001000000000000000000000
 WRITE_DATA_CMD_S = bytes.fromhex("3f3ebb00b127ff00ff00ff0053ff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # 'A' - keep Alive + fast BLE update (every 20 msec)
 WRITE_DATA_CMD_A = bytes.fromhex("3f3ebb00b127ff00ff00ff0041ff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+WRITE_DATA_CMD_GET_FW_VERSION = bytes.fromhex("3f040600000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # moderate BLE update rate every 50 mSec by 'M' command
 WRITE_DATA_CMD_M = bytes.fromhex("3f3ebb00b127ff00ff00ff004dff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # set_BSL_mode
@@ -198,8 +201,13 @@ def gui_loop(device):
             # print_flag = 1
             special_cmd = 0
         elif special_cmd == 'A':
-            WRITE_DATA = WRITE_DATA_CMD_A
-            print("special_cmd A -> keep Alive + fast BLE update (every 20 msec)")
+            if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+                WRITE_DATA = WRITE_DATA_CMD_GET_FW_VERSION
+                print("special_cmd A -> WRITE_DATA_CMD_GET_FW_VERSION")
+                device.write(WRITE_DATA)
+            else:
+                WRITE_DATA = WRITE_DATA_CMD_A
+                print("special_cmd A -> keep Alive + fast BLE update (every 20 msec)")
             special_cmd = 0
         elif special_cmd == 'M':
             WRITE_DATA = WRITE_DATA_CMD_M
@@ -273,7 +281,30 @@ def handler(value, do_print=False):
         # print("insertion : %d" % insertion , end="")
         # print("   torque : %d" % torque)
     
-    
+    # parsing FW version response :
+    if value[2] == 6 and value[3] == 6 and value[4] == 0 and value[5] == 1:
+        print("FW friendly version: %s" % hexlify(value))
+        #   0 1 2 3 4 5   6 7 8 9 0 1    2 3 4 5 6 7 8 9 0 
+        # b'3f0a06060001  030004060321   d6bb2c3fc2b49c3fe877fecef602fffe5787dedfcf750cfb129efe7ffd7ed60daedefca4f9fff58efc5eb47c237eb5a93dd72f55'
+        print("")
+        print("FW version: "+str(value[6])+"." +str(value[7])+"." +str(value[8]))
+        print("FW date   : "+str(value[9])+"/" +str(value[10])+"/20" +str(value[11]))
+
+    # parsing FW version response :
+    if value[2] == 1 and value[3] == 1 and value[4] == 0 and value[5] == 1:
+        print("Board type: %s" % hexlify(value))
+        #   0 1 2 3 4 5   6 7 8 9 0 1    2 3 4 5 6 7 8 9 0 
+        # b'3f0a06060001  030004060321   d6bb2c3fc2b49c3fe877fecef602fffe5787dedfcf750cfb129efe7ffd7ed60daedefca4f9fff58efc5eb47c237eb5a93dd72f55'
+        print("")
+        print("Board type: "+str(value[6]))
+
+    # if value[2] == 6 and value[3] == 6 and value[4] == 0 :
+        # print("value[2] == 6 and value[3] == 6 and value[4] == 0: %s" % hexlify(value))
+    # if value[2] == 6 and value[3] == 6 :
+        # print("value[2] == 6 and value[3] == 6 : %s" % hexlify(value))
+    # if value[2] == 6 :
+        # print("value[2] == 6  : %s" % hexlify(value))
+        
     clicker_counter = (int(value[COUNTER_INDEX+2 + 1]) << 8) + int(value[COUNTER_INDEX+2])
     sleepTimer = (int(value[COUNTER_INDEX+4 + 1]) << 8) + int(value[COUNTER_INDEX+4])
 
@@ -727,7 +758,10 @@ def my_widgets(frame):
     red_handle_ignore = tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
     red_handle_ignore.grid(row=row,column=0)
 
-    red_handle_ignore = tk.Button(frame,text ="Keep alive (fast BLE)",command = alive_button_CallBack)
+    if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        red_handle_ignore = tk.Button(frame,text ="Get friendly FW version",command = alive_button_CallBack)
+    else:
+        red_handle_ignore = tk.Button(frame,text ="Keep alive (fast BLE)",command = alive_button_CallBack)
     red_handle_ignore.grid(row=row,column=1)
 
     red_handle_ignore = tk.Button(frame,text ="Moderate BLE",command = moderate_button_CallBack)

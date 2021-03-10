@@ -187,6 +187,7 @@ def gui_loop(device):
     # prev_cnt = None
     # value = None
     global special_cmd
+    global WRITE_DATA
     # global print_flag
     
     while True:
@@ -224,17 +225,17 @@ def gui_loop(device):
 #            WRITE_DATA = WRITE_DATA_CMD_M
 #            print("special_cmd M -> moderate BLE update rate every 50 mSec")
 #            special_cmd = 0
-#        elif special_cmd == 'B':
-#            WRITE_DATA = WRITE_DATA_CMD_B
-#            device.write(WRITE_DATA)
-#            print("special_cmd B -> set_BSL_mode  --- this will stop HID communication with this GUI")
-#            special_cmd = 0
+        elif special_cmd == 'B':
+           WRITE_DATA = WRITE_DATA_CMD_B
+           device.write(WRITE_DATA)
+           print("special_cmd B -> set_BSL_mode  --- this will stop HID communication with this GUI")
+           special_cmd = 0
 #        else:
 #            WRITE_DATA = DEFAULT_WRITE_DATA
         
 #        # device.write(WRITE_DATA)
-#        if WRITE_DATA == WRITE_DATA_CMD_B:
-#            root. destroy() 
+        if WRITE_DATA == WRITE_DATA_CMD_B:
+            break
 
         cycle_time = timer() - time
         # print("cycle timer: %.10f" % cycle_time)
@@ -925,7 +926,8 @@ def main():
                     print(PRODUCT_ID_types[PRODUCT_ID])
                     global special_cmd
                     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-                        special_cmd = 'I'
+                        special_cmd = 'B'
+                        # root. destroy() 
 
             
 
@@ -943,12 +945,14 @@ def main():
 #        my_widgets(root)
 
         # Create thread that calls
-        print(" ")
-        print(" --------------------------------------")
-        print(" Please press <Enter> to stop recording")
-        print(" --------------------------------------")
-        print(" ")
         threading.Thread(target=gui_loop, args=(device,), daemon=True).start()
+        global WRITE_DATA
+        if WRITE_DATA == WRITE_DATA_CMD_B:
+            print("WRITE_DATA == WRITE_DATA_CMD_B")
+            threading.Thread(target=gui_loop, args=(device,), daemon=True).stop()
+        print(" Recording Ended !!!")
+        print(" ")
+        print(" Please press <Enter> to Exit")
         input()
 
         # Run the GUI main loop

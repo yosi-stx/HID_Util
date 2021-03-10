@@ -137,3 +137,7 @@ clicker_log.txt
 src/HID_UTILL -2021_01_25__13_03.py
 history_py_files
 *.xlsx
+src/HID_recorder -2021_03_09__12_00.py
+src/HID_recorder - 2021_03_09__12_36.py
+src/bsl - Copy.py
+src/get_FW_version - Copy.py
