@@ -10,6 +10,8 @@ from time import perf_counter as timer
 import include_dll_path
 import hid
 import os
+from string_date_time import get_date_time
+
 # BOARD_TYPE_MAIN = 0,
 # BOARD_TYPE_JOYSTICKS = 1,
 # BOARD_TYPE_TOOLS_MASTER = 2,
@@ -47,14 +49,18 @@ PRODUCT_ID_types =  {
   0x1965: "yosi"
 }
 
-FILE1_PATH = "log\hid_log.csv"
+# FILE1_PATH = "log\hid_log.csv"
+FILE1_PATH = "log\hid_" # log.csv"
+start_date_time = get_date_time()
+FILE1_PATH = FILE1_PATH + start_date_time + ".csv"
+print("Recording result at: ", FILE1_PATH, "\n")
 if not os.path.exists('log'):
     os.makedirs('log')
 # file1 = None
 # open recording log file:
 # file1 = open("C:\Work\Python\HID_Util\src\log\log.csv","w") 
-# file1 = open(FILE1_PATH,"w") 
-file1 = open("log\hid_log.csv","w") 
+file1 = open(FILE1_PATH,"w") 
+# file1 = open("log\hid_log.csv","w") 
 
 hid_util_fault = 0
 print_every = 0
@@ -107,73 +113,10 @@ CMOS_INDEX = 2 + 2   # maybe + 4???
 #                       0  1  2  3  4 5 6 7  8 9 1011
 # Received data: b'3f26 00 00 00 00 0674fc41 3f4efc70 0033a4513c5a0101210001000000650000000000000000000000167f070dd7aee89baff63fedcfcccb763acf041b00000010'
 #                                   TORQUE   INSERTION
-INSERTION_INDEX = 2 + 8
-TORQUE_INDEX = 2 + 4
-
-HID_STREAM_CHANNEL1_STYLE = "HIDStreamChannel1"
-HID_STREAM_CHANNEL2_STYLE = "HIDStreamChannel2"
-INNER_HANDLE_CHANNEL1_STYLE = "InnerHandleChannel1"
-INNER_HANDLE_CHANNEL2_STYLE = "InnerHandleChannel2"
-CLICKER_STYLE = "Clicker"
-SLEEPTIMER_STYLE = "sleepTimer"
-BATTERY_LEVEL_STYLE = "batteryLevel"
-MOTOR_CURRENT_STYLE = "motorCurrent"
-
-style_names = [
-    HID_STREAM_CHANNEL1_STYLE,
-    HID_STREAM_CHANNEL2_STYLE,
-    INNER_HANDLE_CHANNEL1_STYLE,
-    INNER_HANDLE_CHANNEL2_STYLE,
-    CLICKER_STYLE,
-    SLEEPTIMER_STYLE,
-    BATTERY_LEVEL_STYLE,
-    MOTOR_CURRENT_STYLE
-]
 
 # global variables
-progressbar_styles = list()
-progressbars = list()
-inner_clicker = list()
-red_handle = list()
-reset_check = list()
-counter_entry = list()
-clicker_counter_entry = list()
-fault_entry = list()
 special_cmd = 0
-ignore_red_handle_button = None
-ignore_red_handle_checkbutton = None
-ignore_red_handle_state = False
 
-root = None
-
-def update_checkbox(checkbox, bool_value):
-    if (bool_value):
-        checkbox.select()
-    else:
-        checkbox.deselect()
-
-def streaming_button_CallBack():
-    global special_cmd
-    global ignore_red_handle_state
-    special_cmd = 'I'
-    ignore_red_handle_state = True
-
-def board_type_button_callback():
-    global special_cmd
-    special_cmd = 'S'
-
-def alive_button_CallBack():
-    global special_cmd
-    special_cmd = 'A'
-
-def moderate_button_CallBack():
-    global special_cmd
-    special_cmd = 'M'
-
-def BSL_mode_button_CallBack():
-    global special_cmd
-    special_cmd = 'B'
-	
 def gui_loop(device):
     do_print = True
     print_time = 0.0
@@ -232,22 +175,12 @@ def gui_loop(device):
 #        else:
 #            WRITE_DATA = DEFAULT_WRITE_DATA
         
-#        # device.write(WRITE_DATA)
-#        if WRITE_DATA == WRITE_DATA_CMD_B:
-#            root. destroy() 
 
         cycle_time = timer() - time
         # print("cycle timer: %.10f" % cycle_time)
 
         # If not enough time has passed, sleep for SLEEP_AMOUNT seconds
         sleep_time = SLEEP_AMOUNT - (cycle_time)
-        # if (timer() - time) < SLEEP_AMOUNT:
-            # if value:
-            #     prev_cnt = cnt
-            #     cnt = value[COUNTER_INDEX]
-            #     if prev_cnt and cnt < prev_cnt:
-            #         print("Invalid counter")
-            # sleep(SLEEP_AMOUNT)
 
         # Measure the time
         time = timer()
@@ -299,501 +232,10 @@ def handler(value, do_print=False):
         print("Received data: %s" % hexlify(value))
     return # do without gui
 
-        
-    # if print_flag:
-        # print("command response: %s" % hexlify(value))
-        # print_flag = 0
-
-#   tool_size from CMOS: bytes 5..6
-#   3f260000370b
-
-    global hid_util_fault
-    hid_util_fault = (int(value[START_INDEX+1]) & 0xF )
-    digital = (int(value[START_INDEX + 1]) << 8) + int(value[START_INDEX + 0])
-    analog = [(int(value[i + 1]) << 8) + int(value[i]) for i in ANALOG_INDEX_LIST]
-    counter = (int(value[COUNTER_INDEX + 1]) << 8) + int(value[COUNTER_INDEX])
-    tool_size = (int(value[CMOS_INDEX + 1]) << 8) + int(value[CMOS_INDEX])
-# Received data: b'3f26 00 00 00 00 0674fc41 3f4efc70 0033a4513c5a0101210001000000650000000000000000000000167f070dd7aee89baff63fedcfcccb763acf041b00000010'
-#                                   TORQUE   INSERTION
-            # 0674 fc41
-# -62847372 = FC41 0674
-#   torque from Avago: bytes 6..9
-    torque = (int(value[TORQUE_INDEX + 2]) << 24) + (int(value[TORQUE_INDEX+3]) <<16) + (int(value[TORQUE_INDEX]) <<8) + int(value[TORQUE_INDEX+1])  
-    insertion = (int(value[INSERTION_INDEX + 2]) << 24) + (int(value[INSERTION_INDEX+3]) <<16) + (int(value[INSERTION_INDEX]) <<8) + int(value[INSERTION_INDEX+1])  
-    if torque > 2**31:
-        torque = torque - 2**32
-
-    if do_print:
-        print("Received data: %s" % hexlify(value))
-        # print("tool_size    : %d" % tool_size)
-        # print("insertion : %d" % insertion , end="")
-        # print("   torque : %d" % torque)
-    
-    
-    clicker_counter = (int(value[COUNTER_INDEX+2 + 1]) << 8) + int(value[COUNTER_INDEX+2])
-    sleepTimer = (int(value[COUNTER_INDEX+4 + 1]) << 8) + int(value[COUNTER_INDEX+4])
-
-    encoder1 = analog[3]
-    encoder2 = analog[0]
-    encoder3 = analog[1]
-    encoder4 = analog[2]
-    MotorCur = analog[4]
-    clicker_analog = analog[5]
-    # ClickerRec = analog[6]
-    # batteryLevel = analog[6]
-    
-    # ClickerRec is actually connected to Pin of the VREF+ that is on that input P5.0
-    batteryLevel = analog[7]
-    
-    # file1 = open("C:\Work\Python\HID_Util\src\log\log2.txt","w") 
-    # global file1
-    L = [ str(clicker_analog), "," ,"\n" ]  
-    # file1.writelines(L) 
-
-
-
-
-    bool_clicker = bool((digital >> 2) & 0x0001)
-    bool_reset = bool((digital >> 4) & 0x0001)
-    bool_red_handle = bool((digital >> 7) & 0x0001)
-    bool_ignore_red_handle = ignore_red_handle_state
-    if PRODUCT_ID != PRODUCT_ID_STATION:
-        int_hid_stream_channel1 = analog[1]
-        int_inner_handle_channel1 = analog[0]
-    else:
-        int_hid_stream_channel1 = insertion
-        int_inner_handle_channel1 = torque
-    int_hid_stream_channel2 = tool_size
-    int_inner_handle_channel2 = analog[3]
-    int_clicker = clicker_analog
-    int_sleepTimer = sleepTimer
-    int_batteryLevel = batteryLevel
-    int_MotorCur = MotorCur
-    int_counter = counter
-    int_hid_util_fault = hid_util_fault
-    int_clicker_counter = clicker_counter
-    int_hid_stream_insertion = insertion
-    if PRODUCT_ID != PRODUCT_ID_STATION:
-        precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
-        precentage_inner_handle_channel1 = int((int_inner_handle_channel1 / 4096) * 100)
-    else:
-        precentage_hid_stream_channel1 = abs(int((int_hid_stream_channel1 / 1000) * 100))
-        precentage_inner_handle_channel1 = abs(int((int_inner_handle_channel1 / 1000) * 100))
-    precentage_hid_stream_channel2 = int((int_hid_stream_channel2 / 4096) * 100)
-    precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 4096) * 100)
-    precentage_clicker = int((int_clicker / 4096) * 100)
-    # precentage_sleepTimer = int((int_sleepTimer / 600) * 100)
-    precentage_sleepTimer = int(int_sleepTimer )
-    precentage_batteryLevel = int((int_batteryLevel / 4096) * 100)
-    precentage_MotorCur = int((int_MotorCur / 4096) * 100)
-    progressbar_style_hid_stream_channel1 = progressbar_styles[0]
-    progressbar_style_hid_stream_channel2 = progressbar_styles[1]
-    progressbar_style_inner_handle_channel1 = progressbar_styles[2]
-    progressbar_style_inner_handle_channel2 = progressbar_styles[3]
-    progressbar_style_clicker = progressbar_styles[4]
-    progressbar_style_sleepTimer = progressbar_styles[5]
-    progressbar_style_batteryLevel = progressbar_styles[6]
-    progressbar_style_MotorCur = progressbar_styles[7]
-    progressbar_hid_stream_channel1 = progressbars[0]
-    progressbar_hid_insertion = progressbars[0] #can I duplicate it?
-    progressbar_hid_stream_channel2 = progressbars[1]
-    progressbar_inner_handle_channel1 = progressbars[2]
-    progressbar_inner_handle_channel2 = progressbars[3]
-    progressbar_clicker = progressbars[4]
-    progressbar_sleepTimer = progressbars[5]
-    progressbar_batteryLevel = progressbars[6]
-    progressbar_MotorCur = progressbars[7]
-    checkbox_inner_clicker = inner_clicker
-    checkbox_red_handle = red_handle
-    checkbox_reset_check = reset_check
-    checkbox_ignore_red_handle = ignore_red_handle_checkbutton
-    entry_counter = counter_entry
-    entry_clicker_counter = clicker_counter_entry
-    entry_fault = fault_entry
-    
-    progressbar_style_hid_stream_channel1.configure(
-        HID_STREAM_CHANNEL1_STYLE,
-        text=("%d" % int_hid_stream_channel1)
-    )
-    progressbar_style_hid_stream_channel2.configure(
-        HID_STREAM_CHANNEL2_STYLE,
-        text=("%d" % int_hid_stream_channel2)
-    )
-    progressbar_style_inner_handle_channel1.configure(
-        INNER_HANDLE_CHANNEL1_STYLE,
-        text=("%d" % int_inner_handle_channel1)
-    )
-    progressbar_style_inner_handle_channel2.configure(
-        INNER_HANDLE_CHANNEL2_STYLE,
-        text=("%d" % int_inner_handle_channel2)
-    )
-    progressbar_style_clicker.configure(
-        CLICKER_STYLE,
-        text=("%d" % int_clicker)
-    )
-    progressbar_style_sleepTimer.configure(
-        SLEEPTIMER_STYLE,
-        text=("%d" % sleepTimer)
-    )
-    progressbar_style_batteryLevel.configure(
-        BATTERY_LEVEL_STYLE,
-        text=("%d" % batteryLevel)
-    )
-    progressbar_style_MotorCur.configure(
-        MOTOR_CURRENT_STYLE,
-        text=("%d" % MotorCur)
-    )
-    # if ( batteryLevel <= 2310 ):
-    if ( batteryLevel <= 2288 ):  # about 2.8 volt
-        progressbar_style_batteryLevel.configure(BATTERY_LEVEL_STYLE,foreground="white", background="#d92929")
-    else:
-        progressbar_style_batteryLevel.configure(BATTERY_LEVEL_STYLE, foreground="white", background="blue")
-    
-
-    progressbar_hid_stream_channel1["value"] = precentage_hid_stream_channel1
-    progressbar_hid_stream_channel2["value"] = precentage_hid_stream_channel2
-    progressbar_inner_handle_channel1["value"] = precentage_inner_handle_channel1
-    progressbar_inner_handle_channel2["value"] = precentage_inner_handle_channel2
-    progressbar_clicker["value"] = precentage_clicker
-    progressbar_sleepTimer["value"] = precentage_sleepTimer
-    progressbar_sleepTimer["maximum"] = 600
-    progressbar_batteryLevel["value"] = precentage_batteryLevel
-    progressbar_MotorCur["value"] = precentage_MotorCur
-
-    update_checkbox(checkbox_inner_clicker, bool_clicker)
-    update_checkbox(checkbox_red_handle, bool_red_handle)
-    update_checkbox(checkbox_reset_check, bool_reset)
-    update_checkbox(checkbox_ignore_red_handle, bool_ignore_red_handle)
-
-    entry_counter.delete(0, tk.END)
-    entry_counter.insert(tk.END, "%d" % int_counter)
-
-    entry_clicker_counter.delete(0, tk.END)
-    entry_clicker_counter.insert(tk.END, "%d" % int_clicker_counter)
-
-    entry_fault.delete(0, tk.END)
-    entry_fault.insert(tk.END, "%d" % int_hid_util_fault)
-
-    root.update()
 
 PROGRESS_BAR_LEN = 300
 LONG_PROGRESS_BAR_LEN = 590
 
-def my_channel_row(frame, row, label, style):
-    ttk.Label(frame,text=label).grid(row=row,sticky=tk.W)
-
-    row += 1
-
-    if PRODUCT_ID != PRODUCT_ID_STATION:
-        # Inner Handle
-        ttk.Label(frame,text="Channel 1").grid(row=row,column=0)
-        ttk.Label(frame,text="Channel 2").grid(row=row,column=1)
-    else:
-        ttk.Label(frame,text="Torque").grid(row=row,column=0)
-        ttk.Label(frame,text="Channel 2").grid(row=row,column=1)
-
-    row += 1
-
-    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("%sChannel1"%style))
-    progressbars.append(w)
-    w.grid(row=row,column=0)
-    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("%sChannel2"%style))
-    progressbars.append(w)
-    w.grid(row=row,column=1)
-
-    return row + 1
-
-
-def my_seperator(frame, row):
-    ttk.Separator(
-        frame,
-        orient=tk.HORIZONTAL
-    ).grid(
-        pady=10,
-        row=row,
-        columnspan=3,
-        sticky=(tk.W + tk.E)
-    )
-    return row + 1
-
-def my_widgets(frame):
-    # Add style for labeled progress bar
-    for name in style_names:
-        style = ttk.Style(
-            frame
-        )
-        progressbar_styles.append(style)
-        style.layout(
-            name,
-            [
-                (
-                    "%s.trough" % name,
-                    {
-                        "children":
-                        [
-                            (
-                                "%s.pbar" % name,
-                                {"side": "left", "sticky": "ns"}
-                            ),
-                            (
-                                "%s.label" % name,
-                                {"sticky": ""}
-                            )
-                        ],
-                        "sticky": "nswe"
-                    }
-                )
-            ]
-        )
-        if name == SLEEPTIMER_STYLE:
-            # style.configure(name, foreground="white", background="blue")
-            style.configure(name, foreground="white", background="#d9d9d9")
-        elif name == BATTERY_LEVEL_STYLE:
-            # style.configure(name, foreground="white", background="blue")
-            style.configure(name, foreground="white", background="#d92929")
-        else:
-            # style.configure(name, background="lime")
-            style.configure(name, background="#06B025")
-        # print(style)
-
-
-    row = 0
-
-    # Outer Handle
-    ttk.Label(frame,text="HID Streaming Values").grid(row=row,sticky=tk.W)
-
-    row += 1
-
-    text_name = "Channel 1"
-    if PRODUCT_ID == PRODUCT_ID_STATION:
-        text_name = "Insertion"
-    ttk.Label(frame,text=text_name).grid(row=row,column=0)
-    
-    row += 1
-    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("HIDStreamChannel1"))
-    progressbars.append(w)
-    w.grid(row=row,column=0)
-
-    row -= 1    # go line back for text header
-
-    text_name = "Channel 2"
-    if PRODUCT_ID == PRODUCT_ID_STATION:
-        text_name = "Tool Size"
-    ttk.Label(frame,text=text_name).grid(row=row,column=1)
-
-    row += 1
-
-    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("HIDStreamChannel2"))
-    progressbars.append(w)
-    w.grid(row=row,column=1)
-
-    row += 1
-
-    # Seperator
-    row = my_seperator(frame, row)
-
-    if PRODUCT_ID != PRODUCT_ID_STATION:
-        # Inner Handle
-        row = my_channel_row(frame=frame,row=row,label="InnerHandle",style="InnerHandle")
-    else:
-        row = my_channel_row(frame=frame,row=row,label="PRODUCT_ID_STATION",style="InnerHandle")
-        
-
-    # Seperator
-    row = my_seperator(frame, row)
-
-    # Clicker labels
-    ttk.Label(frame,text="InnerClicker").grid(row=row,column=0,sticky=tk.W)
-    ttk.Label(frame,text="Clicker").grid(row=row,column=1)
-    ttk.Label(frame,text="ClickerCounter").grid(row=row,column=2)
-
-    row += 1
-
-    # Clicker data
-    w = tk.Checkbutton(frame,state=tk.DISABLED)
-    global inner_clicker
-    inner_clicker = w
-    w.grid(row=row,column=0)
-    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style="Clicker")
-    progressbars.append(w)
-    w.grid(row=row,column=1)
-    # yg: adding clicker counter display
-    w = ttk.Entry(frame,width=20,)
-    global clicker_counter_entry
-    clicker_counter_entry = w
-    w.grid(
-        #padx=10,#pady=5,
-        row=row,
-        column=2,#sticky=tk.W,
-        )
-
-    row += 1
-
-    # Seperator
-    row = my_seperator(frame, row)
-
-    # Red handle and reset button labels
-    ttk.Label(frame,text="RedHandle").grid(row=row,column=0,sticky=tk.W)
-    ttk.Label(frame,text="ResetButton").grid(row=row,column=1)
-
-    ttk.Label(frame,text="IgnoreRedHandlefault").grid(row=row,column=2)
-
-    row += 1
-
-    # Red handle and reset button data
-    w = tk.Checkbutton(frame,state=tk.DISABLED)
-    global red_handle
-    red_handle = w
-    w.grid(row=row,column=0)
-    w = tk.Checkbutton(frame,state=tk.DISABLED)
-    global reset_check
-    reset_check = w
-    w.grid(row=row,column=1)
-
-    red_handle_ignore = tk.Button(frame,text ="Start streaming",command = streaming_button_CallBack)
-    red_handle_ignore.grid(row=row,column=3)
-    
-    # checkbox for the ignore red handle 
-    w = tk.Checkbutton(frame,state=tk.DISABLED)
-    # global ignore_red
-    # ignore_red = w
-    global ignore_red_handle_checkbutton
-    ignore_red_handle_checkbutton = w
-    w.grid(row=row,column=2)
-
-    row += 1
-
-    # Seperator
-    row = my_seperator(frame, row)
-
-    # Counter
-    ttk.Label(frame,text="PacketsCounter:").grid(row=row,column=0,sticky=tk.E,)
-    w = ttk.Entry(frame,width=20,
-        # """state=tk.DISABLED"""
-        )
-    global counter_entry
-    counter_entry = w
-    w.grid(padx=10,pady=5,row=row,column=1,columnspan=2,sticky=tk.W,)
-    # HID_Util Fault indication
-    ttk.Label(frame,text="Faultindication:").grid(row=row,column=1,sticky=tk.E,)
-    w = ttk.Entry(
-        frame,
-        width=20,
-    )
-    global fault_entry
-    fault_entry = w
-    w.grid(
-        padx=10,
-        pady=5,
-        row=row,
-        column=2,
-        columnspan=2,
-        sticky=tk.W,
-    )
-
-    row += 1
-
-    # Seperator
-    row = my_seperator(frame, row)
-
-    # sleepTimer
-    ttk.Label(
-        frame,
-        text="Sleep Timer"
-    ).grid(
-        row=row,
-        column=0,
-        sticky=tk.E,
-    )
-
-    w = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=LONG_PROGRESS_BAR_LEN,
-        style="sleepTimer"
-    )
-    progressbars.append(w)
-    w.grid(
-        row=row,
-        column=1,
-        columnspan=3
-    )
-
-    row += 1
-
-    # Seperator
-    row = my_seperator(frame, row)
-
-    # battery level
-    ttk.Label(
-        frame,
-        text="battery level"
-    ).grid(
-        row=row,
-        column=0,
-        sticky=tk.E,
-    )
-
-    w = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=LONG_PROGRESS_BAR_LEN,
-        style="batteryLevel"
-    )
-    progressbars.append(w)
-    w.grid(
-        row=row,
-        column=1,
-        columnspan=3
-    )
-
-    row += 1
-
-    # Seperator
-    row = my_seperator(frame, row)
-
-    # Motor Cur
-    ttk.Label(
-        frame,
-        text="Motor Current"
-    ).grid(
-        row=row,
-        column=0,
-        sticky=tk.E,
-    )
-
-    w = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=LONG_PROGRESS_BAR_LEN,
-        style="motorCurrent"
-    )
-    progressbars.append(w)
-    w.grid(
-        row=row,
-        column=1,
-        columnspan=3
-    )
-
-    row += 1
-
-    # Seperator
-    row = my_seperator(frame, row)
-
-    red_handle_ignore = tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
-    red_handle_ignore.grid(row=row,column=0)
-
-    red_handle_ignore = tk.Button(frame,text ="Keep alive (fast BLE)",command = alive_button_CallBack)
-    red_handle_ignore.grid(row=row,column=1)
-
-    red_handle_ignore = tk.Button(frame,text ="Moderate BLE",command = moderate_button_CallBack)
-    red_handle_ignore.grid(row=row,column=2)
-
-    row += 1
-
-    row = my_seperator(frame, row)
-    red_handle_ignore = tk.Button(frame,text ="BSL !!!(DONT PRESS)",command = BSL_mode_button_CallBack)
-    red_handle_ignore.grid(row=row,column=2)
 def init_parser():
     parser = argparse.ArgumentParser(
         description="Read the HID data from target board.\nIf no argument is given, the program exits."
@@ -934,25 +376,19 @@ def main():
         else:
             raise NotImplementedError
 
-#        # Initialize the main window
-#        global root
-#        root = tk.Tk()
-#        root.title("HID_Util")
-#
-#        # Initialize the GUI widgets
-#        my_widgets(root)
 
-        # Create thread that calls
         print(" ")
         print(" --------------------------------------")
         print(" Please press <Enter> to stop recording")
         print(" --------------------------------------")
         print(" ")
+        # Create thread that calls
         threading.Thread(target=gui_loop, args=(device,), daemon=True).start()
         input()
+        print("Recording start: ", start_date_time)
+        print("Recording end  : ", get_date_time())
+        print("\n","Recording result at: ", FILE1_PATH)
 
-        # Run the GUI main loop
-#        root.mainloop()
     finally:
         global file1
         file1.close() #to change file access modes 

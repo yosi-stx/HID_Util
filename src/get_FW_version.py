@@ -8,6 +8,8 @@ import argparse
 import threading
 from time import perf_counter as timer
 
+# NOTE:             about include_dll_path for  __init__.py error.
+# You MUST include the next line when working with full project path structure
 # import include_dll_path
 import hid
 import os
