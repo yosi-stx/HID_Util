@@ -10,7 +10,7 @@ from time import perf_counter as timer
 
 # NOTE:             about include_dll_path for  __init__.py error.
 # You MUST include the next line when working with full project path structure
-# import include_dll_path
+import include_dll_path
 import hid
 import os
 
@@ -220,6 +220,10 @@ def main_loop(device):
         # Update the do_print flag
         do_print = (timer() - print_time) >= PRINT_TIME
 
+def date2dec(x):
+    s = "%02x" % x
+    return s
+
 def handler(value, do_print=False):
     if do_print:
         print("Received data: %s" % hexlify(value))
@@ -231,7 +235,7 @@ def handler(value, do_print=False):
         # b'3f0a06060001  030004060321   d6bb2c3fc2b49c3fe877fecef602fffe5787dedfcf750cfb129efe7ffd7ed60daedefca4f9fff58efc5eb47c237eb5a93dd72f55'
         print("")
         print("FW version: "+str(value[6])+"." +str(value[7])+"." +str(value[8]))
-        print("FW date   : "+str(value[9])+"/" +str(value[10])+"/20" +str(value[11]))
+        print("FW date   : "+date2dec(value[9])+"/" +date2dec(value[10])+"/20" +date2dec(value[11]))
 
         print(" ")
         print(" Please press <Enter> to Exit")
