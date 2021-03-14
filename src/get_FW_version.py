@@ -147,7 +147,8 @@ def main_loop(device):
 #            # print_flag = 1
 #            special_cmd = 0
         elif special_cmd == 'A':
-            if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+            # if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+            if PRODUCT_ID in PRODUCT_ID_types:
                 WRITE_DATA = WRITE_DATA_CMD_GET_FW_VERSION
                 print("special_cmd A -> WRITE_DATA_CMD_GET_FW_VERSION")
                 device.write(WRITE_DATA)
@@ -371,7 +372,8 @@ def main():
                 if PRODUCT_ID in PRODUCT_ID_types:
                     print(PRODUCT_ID_types[PRODUCT_ID])
                     global special_cmd
-                    if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+                    # if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+                    if PRODUCT_ID in PRODUCT_ID_types:
                         special_cmd = 'A'
         elif (path_mode):
             device = hid.Device(path=PATH)
