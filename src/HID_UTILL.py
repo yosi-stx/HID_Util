@@ -105,6 +105,8 @@ CMOS_INDEX = 2 + 2   # maybe + 4???
 #                                   TORQUE   INSERTION
 INSERTION_INDEX = 2 + 8
 TORQUE_INDEX = 2 + 4
+MAX_LONG_POSITIVE = 2**31
+MAX_UNSIGNED_LONG = 2**32
 
 HID_STREAM_CHANNEL1_STYLE = "HIDStreamChannel1"
 HID_STREAM_CHANNEL2_STYLE = "HIDStreamChannel2"
@@ -247,6 +249,10 @@ def gui_loop(device):
 
         # Update the do_print flag
         do_print = (timer() - print_time) >= PRINT_TIME
+def long_unsigned_to_long_signed( x ):
+    if x > MAX_LONG_POSITIVE:
+        x = x - MAX_UNSIGNED_LONG
+    return x
 
 def handler(value, do_print=False):
     # global print_flag
@@ -272,8 +278,13 @@ def handler(value, do_print=False):
 #   torque from Avago: bytes 6..9
     torque = (int(value[TORQUE_INDEX + 2]) << 24) + (int(value[TORQUE_INDEX+3]) <<16) + (int(value[TORQUE_INDEX]) <<8) + int(value[TORQUE_INDEX+1])  
     insertion = (int(value[INSERTION_INDEX + 2]) << 24) + (int(value[INSERTION_INDEX+3]) <<16) + (int(value[INSERTION_INDEX]) <<8) + int(value[INSERTION_INDEX+1])  
-    if torque > 2**31:
-        torque = torque - 2**32
+    #global MAX_LONG_POSITIVE
+    torque = long_unsigned_to_long_signed(torque)
+    insertion = long_unsigned_to_long_signed(insertion)
+#     if torque > MAX_LONG_POSITIVE:
+#         torque = torque - MAX_UNSIGNED_LONG
+#     if insertion > MAX_LONG_POSITIVE:
+#         insertion = insertion - MAX_UNSIGNED_LONG
 
     if do_print:
         print("Received data: %s" % hexlify(value))

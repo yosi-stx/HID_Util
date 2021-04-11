@@ -925,7 +925,8 @@ def main():
                 if PRODUCT_ID in PRODUCT_ID_types:
                     print(PRODUCT_ID_types[PRODUCT_ID])
                     global special_cmd
-                    if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+                    # if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+                    if PRODUCT_ID in PRODUCT_ID_types:
                         special_cmd = 'B'
                         # root. destroy() 
 
