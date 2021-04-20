@@ -375,6 +375,7 @@ def main():
                     # if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
                     if PRODUCT_ID in PRODUCT_ID_types:
                         special_cmd = 'A'
+                        print("set in init: special_cmd = 'A'")
         elif (path_mode):
             device = hid.Device(path=PATH)
         else:

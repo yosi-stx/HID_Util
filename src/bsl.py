@@ -9,7 +9,7 @@ from time import perf_counter as timer
 
 import include_dll_path
 import hid
-import os
+# import os
 # BOARD_TYPE_MAIN = 0,
 # BOARD_TYPE_JOYSTICKS = 1,
 # BOARD_TYPE_TOOLS_MASTER = 2,
@@ -21,6 +21,7 @@ import os
 
 # VENDOR_ID = 0x24b3 # Simbionix
 # PRODUCT_ID = 0x1005 # Simbionix MSP430 Controller
+PRODUCT_ID_CTAG = 0x1005 # Simbionix MSP430 Controller
 # USB\VID_2047&PID_0302&REV_0200
 VENDOR_ID = 0x2047 # Texas Instruments
 PRODUCT_ID = 0x0302 # Joystick.
@@ -48,13 +49,13 @@ PRODUCT_ID_types =  {
 }
 
 FILE1_PATH = "log\hid_log.csv"
-if not os.path.exists('log'):
-    os.makedirs('log')
+# if not os.path.exists('log'):
+    # os.makedirs('log')
 # file1 = None
 # open recording log file:
 # file1 = open("C:\Work\Python\HID_Util\src\log\log.csv","w") 
 # file1 = open(FILE1_PATH,"w") 
-file1 = open("log\hid_log.csv","w") 
+# file1 = open("log\hid_log.csv","w") 
 
 hid_util_fault = 0
 print_every = 0
@@ -268,13 +269,13 @@ def gui_loop(device):
             channel_4 = analog[4]
             counter = (int(value[COUNTER_INDEX + 1]) << 8) + int(value[COUNTER_INDEX])
             count_dif = counter - prev_counter 
-            global file1
+            # global file1
             #if count_dif > 1 :
             #    L = [ str(counter),",   ", str(clicker_analog), ", " , str(count_dif), " <<<<<--- " ,"\n" ]  
             #else:
             #    L = [ str(counter),",   ", str(clicker_analog), ", " , str(count_dif), "\n" ]  
             L = [ str(channel_0),",   ", str(channel_1), ", " , str(channel_2),", " , str(channel_3),", " , str(channel_4), "\n" ]  
-            file1.writelines(L) 
+            # file1.writelines(L) 
             # handler(value, do_print=do_print)
             # print("Received data: %s" % hexlify(value))
             Handler_Called = (timer() - handle_time)
@@ -897,6 +898,17 @@ def main():
                     except:
                         print("wrong ID2")
                     
+            if device is None:
+                try:
+                    # print("try with other device")
+                    VENDOR_ID = 0x24b3 # Simbionix
+                    PRODUCT_ID = PRODUCT_ID_CTAG
+                    print("try with PID = %X " % PRODUCT_ID)
+                    device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+                    if device is not None:
+                        device.write(DEFAULT_WRITE_DATA)
+                except:
+                    print("wrong ID3")
             # VENDOR_ID = 2047
             # PRODUCT_ID = 304
             # 0x2047 = 8263
@@ -915,20 +927,27 @@ def main():
                         # device = hid.Device(vid=0x24B3, pid=0x2005)
                         # print("success vid=0x24B3, pid=0x2005 !!")
                     except:
-                        print("wrong ID2")
+                        print("wrong ID4")
                     
             if device is None:
                 print("no device attached")
             else:
                 print("VENDOR_ID = %X" % VENDOR_ID)
                 print("PRODUCT_ID = %X" % PRODUCT_ID)
+                global special_cmd
                 if PRODUCT_ID in PRODUCT_ID_types:
                     print(PRODUCT_ID_types[PRODUCT_ID])
-                    global special_cmd
                     # if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
                     if PRODUCT_ID in PRODUCT_ID_types:
                         special_cmd = 'B'
                         # root. destroy() 
+                elif PRODUCT_ID == PRODUCT_ID_CTAG:
+                    print("BOARD_TYPE: CTAG  --- new in bsl.exe")
+                    # if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+                    if PRODUCT_ID in PRODUCT_ID_types:
+                        special_cmd = 'B'
+
+                    
 
             
 
@@ -950,7 +969,7 @@ def main():
         global WRITE_DATA
         if WRITE_DATA == WRITE_DATA_CMD_B:
             print("WRITE_DATA == WRITE_DATA_CMD_B")
-            threading.Thread(target=gui_loop, args=(device,), daemon=True).stop()
+            # threading.Thread(target=gui_loop, args=(device,), daemon=True).stop()
         print(" Recording Ended !!!")
         print(" ")
         print(" Please press <Enter> to Exit")
@@ -959,8 +978,8 @@ def main():
         # Run the GUI main loop
 #        root.mainloop()
     finally:
-        global file1
-        file1.close() #to change file access modes 
+        # global file1
+        # file1.close() #to change file access modes 
         if device != None:
             device.close()
 

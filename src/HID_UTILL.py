@@ -23,8 +23,10 @@ import hid
 # BOARD_TYPE_GBU = 6,
 # BOARD_TYPE_LAP = 7
 
+# USB\VID_24B3&PID_1005\887D1B510A000A00 - USB Input Device
 # VENDOR_ID = 0x24b3 # Simbionix
 # PRODUCT_ID = 0x1005 # Simbionix MSP430 Controller
+PRODUCT_ID_CTAG = 0x1005 # Simbionix MSP430 Controller
 # USB\VID_2047&PID_0302&REV_0200
 VENDOR_ID = 0x2047 # Texas Instruments
 PRODUCT_ID = 0x0302 # Joystick.
@@ -141,6 +143,7 @@ special_cmd = 0
 ignore_red_handle_button = None
 ignore_red_handle_checkbutton = None
 ignore_red_handle_state = False
+handler_counter = 0
 
 root = None
 
@@ -203,7 +206,7 @@ def gui_loop(device):
             # print_flag = 1
             special_cmd = 0
         elif special_cmd == 'A':
-            if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+            if PRODUCT_ID != PRODUCT_ID_CTAG: 
                 WRITE_DATA = WRITE_DATA_CMD_GET_FW_VERSION
                 print("special_cmd A -> WRITE_DATA_CMD_GET_FW_VERSION")
                 device.write(WRITE_DATA)
@@ -217,13 +220,15 @@ def gui_loop(device):
             special_cmd = 0
         elif special_cmd == 'B':
             WRITE_DATA = WRITE_DATA_CMD_B
-            device.write(WRITE_DATA)
+            if PRODUCT_ID != PRODUCT_ID_CTAG:
+                device.write(WRITE_DATA)
             print("special_cmd B -> set_BSL_mode  --- this will stop HID communication with this GUI")
             special_cmd = 0
         else:
             WRITE_DATA = DEFAULT_WRITE_DATA
         
-        # device.write(WRITE_DATA)
+        if PRODUCT_ID == PRODUCT_ID_CTAG:
+            device.write(WRITE_DATA)
         if WRITE_DATA == WRITE_DATA_CMD_B:
             root. destroy() 
 
@@ -254,6 +259,10 @@ def long_unsigned_to_long_signed( x ):
         x = x - MAX_UNSIGNED_LONG
     return x
 
+def date2dec(x):
+    s = "%02x" % x
+    return s
+
 def handler(value, do_print=False):
     # global print_flag
 
@@ -264,7 +273,8 @@ def handler(value, do_print=False):
 
 #   tool_size from CMOS: bytes 5..6
 #   3f260000370b
-
+    global handler_counter
+    handler_counter = handler_counter + 1
     global hid_util_fault
     hid_util_fault = (int(value[START_INDEX+1]) & 0xF )
     digital = (int(value[START_INDEX + 1]) << 8) + int(value[START_INDEX + 0])
@@ -299,7 +309,8 @@ def handler(value, do_print=False):
         # b'3f0a06060001  030004060321   d6bb2c3fc2b49c3fe877fecef602fffe5787dedfcf750cfb129efe7ffd7ed60daedefca4f9fff58efc5eb47c237eb5a93dd72f55'
         print("")
         print("FW version: "+str(value[6])+"." +str(value[7])+"." +str(value[8]))
-        print("FW date   : "+str(value[9])+"/" +str(value[10])+"/20" +str(value[11]))
+        # print("FW date   : "+str(value[9])+"/" +str(value[10])+"/20" +str(value[11]))
+        print("FW date   : "+date2dec(value[9])+"/" +date2dec(value[10])+"/20" +date2dec(value[11]))
 
     # parsing FW version response :
     if value[2] == 1 and value[3] == 1 and value[4] == 0 and value[5] == 1:
@@ -355,6 +366,8 @@ def handler(value, do_print=False):
     int_sleepTimer = sleepTimer
     int_batteryLevel = batteryLevel
     int_MotorCur = MotorCur
+    if PRODUCT_ID == PRODUCT_ID_STATION:
+        counter = handler_counter
     int_counter = counter
     int_hid_util_fault = hid_util_fault
     int_clicker_counter = clicker_counter
@@ -769,7 +782,7 @@ def my_widgets(frame):
     red_handle_ignore = tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
     red_handle_ignore.grid(row=row,column=0)
 
-    if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+    if PRODUCT_ID != PRODUCT_ID_CTAG: # PRODUCT_ID_LAP_NEW_CAMERA, PRODUCT_ID_STATION...
         red_handle_ignore = tk.Button(frame,text ="Get friendly FW version",command = alive_button_CallBack)
     else:
         red_handle_ignore = tk.Button(frame,text ="Keep alive (fast BLE)",command = alive_button_CallBack)
@@ -885,6 +898,15 @@ def main():
                     except:
                         print("wrong ID2")
                     
+            if device is None:
+                try:
+                    # print("try with other device")
+                    VENDOR_ID = 0x24b3 # Simbionix
+                    PRODUCT_ID = PRODUCT_ID_CTAG
+                    print("try with PID = %X " % PRODUCT_ID)
+                    device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+                except:
+                    print("wrong ID3")
             # VENDOR_ID = 2047
             # PRODUCT_ID = 304
             # 0x2047 = 8263
@@ -903,7 +925,7 @@ def main():
                         # device = hid.Device(vid=0x24B3, pid=0x2005)
                         # print("success vid=0x24B3, pid=0x2005 !!")
                     except:
-                        print("wrong ID2")
+                        print("wrong ID4")
                     
             if device is None:
                 print("no device attached")
