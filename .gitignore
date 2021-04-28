@@ -141,3 +141,5 @@ src/HID_recorder -2021_03_09__12_00.py
 src/HID_recorder - 2021_03_09__12_36.py
 src/bsl - Copy.py
 src/get_FW_version - Copy.py
+src/bsl_.py
+src/hidapi.dll
