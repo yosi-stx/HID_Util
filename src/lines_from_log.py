@@ -190,9 +190,15 @@ def main_loop(device):
                     delay=''.join(digits)
                     d= int(delay)
                     print("delay: (",d,") ms to next command")
+                    # Sleep for delay/1000 seconds  ---------------------------------------------------------------------
+                    sleep(d/1000)
+                    # ------------------------------------------------------------------------------------------
                 if "h" in line:
                     i = i +1
-                    if i>5:
+                    # stop condition after 1774 commands from host
+
+                    if i>1773:
+                        print("                           reached  1774 commands from host!!!")
                         break
                     if j < 10 :
                         print("line #:", j,") ------------------------------------------------------")
@@ -254,7 +260,7 @@ def main_loop(device):
         time = timer()
         
         # Sleep for delay/1000 seconds  ---------------------------------------------------------------------
-        sleep(d/1000)
+        # sleep(d/1000)
         # ------------------------------------------------------------------------------------------
 
         # Read the packet from the device
