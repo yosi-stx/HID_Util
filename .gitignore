@@ -143,3 +143,7 @@ src/bsl - Copy.py
 src/get_FW_version - Copy.py
 src/bsl_.py
 src/hidapi.dll
+src/list_of_files.txt
+src/mod.py
+src/test.txt
+src/WireShrk_analyzer_2.py
