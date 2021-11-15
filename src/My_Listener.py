@@ -1,22 +1,29 @@
 #!/usr/bin/python3
-# C:\Work\Python\HID_Util\src\grt_FW_version.py
-# based on bsl.py
+# C:\Work\Python\HID_Util\src\My_Listener.py
 
 from binascii import hexlify
 import sys
 import argparse
 import threading
 from time import perf_counter as timer
-from time import sleep
 
-# NOTE:             about include_dll_path for  __init__.py error.
-# You MUST include the next line when working with full project path structure
 import include_dll_path
 import hid
 import os
+from string_date_time import get_date_time
+from string_date_time import get_time
 
-# VENDOR_ID = 0x24b3 # Simb
-# PRODUCT_ID = 0x1005 # Simb MSP430 Controller
+# BOARD_TYPE_MAIN = 0,
+# BOARD_TYPE_JOYSTICKS = 1,
+# BOARD_TYPE_TOOLS_MASTER = 2,
+# BOARD_TYPE_STATION = 3,
+# BOARD_TYPE_SUITE2PRIPH = 4,
+# BOARD_TYPE_TOOLS_SLAVE = 5,
+# BOARD_TYPE_GBU = 6,
+# BOARD_TYPE_LAP = 7
+
+# VENDOR_ID = 0x24b3 # Simbionix
+# PRODUCT_ID = 0x1005 # Simbionix MSP430 Controller
 # USB\VID_2047&PID_0302&REV_0200
 VENDOR_ID = 0x2047 # Texas Instruments
 PRODUCT_ID = 0x0302 # Joystick.
@@ -28,7 +35,7 @@ PRODUCT_ID_LAP_NEW_CAMERA = 0x2005
 # USB\VID_24B3&PID_2005&REV_0200
 # 0x24B3 = 9395
 # 0x2005 = 8197
-# VENDOR_ID = 0x24b3 # Simb
+# VENDOR_ID = 0x24b3 # Simbionix
 # PRODUCT_ID = 0x2005 # LAP_NEW_CAMERA.
 PRODUCT_ID_types =  {
   0x0302: "BOARD_TYPE: Joystick/Universal",
@@ -43,17 +50,24 @@ PRODUCT_ID_types =  {
   0x1965: "yosi"
 }
 
-FILE1_PATH = "log\hid_log.csv"
-# if not os.path.exists('log'):
-#     os.makedirs('log')
-# # file1 = None
-# # open recording log file:
-# # file1 = open("C:\Work\Python\HID_Util\src\log\log.csv","w") 
-# # file1 = open(FILE1_PATH,"w") 
-# file1 = open("log\get_FW_version_2021_03_11__00_42.csv","w") 
+# FILE1_PATH = "log\hid_log.csv"
+FILE1_PATH = "log\Listener_" # log.csv"
+start_date_time = get_date_time()
+FILE1_PATH = FILE1_PATH + start_date_time + ".csv"
+print("Recording result at: ", FILE1_PATH, "\n")
+if not os.path.exists('log'):
+    os.makedirs('log')
+# file1 = None
+# open recording log file:
+# file1 = open("C:\Work\Python\HID_Util\src\log\log.csv","w") 
+file1 = open(FILE1_PATH,"w") 
+# file1 = open("log\hid_log.csv","w") 
 
 hid_util_fault = 0
 print_every = 0
+prev_gbu_counter = 0
+prev_gbu_counter_change_time = 0
+
 
 READ_SIZE = 64 # The size of the packet
 READ_TIMEOUT = 2 # 2ms
@@ -71,14 +85,13 @@ WRITE_DATA_CMD_START_0x304 = bytes.fromhex("3f048d000000000000000000000000000000
 # Get Board Type command:
 # 01h 00h 00h 01h
 WRITE_DATA_CMD_GET_BOARD_TYPE = bytes.fromhex("3f040100000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+# WRITE_DATA_CMD_START = bytes.fromhex("3f048200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+# WRITE_DATA_CMD_START = bytes.fromhex("3f048200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 
 #.........................................................##........................................
 WRITE_DATA_CMD_S = bytes.fromhex("3f3ebb00b127ff00ff00ff0053ff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # 'A' - keep Alive + fast BLE update (every 20 msec)
 WRITE_DATA_CMD_A = bytes.fromhex("3f3ebb00b127ff00ff00ff0041ff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
-WRITE_DATA_CMD_GET_FW_VERSION =   bytes.fromhex("3f040600000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
-# WRITE_DATA_CMD_PRIME_KEEP_ALIVE = bytes.fromhex("3f040400000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
-WRITE_DATA_CMD_PRIME_KEEP_ALIVE = bytes.fromhex("3f040400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # moderate BLE update rate every 50 mSec by 'M' command
 WRITE_DATA_CMD_M = bytes.fromhex("3f3ebb00b127ff00ff00ff004dff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # set_BSL_mode
@@ -95,12 +108,13 @@ PRINT_TIME = 1.0 # Print every 1 second
 START_INDEX = 2 + 4 # Ignore the first two bytes, then skip the version (4 bytes)
 # ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 4 * 2 + 1, 2)) + [START_INDEX + 6 * 2,]
 ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 8 * 2 + 1, 2)) 
-# print("ANALOG_INDEX_LIST=",ANALOG_INDEX_LIST)
+print("ANALOG_INDEX_LIST=",ANALOG_INDEX_LIST)
 # ANALOG_INDEX_LIST= [8, 10, 12, 14, 16, 18, 20, 22]
 LAP_ANALOG_INDEX_LIST = list(range(2,8 * 2 + 1, 2)) 
 
 COUNTER_INDEX = 2 + 22 + 18 # Ignore the first two bytes, then skip XData1 (22 bytes) and OverSample (==XDataSlave1; 18 bytes)
 CMOS_INDEX = 2 + 2   # maybe + 4???
+GBU_COUNTER_INDEX = 52
 #                       0  1  2  3  4 5 6 7  8 9 1011
 # Received data: b'3f26 00 00 00 00 0674fc41 3f4efc70 0033a4513c5a0101210001000000650000000000000000000000167f070dd7aee89baff63fedcfcccb763acf041b00000010'
 #                                   TORQUE   INSERTION
@@ -108,19 +122,23 @@ CMOS_INDEX = 2 + 2   # maybe + 4???
 # global variables
 special_cmd = 0
 
-root = None
-
-def main_loop(device):
+def gui_loop(device):
+    global prev_gbu_counter_change_time
     do_print = True
     print_time = 0.0
     time = timer()
     handle_time = timer()
     write_time_capture = timer()
+    prev_gbu_counter_change_time = timer()
+    gbu_counter_change_time = timer()
     skip_write = 0
     prev_counter = 0
     send_stream_request_command_once = 1
+    # cnt = None
+    # prev_cnt = None
+    # value = None
     global special_cmd
-    global WRITE_DATA
+    # global print_flag
     
     while True:
         # Reset the counter
@@ -149,32 +167,22 @@ def main_loop(device):
 #            print("special_cmd CMD_GET_BOARD_TYPE")
 #            # print_flag = 1
 #            special_cmd = 0
-        elif special_cmd == 'A':
-            # if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-            if PRODUCT_ID in PRODUCT_ID_types:
-                WRITE_DATA = WRITE_DATA_CMD_PRIME_KEEP_ALIVE
-                # WRITE_DATA = WRITE_DATA_CMD_GET_FW_VERSION
-                # print("special_cmd A -> WRITE_DATA_CMD_GET_FW_VERSION")
-                print("special_cmd A -> WRITE_DATA_CMD_PRIME_KEEP_ALIVE")
-                device.write(WRITE_DATA)
-            else:
-                WRITE_DATA = WRITE_DATA_CMD_A
-                print("special_cmd A -> keep Alive + fast BLE update (every 20 msec)")
-            # special_cmd = 0
+#        elif special_cmd == 'A':
+#            WRITE_DATA = WRITE_DATA_CMD_A
+#            print("special_cmd A -> keep Alive + fast BLE update (every 20 msec)")
+#            special_cmd = 0
 #        elif special_cmd == 'M':
 #            WRITE_DATA = WRITE_DATA_CMD_M
 #            print("special_cmd M -> moderate BLE update rate every 50 mSec")
 #            special_cmd = 0
-        elif special_cmd == 'B':
-           WRITE_DATA = WRITE_DATA_CMD_B
-           device.write(WRITE_DATA)
-           print("special_cmd B -> set_BSL_mode  --- this will stop HID communication with this GUI")
-           special_cmd = 0
+#        elif special_cmd == 'B':
+#            WRITE_DATA = WRITE_DATA_CMD_B
+#            device.write(WRITE_DATA)
+#            print("special_cmd B -> set_BSL_mode  --- this will stop HID communication with this GUI")
+#            special_cmd = 0
 #        else:
 #            WRITE_DATA = DEFAULT_WRITE_DATA
         
-        if WRITE_DATA == WRITE_DATA_CMD_B:
-            break
 
         cycle_time = timer() - time
         # print("cycle timer: %.10f" % cycle_time)
@@ -184,10 +192,7 @@ def main_loop(device):
 
         # Measure the time
         time = timer()
-        
-        # Sleep for 3 seconds
-        # sleep(30)
-        sleep(4)
+        # print(" ")
 
         # Read the packet from the device
         value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
@@ -203,17 +208,20 @@ def main_loop(device):
             channel_4 = analog[4]
             counter = (int(value[COUNTER_INDEX + 1]) << 8) + int(value[COUNTER_INDEX])
             count_dif = counter - prev_counter 
-            #global file1
+            GBU_COUNTER_INDEX = 2+51 # need to add 2 since we have two bytes of lengths.
+            gbu_counter = (int(value[GBU_COUNTER_INDEX + 1]) << 8) + int(value[GBU_COUNTER_INDEX])
+            gbu_counter2 = (int(value[GBU_COUNTER_INDEX]) << 8) + int(value[GBU_COUNTER_INDEX+1])
+            global file1
+            global prev_gbu_counter
+            # global prev_gbu_counter_change_time
             #if count_dif > 1 :
             #    L = [ str(counter),",   ", str(clicker_analog), ", " , str(count_dif), " <<<<<--- " ,"\n" ]  
             #else:
             #    L = [ str(counter),",   ", str(clicker_analog), ", " , str(count_dif), "\n" ]  
             L = [ str(channel_0),",   ", str(channel_1), ", " , str(channel_2),", " , str(channel_3),", " , str(channel_4), "\n" ]  
-            #file1.writelines(L) 
+            # file1.writelines(L)
             
-            # no handler for keep alive
-            handler(value, do_print=do_print)
-            
+            # handler(value, do_print=do_print)
             # print("Received data: %s" % hexlify(value))
             Handler_Called = (timer() - handle_time)
             
@@ -221,11 +229,35 @@ def main_loop(device):
             # if Handler_Called > 0.02 :
                 #print("handler called: %.6f" % Handler_Called)
                 global print_every
-                print_every = print_every + 1
-                if print_every >= 500:
+                if gbu_counter2 != prev_gbu_counter:
+                    # check for 0x3f35ff0f then the rest
+                    if value[0] == 0x3f and value[1] == 0x35 and value[2] == 0xff and value[3] == 0x0f:
+                        print_every = 200
+                        delta_time = timer() - prev_gbu_counter_change_time
+                        gbu_counter_change_time = timer()
+                    
+                # print_every = print_every + 1
+                if print_every >= 200:
                     print_every = 0
-                    print("time:", time, end="")
+                    print("delta_time: %.1f" % delta_time, end="")
+                    L1 =  [str(delta_time), "\n"]
+                    delta_time_str = "%.1f" %delta_time  # save only 1 digit after decimal point
+                    event_time = get_time()
+                    L1 =  [delta_time_str, "    ",event_time,  "\n"]
+                    # global FILE1_PATH
+                    # file1 = open(FILE1_PATH,"w")
+                    file1.writelines(L1)
+                    # file1.close()
+                    # print("  Received data: %s" % str(gbu_counter))
+                    # print("  Received data: %06x" % gbu_counter)
+                    # print("  Received data: %06x " % gbu_counter2 + "%f" %v)
+                    print("  Received data: %06d" % gbu_counter2 + "    time: %s" %event_time)
                     print("  Received data: %s" % hexlify(value))
+
+                if value[0] == 0x3f and value[1] == 0x35 and value[2] == 0xff and value[3] == 0x0f:
+                    prev_gbu_counter = gbu_counter2
+                    prev_gbu_counter_change_time = gbu_counter_change_time
+
             # print("time: %.6f" % time)
             handle_time = timer() 
             prev_counter = counter
@@ -233,34 +265,15 @@ def main_loop(device):
         # Update the do_print flag
         do_print = (timer() - print_time) >= PRINT_TIME
 
-def date2dec(x):
-    s = "%02x" % x
-    return s
-
 def handler(value, do_print=False):
     if do_print:
         print("Received data: %s" % hexlify(value))
-
-    # parsing FW version response :
-    if value[2] == 6 and value[3] == 6 and value[4] == 0 and value[5] == 1:
-        print("FW friendly version: %s" % hexlify(value))
-        #   0 1 2 3 4 5   6 7 8 9 0 1    2 3 4 5 6 7 8 9 0 
-        # b'3f0a06060001  030004060321   d6bb2c3fc2b49c3fe877fecef602fffe5787dedfcf750cfb129efe7ffd7ed60daedefca4f9fff58efc5eb47c237eb5a93dd72f55'
-        print("")
-        print("FW version: "+str(value[6])+"." +str(value[7])+"." +str(value[8]))
-        print("FW date   : "+date2dec(value[9])+"/" +date2dec(value[10])+"/20" +date2dec(value[11]))
-
-        print(" ")
-        print(" Please press <Enter> to Exit")
-
     return # do without gui
 
-        
 
 PROGRESS_BAR_LEN = 300
 LONG_PROGRESS_BAR_LEN = 590
 
-    
 def init_parser():
     parser = argparse.ArgumentParser(
         description="Read the HID data from target board.\nIf no argument is given, the program exits."
@@ -299,6 +312,9 @@ def main():
     global PRODUCT_ID
     PATH = None
     
+    # open recording log file:
+    # file1 = open("C:\Work\Python\HID_Util\src\log\log2.txt","w") 
+
     # Parse the command line arguments
     parser = init_parser()
     args = parser.parse_args(sys.argv[1:])
@@ -349,7 +365,7 @@ def main():
                 if device is None:
                     try:
                         # print("try with other device")
-                        VENDOR_ID = 0x24b3 # Simb
+                        VENDOR_ID = 0x24b3 # Simbionix
                         PRODUCT_ID = 0x2000 + n # LAP_NEW_CAMERA. is 0x2005
                         # print("VID = %X PID = %X " % VENDOR_ID, PRODUCT_ID)
                         print("try with PID = %X " % PRODUCT_ID)
@@ -371,8 +387,12 @@ def main():
                         # print("try with other device")
                         VENDOR_ID = 0x2047 # Texas Instrument
                         PRODUCT_ID = 0x301 + n # BOARD_TYPE_MAIN is 0x301
+                        # print("VID = %X PID = %X " % VENDOR_ID, PRODUCT_ID)
                         print("try with PID = %X " % PRODUCT_ID)
+                        # print("PRODUCT_ID = %X" % PRODUCT_ID)
                         device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+                        # device = hid.Device(vid=0x24B3, pid=0x2005)
+                        # print("success vid=0x24B3, pid=0x2005 !!")
                     except:
                         print("wrong ID2")
                     
@@ -384,29 +404,32 @@ def main():
                 if PRODUCT_ID in PRODUCT_ID_types:
                     print(PRODUCT_ID_types[PRODUCT_ID])
                     global special_cmd
-                    # if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-                    if PRODUCT_ID in PRODUCT_ID_types:
-                        special_cmd = 'A'
-                        print("set in init: special_cmd = 'A'")
+                    if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+                        special_cmd = 'I'
+
+            
+
         elif (path_mode):
             device = hid.Device(path=PATH)
         else:
             raise NotImplementedError
 
 
-        # Create thread that calls
-        threading.Thread(target=main_loop, args=(device,), daemon=True).start()
-        global WRITE_DATA
-        if WRITE_DATA == WRITE_DATA_CMD_B:
-            print("WRITE_DATA == WRITE_DATA_CMD_B")
-        # print(" Recording Ended !!!")
         print(" ")
-        # print(" Please press <Enter> to Exit")
+        print(" --------------------------------------")
+        print(" Please press <Enter> to stop recording")
+        print(" --------------------------------------")
+        print(" ")
+        # Create thread that calls
+        threading.Thread(target=gui_loop, args=(device,), daemon=True).start()
         input()
+        print("Recording start: ", start_date_time)
+        print("Recording end  : ", get_date_time())
+        print("\n","Recording result at: ", FILE1_PATH)
 
     finally:
-#        global file1
-#        file1.close() #to change file access modes 
+        global file1
+        file1.close() #to change file access modes 
         if device != None:
             device.close()
 

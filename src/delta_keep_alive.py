@@ -187,7 +187,8 @@ def main_loop(device):
         
         # Sleep for 3 seconds
         # sleep(30)
-        sleep(4)
+        # sleep(4)
+        sleep(230)
 
         # Read the packet from the device
         value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
@@ -236,10 +237,17 @@ def main_loop(device):
 def date2dec(x):
     s = "%02x" % x
     return s
+    
+def print_keep_alive_count(x):
+    st = x
+    count = st[106:110]
+    print(count)
 
 def handler(value, do_print=False):
     if do_print:
-        print("Received data: %s" % hexlify(value))
+        # print("Received data (hex): %s" % hexlify(value))
+        print_keep_alive_count(hexlify(value))
+        
 
     # parsing FW version response :
     if value[2] == 6 and value[3] == 6 and value[4] == 0 and value[5] == 1:

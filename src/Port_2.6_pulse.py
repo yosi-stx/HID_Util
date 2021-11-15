@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# C:\Work\Python\HID_Util\src\grt_FW_version.py
+# C:\Work\Python\HID_Util\src\Port_2.6_pulse.py
 # based on bsl.py
 
 from binascii import hexlify
@@ -76,9 +76,9 @@ WRITE_DATA_CMD_GET_BOARD_TYPE = bytes.fromhex("3f0401000001000000000000000000000
 WRITE_DATA_CMD_S = bytes.fromhex("3f3ebb00b127ff00ff00ff0053ff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # 'A' - keep Alive + fast BLE update (every 20 msec)
 WRITE_DATA_CMD_A = bytes.fromhex("3f3ebb00b127ff00ff00ff0041ff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
-WRITE_DATA_CMD_GET_FW_VERSION =   bytes.fromhex("3f040600000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
-# WRITE_DATA_CMD_PRIME_KEEP_ALIVE = bytes.fromhex("3f040400000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
-WRITE_DATA_CMD_PRIME_KEEP_ALIVE = bytes.fromhex("3f040400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+WRITE_DATA_CMD_GET_FW_VERSION   = bytes.fromhex("3f040600000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+WRITE_DATA_CMD_PORT_2_PIN_6_ON  = bytes.fromhex("3f070303000002400100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+WRITE_DATA_CMD_PORT_2_PIN_6_OFF = bytes.fromhex("3f070303000002400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # moderate BLE update rate every 50 mSec by 'M' command
 WRITE_DATA_CMD_M = bytes.fromhex("3f3ebb00b127ff00ff00ff004dff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # set_BSL_mode
@@ -119,6 +119,7 @@ def main_loop(device):
     skip_write = 0
     prev_counter = 0
     send_stream_request_command_once = 1
+    toggle = 0
     global special_cmd
     global WRITE_DATA
     
@@ -152,10 +153,15 @@ def main_loop(device):
         elif special_cmd == 'A':
             # if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
             if PRODUCT_ID in PRODUCT_ID_types:
-                WRITE_DATA = WRITE_DATA_CMD_PRIME_KEEP_ALIVE
-                # WRITE_DATA = WRITE_DATA_CMD_GET_FW_VERSION
-                # print("special_cmd A -> WRITE_DATA_CMD_GET_FW_VERSION")
-                print("special_cmd A -> WRITE_DATA_CMD_PRIME_KEEP_ALIVE")
+                if toggle == 0:
+                    WRITE_DATA = WRITE_DATA_CMD_PORT_2_PIN_6_ON
+                    toggle =1
+                    print("1",end="")
+                else:
+                    WRITE_DATA = WRITE_DATA_CMD_PORT_2_PIN_6_OFF
+                    toggle =0
+                    print("0",end="")
+                # print("special_cmd A -> WRITE_DATA_CMD_PORT_2_PIN_6_ON")
                 device.write(WRITE_DATA)
             else:
                 WRITE_DATA = WRITE_DATA_CMD_A
@@ -185,9 +191,8 @@ def main_loop(device):
         # Measure the time
         time = timer()
         
-        # Sleep for 3 seconds
-        # sleep(30)
-        sleep(4)
+        # Sleep for 0.5 seconds
+        sleep(0.5)
 
         # Read the packet from the device
         value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
@@ -210,10 +215,7 @@ def main_loop(device):
             #    L = [ str(counter),",   ", str(clicker_analog), ", " , str(count_dif), "\n" ]  
             L = [ str(channel_0),",   ", str(channel_1), ", " , str(channel_2),", " , str(channel_3),", " , str(channel_4), "\n" ]  
             #file1.writelines(L) 
-            
-            # no handler for keep alive
             handler(value, do_print=do_print)
-            
             # print("Received data: %s" % hexlify(value))
             Handler_Called = (timer() - handle_time)
             

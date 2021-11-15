@@ -37,6 +37,23 @@ def get_date_time():
     return date_time
     
 
+def get_time():
+    dt = datetime.now()
+    # 'The date is %s_%s_%s' % (dt.year,dt.month, dt.day )
+    # >> result:
+    # 'The date is 2021_3_9'
+
+    # time1=str(dt.hour)+'_'+str(dt.minute)+':'+str(dt.second)
+    h = "%02d" %dt.hour
+    m = "%02d" %dt.minute
+    s = "%02d" %dt.second
+    time1 = h +':'+ m +':'+ s
+    # print(time1)
+
+    date_time = time1
+    # print("string date_time:",date_time)
+    return date_time
+
 
 '''    
 # comment:
