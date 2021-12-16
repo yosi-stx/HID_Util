@@ -163,11 +163,11 @@ def main_loop(device):
                 if toggle == 0:
                     WRITE_DATA = WRITE_DATA_CMD_PORT_2_PIN_5_ON
                     toggle =1
-                    print("1",end="")
+                    print("1",end="", flush=True)
                 else:
                     WRITE_DATA = WRITE_DATA_CMD_PORT_2_PIN_5_OFF
                     toggle =0
-                    print("0",end="")
+                    print("0",end="", flush=True)
                 # print("special_cmd A -> WRITE_DATA_CMD_PORT_2_PIN_6_ON")
                 device.write(WRITE_DATA)
             else:
