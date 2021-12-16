@@ -109,6 +109,8 @@ CMOS_INDEX = 2 + 2   # maybe + 4???
 
 # global variables
 special_cmd = 0
+PULSE_TIME = 150
+FIRST_PULSE = 0
 
 root = None
 
@@ -121,7 +123,10 @@ def main_loop(device):
     skip_write = 0
     prev_counter = 0
     send_stream_request_command_once = 1
+    global FIRST_PULSE
     toggle = 0
+    if FIRST_PULSE == 0:
+        toggle = 1
     global special_cmd
     global WRITE_DATA
     
@@ -194,7 +199,7 @@ def main_loop(device):
         time = timer()
         
         # Sleep for 0.5 seconds
-        sleep(0.5)
+        sleep(PULSE_TIME/1000)
 
         # Read the packet from the device
         value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
@@ -296,11 +301,31 @@ def init_parser():
         required=False,
         help="connects to the device with the given path"
     )
+    parser.add_argument(
+        "-t", "--time_period",
+        dest="pulse_time",
+        metavar="PULSE_TIME",
+        type=int,
+        nargs=1,
+        required=False,
+        help="pulse period of the signal"
+    )
+    parser.add_argument(
+        "-f", "--first_pulse",
+        dest="first_pulse",
+        metavar="FIRST_PULSE",
+        type=int,
+        nargs=1,
+        required=False,
+        help="first pulse direction e.g -f 1 ,first pulse is positive"
+    )
     return parser
 
 def main():
     global VENDOR_ID
     global PRODUCT_ID
+    global PULSE_TIME
+    global FIRST_PULSE
     PATH = None
     
     # Parse the command line arguments
@@ -311,9 +336,19 @@ def main():
     avail_vid = args.vendor_id != None
     avail_pid = args.product_id != None
     avail_path = args.path != None
+    avail_period = args.pulse_time != None
+    avail_first_pulse = args.first_pulse != None
     id_mode = avail_pid and avail_vid
     path_mode = avail_path
     default_mode = (not avail_vid) and (not avail_pid) and (not avail_path)
+    if (avail_period):
+        print("given pulse_time as arguments")
+        PULSE_TIME = args.pulse_time[0]
+    if (avail_first_pulse):
+        print("given first_pulse direction as arguments")
+        FIRST_PULSE = args.first_pulse[0]
+        if FIRST_PULSE >1:
+            FIRST_PULSE = 0
     if (path_mode and (avail_pid or avail_vid)):
         print("The path argument can't be mixed with the ID arguments")
         return
