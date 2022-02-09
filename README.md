@@ -1,8 +1,9 @@
 # HID_UTILL
 
 ## Prerequisites
-```pip3 install hid
-need to copy the 2 dll's in x64 folder into:
+```
+1)pip3 install hid
+2)Copy the 2 dll's that are in "x64" folder into:
 C:\Windows\System32
 ```
 
