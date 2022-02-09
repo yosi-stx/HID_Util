@@ -147,3 +147,6 @@ src/list_of_files.txt
 src/mod.py
 src/test.txt
 src/WireShrk_analyzer_2.py
+src/libusb-1.0.dll
+libusb-1.0.dll
+hidapi.dll
