@@ -194,7 +194,7 @@ def main():
     ax2.grid(True)
     # ax1.plot(packet_num, times, '+-', linewidth=0.75)
     # ax1.plot(packet_num, times2, 'ro', linewidth=0.75)
-    first_4_channels = 0
+    first_4_channels = 1
 
     if first_4_channels:
         ax1.plot(packet_num, cha_00, 'c-', linewidth=0.75)

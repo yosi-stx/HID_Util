@@ -186,7 +186,8 @@ def main_loop(device):
         time = timer()
         
         # Sleep for 3 seconds
-        sleep(30)
+        # sleep(30)
+        sleep(4)
 
         # Read the packet from the device
         value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
