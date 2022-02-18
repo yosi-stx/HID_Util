@@ -100,6 +100,7 @@ PRINT_TIME = 2 # Print every 2 second
 START_INDEX = 2 + 4 # Ignore the first two bytes, then skip the version (4 bytes)
 # ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 4 * 2 + 1, 2)) + [START_INDEX + 6 * 2,]
 ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 8 * 2 + 1, 2)) 
+# ANALOG_INDEX_LIST = [8, 10, 12, 14, 16, 18, 20, 22]
 COUNTER_INDEX = 2 + 22 + 18 # Ignore the first two bytes, then skip XData1 (22 bytes) and OverSample (==XDataSlave1; 18 bytes)
 CMOS_INDEX = 2 + 2   # maybe + 4???
 #                       0  1  2  3  4 5 6 7  8 9 1011
@@ -291,17 +292,15 @@ def handler(value, do_print=False):
     #global MAX_LONG_POSITIVE
     torque = long_unsigned_to_long_signed(torque)
     insertion = long_unsigned_to_long_signed(insertion)
-#     if torque > MAX_LONG_POSITIVE:
-#         torque = torque - MAX_UNSIGNED_LONG
-#     if insertion > MAX_LONG_POSITIVE:
-#         insertion = insertion - MAX_UNSIGNED_LONG
 
     if do_print:
         print("Received data: %s" % hexlify(value))
         # print("tool_size    : %d" % tool_size)
         # print("insertion : %d" % insertion , end="")
         # print("   torque : %d" % torque)
-    
+    # print every packet received //2022_01_27__12_30
+    print("Packet bytes: %s" % hexlify(value))
+
     # parsing FW version response :
     if value[2] == 6 and value[3] == 6 and value[4] == 0 and value[5] == 1:
         print("FW friendly version: %s" % hexlify(value))
@@ -315,6 +314,8 @@ def handler(value, do_print=False):
     # parsing FW version response :
     if value[2] == 1 and value[3] == 1 and value[4] == 0 and value[5] == 1:
         print("Board type: %s" % hexlify(value))
+        print("analog: ")
+        print(analog)
         #   0 1 2 3 4 5   6 7 8 9 0 1    2 3 4 5 6 7 8 9 0 
         # b'3f0a06060001  030004060321   d6bb2c3fc2b49c3fe877fecef602fffe5787dedfcf750cfb129efe7ffd7ed60daedefca4f9fff58efc5eb47c237eb5a93dd72f55'
         print("")
@@ -327,13 +328,9 @@ def handler(value, do_print=False):
     # if value[2] == 6 :
         # print("value[2] == 6  : %s" % hexlify(value))
         
-    clicker_counter = (int(value[COUNTER_INDEX+2 + 1]) << 8) + int(value[COUNTER_INDEX+2])
+    clicker_counter = (int(value[COUNTER_INDEX+2 + 1]) << 8) + int(value[COUNTER_INDEX+2]) #clicker_counter --> numeric_box_view
     sleepTimer = (int(value[COUNTER_INDEX+4 + 1]) << 8) + int(value[COUNTER_INDEX+4])
 
-    encoder1 = analog[3]
-    encoder2 = analog[0]
-    encoder3 = analog[1]
-    encoder4 = analog[2]
     MotorCur = analog[4]
     clicker_analog = analog[5]
     # ClickerRec = analog[6]
@@ -478,15 +475,18 @@ def handler(value, do_print=False):
 PROGRESS_BAR_LEN = 300
 LONG_PROGRESS_BAR_LEN = 590
 
+# function: my_channel_row() - create two ProgressBar with their Label at the same line. 
 def my_channel_row(frame, row, label, style):
     ttk.Label(frame,text=label).grid(row=row,sticky=tk.W)
 
     row += 1
 
     if PRODUCT_ID != PRODUCT_ID_STATION:
-        # Inner Handle
-        ttk.Label(frame,text="Channel 1").grid(row=row,column=0)
-        ttk.Label(frame,text="Channel 2").grid(row=row,column=1)
+        # InnerHandle
+        text_name = "Channel 4 (analog[0] = bytes 8,9)"
+        ttk.Label(frame,text=text_name).grid(row=row,column=0)
+        text_name = "Channel 7 (analog[3] = bytes 14,15)"
+        ttk.Label(frame,text=text_name).grid(row=row,column=1)
     else:
         ttk.Label(frame,text="Torque").grid(row=row,column=0)
         ttk.Label(frame,text="Channel 2").grid(row=row,column=1)
@@ -562,8 +562,15 @@ def my_widgets(frame):
     ttk.Label(frame,text="HID Streaming Values").grid(row=row,sticky=tk.W)
 
     row += 1
+    ttk.Label(frame,text="----------------------").grid(row=row,sticky=tk.NW)
+    row += 1
+    ttk.Label(frame,text="ADCs...").grid(row=row,sticky=tk.NW)
+    row += 1
 
-    text_name = "Channel 1"
+    #
+    # 0,1 (packet length,data length); 2,3 (Chanel 1); 4,5 (Chanel 2); 6,7 (Chanel 3); 8,9 (Chanel 4); 10,11 (Chanel 5); 
+    # 12,13 (Chanel 6); 14,15 (Chanel 7);
+    text_name = "Channel 5 (analog[1] = bytes 10,11)"
     if PRODUCT_ID == PRODUCT_ID_STATION:
         text_name = "Insertion"
     ttk.Label(frame,text=text_name).grid(row=row,column=0)
@@ -575,7 +582,7 @@ def my_widgets(frame):
 
     row -= 1    # go line back for text header
 
-    text_name = "Channel 2"
+    text_name = "Channel 2 (analog[?] = bytes 4,5)"
     if PRODUCT_ID == PRODUCT_ID_STATION:
         text_name = "Tool Size"
     ttk.Label(frame,text=text_name).grid(row=row,column=1)
@@ -590,12 +597,16 @@ def my_widgets(frame):
 
     # Seperator
     row = my_seperator(frame, row)
-
+    
+    # ------------------------------------------------------
+    # using the old convention of my_channel_row() function
     if PRODUCT_ID != PRODUCT_ID_STATION:
         # Inner Handle
-        row = my_channel_row(frame=frame,row=row,label="InnerHandle",style="InnerHandle")
+        # row = my_channel_row(frame=frame,row=row,label="InnerHandle",style="InnerHandle")
+        row = my_channel_row(frame=frame,row=row,label="More ADCs...",style="InnerHandle")
     else:
         row = my_channel_row(frame=frame,row=row,label="PRODUCT_ID_STATION",style="InnerHandle")
+    # ------------------------------------------------------
         
 
     # Seperator
@@ -603,8 +614,8 @@ def my_widgets(frame):
 
     # Clicker labels
     ttk.Label(frame,text="InnerClicker").grid(row=row,column=0,sticky=tk.W)
-    ttk.Label(frame,text="Clicker").grid(row=row,column=1)
-    ttk.Label(frame,text="ClickerCounter").grid(row=row,column=2)
+    ttk.Label(frame,text="Channel 9").grid(row=row,column=1)
+    ttk.Label(frame,text="Channel_22 Numeric (bytes 44,45)").grid(row=row,column=2)  #ClickerCounter -> Channel_22 Numeric
 
     row += 1
 
