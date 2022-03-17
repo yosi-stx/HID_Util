@@ -299,7 +299,7 @@ def handler(value, do_print=False):
         # print("insertion : %d" % insertion , end="")
         # print("   torque : %d" % torque)
     # print every packet received //2022_01_27__12_30
-    print("Packet bytes: %s" % hexlify(value))
+    # print("Packet bytes: %s" % hexlify(value))
 
     # parsing FW version response :
     if value[2] == 6 and value[3] == 6 and value[4] == 0 and value[5] == 1:
