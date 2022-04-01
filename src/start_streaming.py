@@ -151,8 +151,12 @@ def main_loop(device):
             # if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
             if PRODUCT_ID in PRODUCT_ID_types:
                 # WRITE_DATA = WRITE_DATA_CMD_GET_FW_VERSION
-                WRITE_DATA = WRITE_DATA_CMD_START_STREAMING_GBU
-                print("special_cmd A -> WRITE_DATA_CMD_START_STREAMING_GBU")
+                if PRODUCT_ID == PRODUCT_ID_STATION:
+                    WRITE_DATA = WRITE_DATA_CMD_START_0x304
+                    print("special_cmd Start streaming 0x8D")
+                else:
+                    WRITE_DATA = WRITE_DATA_CMD_START_STREAMING_GBU
+                    print("special_cmd A -> WRITE_DATA_CMD_START_STREAMING_GBU 0x82")
                 device.write(WRITE_DATA)
             else:
                 WRITE_DATA = WRITE_DATA_CMD_A
