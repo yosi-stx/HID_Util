@@ -108,6 +108,7 @@ CMOS_INDEX = 2 + 2   # maybe + 4???
 #                                   TORQUE   INSERTION
 INSERTION_INDEX = 2 + 8
 TORQUE_INDEX = 2 + 4
+STATION_CURRENT_INDEX = 25
 MAX_LONG_POSITIVE = 2**31
 MAX_UNSIGNED_LONG = 2**32
 
@@ -289,6 +290,7 @@ def handler(value, do_print=False):
 #   torque from Avago: bytes 6..9
     torque = (int(value[TORQUE_INDEX + 2]) << 24) + (int(value[TORQUE_INDEX+3]) <<16) + (int(value[TORQUE_INDEX]) <<8) + int(value[TORQUE_INDEX+1])  
     insertion = (int(value[INSERTION_INDEX + 2]) << 24) + (int(value[INSERTION_INDEX+3]) <<16) + (int(value[INSERTION_INDEX]) <<8) + int(value[INSERTION_INDEX+1])  
+    station_current = (int(value[STATION_CURRENT_INDEX + 1]) << 8) + int(value[STATION_CURRENT_INDEX]) #station Report.current
     #global MAX_LONG_POSITIVE
     torque = long_unsigned_to_long_signed(torque)
     insertion = long_unsigned_to_long_signed(insertion)
@@ -336,7 +338,7 @@ def handler(value, do_print=False):
     # ClickerRec = analog[6]
     # batteryLevel = analog[6]
     
-    # ClickerRec is actually connected to Pin of the VREF+ that is on that input P5.0
+    # 
     batteryLevel = analog[7]
     
     # file1 = open("C:\Work\Python\HID_Util\src\log\log2.txt","w") 
@@ -381,7 +383,10 @@ def handler(value, do_print=False):
     # precentage_sleepTimer = int((int_sleepTimer / 600) * 100)
     precentage_sleepTimer = int(int_sleepTimer )
     precentage_batteryLevel = int((int_batteryLevel / 4096) * 100)
-    precentage_MotorCur = int((int_MotorCur / 4096) * 100)
+    if PRODUCT_ID != PRODUCT_ID_STATION:
+        precentage_MotorCur = int((int_MotorCur / 4096) * 100)
+    else:
+        precentage_MotorCur = int((station_current / 4096) * 100)
     progressbar_style_hid_stream_channel1 = progressbar_styles[0]
     progressbar_style_hid_stream_channel2 = progressbar_styles[1]
     progressbar_style_inner_handle_channel1 = progressbar_styles[2]
@@ -407,38 +412,17 @@ def handler(value, do_print=False):
     entry_clicker_counter = clicker_counter_entry
     entry_fault = fault_entry
     
-    progressbar_style_hid_stream_channel1.configure(
-        HID_STREAM_CHANNEL1_STYLE,
-        text=("%d" % int_hid_stream_channel1)
-    )
-    progressbar_style_hid_stream_channel2.configure(
-        HID_STREAM_CHANNEL2_STYLE,
-        text=("%d" % int_hid_stream_channel2)
-    )
-    progressbar_style_inner_handle_channel1.configure(
-        INNER_HANDLE_CHANNEL1_STYLE,
-        text=("%d" % int_inner_handle_channel1)
-    )
-    progressbar_style_inner_handle_channel2.configure(
-        INNER_HANDLE_CHANNEL2_STYLE,
-        text=("%d" % int_inner_handle_channel2)
-    )
-    progressbar_style_clicker.configure(
-        CLICKER_STYLE,
-        text=("%d" % int_clicker)
-    )
-    progressbar_style_sleepTimer.configure(
-        SLEEPTIMER_STYLE,
-        text=("%d" % sleepTimer)
-    )
-    progressbar_style_batteryLevel.configure(
-        BATTERY_LEVEL_STYLE,
-        text=("%d" % batteryLevel)
-    )
-    progressbar_style_MotorCur.configure(
-        MOTOR_CURRENT_STYLE,
-        text=("%d" % MotorCur)
-    )
+    progressbar_style_hid_stream_channel1.configure(HID_STREAM_CHANNEL1_STYLE,text=("%d"%int_hid_stream_channel1))
+    progressbar_style_hid_stream_channel2.configure(HID_STREAM_CHANNEL2_STYLE,text=("%d"%int_hid_stream_channel2))
+    progressbar_style_inner_handle_channel1.configure(INNER_HANDLE_CHANNEL1_STYLE,text=("%d"%int_inner_handle_channel1))
+    progressbar_style_inner_handle_channel2.configure(INNER_HANDLE_CHANNEL2_STYLE,text=("%d"%int_inner_handle_channel2))
+    progressbar_style_clicker.configure(CLICKER_STYLE,text=("%d"%int_clicker))
+    progressbar_style_sleepTimer.configure(SLEEPTIMER_STYLE,text=("%d"%sleepTimer))
+    progressbar_style_batteryLevel.configure(BATTERY_LEVEL_STYLE,text=("%d"%batteryLevel))
+    if PRODUCT_ID != PRODUCT_ID_STATION:
+        progressbar_style_MotorCur.configure(MOTOR_CURRENT_STYLE,text=("%d"%MotorCur))
+    else:
+        progressbar_style_MotorCur.configure(MOTOR_CURRENT_STYLE,text=("%d"%station_current))
     # if ( batteryLevel <= 2310 ):
     if ( batteryLevel <= 2288 ):  # about 2.8 volt
         progressbar_style_batteryLevel.configure(BATTERY_LEVEL_STYLE,foreground="white", background="#d92929")
@@ -707,14 +691,7 @@ def my_widgets(frame):
     row = my_seperator(frame, row)
 
     # sleepTimer
-    ttk.Label(
-        frame,
-        text="Sleep Timer"
-    ).grid(
-        row=row,
-        column=0,
-        sticky=tk.E,
-    )
+    ttk.Label(frame,text="SleepTimer").grid(row=row,column=0,sticky=tk.E,)
 
     w = ttk.Progressbar(
         frame,
@@ -735,14 +712,10 @@ def my_widgets(frame):
     row = my_seperator(frame, row)
 
     # battery level
-    ttk.Label(
-        frame,
-        text="battery level"
-    ).grid(
-        row=row,
-        column=0,
-        sticky=tk.E,
-    )
+    text_name = "batterylevel"
+    if PRODUCT_ID == PRODUCT_ID_STATION:
+        text_name = "Pressure   (bytes 22,23)"
+    ttk.Label(frame,text=text_name).grid(row=row,column=0,sticky=tk.E,) #bytes 22,23 
 
     w = ttk.Progressbar(
         frame,
@@ -763,14 +736,10 @@ def my_widgets(frame):
     row = my_seperator(frame, row)
 
     # Motor Cur
-    ttk.Label(
-        frame,
-        text="Motor Current"
-    ).grid(
-        row=row,
-        column=0,
-        sticky=tk.E,
-    )
+    if PRODUCT_ID != PRODUCT_ID_STATION:
+        ttk.Label(frame,text="MotorCurrent").grid(row=row,column=0,sticky=tk.E,)
+    else:
+        ttk.Label(frame,text="Station MotorCurrent (bytes 25,26)").grid(row=row,column=0,sticky=tk.E,)
 
     w = ttk.Progressbar(
         frame,
