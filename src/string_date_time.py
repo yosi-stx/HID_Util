@@ -151,3 +151,12 @@ import sys
 sys.path.append("C:\Python37\YG_try")
 
 '''
+
+def main():
+    print("this is a library file with functions:\n \
+    get_time() get_date_time() get_date() get_date_time_sec() get_date_time_milisec() get_time()")
+    date_time = get_time()
+    print("\n\n example:   string date_time:",date_time)
+
+if __name__ == "__main__":
+    main()
