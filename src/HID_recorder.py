@@ -1,6 +1,10 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_recorder.py
 
+# file history:
+# 2022_06_30__19_12 - adding special calculation for Torque and Insertion
+# last modified at: Friday, ‎March ‎12, ‎2021, ‏‎06:16:05 PM
+
 from binascii import hexlify
 import sys
 import argparse
@@ -113,6 +117,11 @@ CMOS_INDEX = 2 + 2   # maybe + 4???
 #                       0  1  2  3  4 5 6 7  8 9 1011
 # Received data: b'3f26 00 00 00 00 0674fc41 3f4efc70 0033a4513c5a0101210001000000650000000000000000000000167f070dd7aee89baff63fedcfcccb763acf041b00000010'
 #                                   TORQUE   INSERTION
+INSERTION_INDEX = 2 + 8
+TORQUE_INDEX = 2 + 4
+STATION_CURRENT_INDEX = 25
+MAX_LONG_POSITIVE = 2**31
+MAX_UNSIGNED_LONG = 2**32
 
 # global variables
 special_cmd = 0
@@ -192,6 +201,19 @@ def gui_loop(device):
         # Update the GUI
         if len(value) >= READ_SIZE:
             # save into file:
+            #INSERTION_INDEX
+            tool_size = (int(value[CMOS_INDEX + 1]) << 8) + int(value[CMOS_INDEX])
+# Received data: b'3f26 00 00 00 00 0674fc41 3f4efc70 0033a4513c5a0101210001000000650000000000000000000000167f070dd7aee89baff63fedcfcccb763acf041b00000010'
+#                                   TORQUE   INSERTION
+            # 0674 fc41
+# -62847372 = FC41 0674
+#   torque from Avago: bytes 6..9
+            torque = (int(value[TORQUE_INDEX + 2]) << 24) + (int(value[TORQUE_INDEX+3]) <<16) + (int(value[TORQUE_INDEX]) <<8) + int(value[TORQUE_INDEX+1])  
+            insertion = (int(value[INSERTION_INDEX + 2]) << 24) + (int(value[INSERTION_INDEX+3]) <<16) + (int(value[INSERTION_INDEX]) <<8) + int(value[INSERTION_INDEX+1])  
+            station_current = (int(value[STATION_CURRENT_INDEX + 1]) << 8) + int(value[STATION_CURRENT_INDEX]) #station Report.current
+            #global MAX_LONG_POSITIVE
+            torque = long_unsigned_to_long_signed(torque)
+            insertion = long_unsigned_to_long_signed(insertion)
             analog = [(int(value[i + 1]) << 8) + int(value[i]) for i in LAP_ANALOG_INDEX_LIST]
             channel_0 = analog[0]
             channel_1 = analog[1]
@@ -205,7 +227,8 @@ def gui_loop(device):
             #    L = [ str(counter),",   ", str(clicker_analog), ", " , str(count_dif), " <<<<<--- " ,"\n" ]  
             #else:
             #    L = [ str(counter),",   ", str(clicker_analog), ", " , str(count_dif), "\n" ]  
-            L = [ str(channel_0),",   ", str(channel_1), ", " , str(channel_2),", " , str(channel_3),", " , str(channel_4), "\n" ]  
+            # L = [ str(channel_0),",   ", str(channel_1), ", " , str(channel_2),", " , str(channel_3),", " , str(channel_4), "\n" ]  
+            L = [ str(tool_size),",   ", str(insertion), ", " , str(torque), "\n" ]  
             file1.writelines(L) 
             # handler(value, do_print=do_print)
             # print("Received data: %s" % hexlify(value))
@@ -220,6 +243,9 @@ def gui_loop(device):
                     print_every = 0
                     print("time:", time, end="")
                     print("  Received data: %s" % hexlify(value))
+                    print("insertion: ", insertion, end="")
+                    print(" ;     torque: ", torque)
+                    
             # print("time: %.6f" % time)
             handle_time = timer() 
             prev_counter = counter
@@ -227,6 +253,14 @@ def gui_loop(device):
         # Update the do_print flag
         do_print = (timer() - print_time) >= PRINT_TIME
 
+def long_unsigned_to_long_signed( x ):
+    if x > MAX_LONG_POSITIVE:
+        x = x - MAX_UNSIGNED_LONG
+    return x
+
+def date2dec(x):
+    s = "%02x" % x
+    return s
 def handler(value, do_print=False):
     if do_print:
         print("Received data: %s" % hexlify(value))
