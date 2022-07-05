@@ -301,11 +301,22 @@ def init_parser():
         required=False,
         help="connects to the device with the given path"
     )
+    parser.add_argument(
+        "-l", "--label",
+        dest="label",
+        metavar="LABEL",
+        type=int,
+        nargs=1,
+        required=False,
+        help="add first line of Label in the CSV file"
+    )
     return parser
 
 def main():
     global VENDOR_ID
     global PRODUCT_ID
+    global file1
+    
     PATH = None
     
     # open recording log file:
@@ -319,6 +330,7 @@ def main():
     avail_vid = args.vendor_id != None
     avail_pid = args.product_id != None
     avail_path = args.path != None
+    avail_label = args.label != None
     id_mode = avail_pid and avail_vid
     path_mode = avail_path
     default_mode = (not avail_vid) and (not avail_pid) and (not avail_path)
@@ -328,6 +340,14 @@ def main():
     if ((not avail_path) and ((avail_pid and (not avail_vid)) or ((not avail_pid) and avail_vid))):
         print("Both the product ID and the vendor ID must be given as arguments")
         return
+    #-----------  LABEL  -----------
+    if ( avail_label ):
+        LABEL = args.label[0]
+        print("-----------  avail_label - ----------")
+        if LABEL > 0 :
+            L = [ "tool_size",",   ", "insertion", ", " , "torque", "\n" ]  
+            print(L)
+            file1.writelines(L) 
 
     if (default_mode):
         print("No arguments were given, defaulting to:")
@@ -424,7 +444,7 @@ def main():
         print("\n","Recording result at: ", FILE1_PATH)
 
     finally:
-        global file1
+        #global file1
         file1.close() #to change file access modes 
         if device != None:
             device.close()
