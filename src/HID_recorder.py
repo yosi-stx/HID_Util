@@ -15,6 +15,9 @@ import include_dll_path
 import hid
 import os
 from string_date_time import get_date_time
+import csv
+import time
+import matplotlib.pyplot as plt
 
 # BOARD_TYPE_MAIN = 0,
 # BOARD_TYPE_JOYSTICKS = 1,
@@ -62,7 +65,6 @@ if not os.path.exists('log'):
     os.makedirs('log')
 # file1 = None
 # open recording log file:
-# file1 = open("C:\Work\Python\HID_Util\src\log\log.csv","w") 
 file1 = open(FILE1_PATH,"w") 
 # file1 = open("log\hid_log.csv","w") 
 
@@ -125,6 +127,8 @@ MAX_UNSIGNED_LONG = 2**32
 
 # global variables
 special_cmd = 0
+my_thread_run = True
+my_thread_ended = False
 
 def gui_loop(device):
     do_print = True
@@ -141,7 +145,7 @@ def gui_loop(device):
     global special_cmd
     # global print_flag
     
-    while True:
+    while my_thread_run:
         # Reset the counter
         if (do_print):
             print_time = timer()
@@ -162,28 +166,7 @@ def gui_loop(device):
             device.write(WRITE_DATA)
             print("special_cmd Start")
             special_cmd = 0
-#        elif special_cmd == 'S':
-#            WRITE_DATA = WRITE_DATA_CMD_GET_BOARD_TYPE
-#            device.write(WRITE_DATA)
-#            print("special_cmd CMD_GET_BOARD_TYPE")
-#            # print_flag = 1
-#            special_cmd = 0
-#        elif special_cmd == 'A':
-#            WRITE_DATA = WRITE_DATA_CMD_A
-#            print("special_cmd A -> keep Alive + fast BLE update (every 20 msec)")
-#            special_cmd = 0
-#        elif special_cmd == 'M':
-#            WRITE_DATA = WRITE_DATA_CMD_M
-#            print("special_cmd M -> moderate BLE update rate every 50 mSec")
-#            special_cmd = 0
-#        elif special_cmd == 'B':
-#            WRITE_DATA = WRITE_DATA_CMD_B
-#            device.write(WRITE_DATA)
-#            print("special_cmd B -> set_BSL_mode  --- this will stop HID communication with this GUI")
-#            special_cmd = 0
-#        else:
-#            WRITE_DATA = DEFAULT_WRITE_DATA
-        
+
 
         cycle_time = timer() - time
         # print("cycle timer: %.10f" % cycle_time)
@@ -252,6 +235,8 @@ def gui_loop(device):
 
         # Update the do_print flag
         do_print = (timer() - print_time) >= PRINT_TIME
+    global my_thread_ended
+    my_thread_ended = True
 
 def long_unsigned_to_long_signed( x ):
     if x > MAX_LONG_POSITIVE:
@@ -437,17 +422,70 @@ def main():
         print(" --------------------------------------")
         print(" ")
         # Create thread that calls
-        threading.Thread(target=gui_loop, args=(device,), daemon=True).start()
+        # threading.Thread(target=gui_loop, args=(device,), daemon=True).start()
+        myThread = threading.Thread(target=gui_loop, args=(device,), daemon=True)
+        myThread.start()
         input()
         print("Recording start: ", start_date_time)
         print("Recording end  : ", get_date_time())
         print("\n","Recording result at: ", FILE1_PATH)
+        # try:
+        #     with open(FILE1_PATH, 'r') as csvfile:
+        #         plots = csv.reader(csvfile, delimiter=',')
+        #     y1 = []
+        #     y2 = []
+        #     for row in plots:
+        #         y1.append(int(row[1]))
+        #         y2.append(int(row[2]))
+        #     print(y1[0:20])
+        #     print("vector y1[0:20]  : ", y1[0:20])
+        #     print("\n", "CSV FILE FILE1_PATH IS: ", FILE1_PATH)
+        # except:
+        #     print("--------------error: row in plots")
 
     finally:
         #global file1
-        file1.close() #to change file access modes 
+        global my_thread_run
+        my_thread_run =  False
+        while (not my_thread_ended):
+            pass
+        file1.close() #to change file access modes
+        file1 = open(FILE1_PATH,"r+")
+        plots = csv.reader(file1, delimiter=',')
+        y0 = []
+        y1 = []
+        y2 = []
+        for row in plots:
+            y0.append(int(row[0]))
+            y1.append(int(row[1]))
+            y2.append(int(row[2]))
+        #print(y0[0:200])
+        plt.plot(y0,label="tool_size")
+        plt.plot(y1,label="insertion")
+        plt.plot(y2,label="torque")
+        plt.xlabel('Time')
+        plt.ylabel('Value')
+        plt.title('tool_size, insertion and  torque"')
+        plt.legend()
+        plt.show()        
         if device != None:
             device.close()
+        # time.sleep(2.5)
+        print("--------- AFTER: device.close()--------------")
+
+        # try:
+        #     with open(FILE1_PATH, 'r') as csvfile:
+        #         plots = csv.reader(csvfile, delimiter=',')
+        #     y1 = []
+        #     y2 = []
+        #     for row in plots:
+        #         y1.append(int(row[1]))
+        #         y2.append(int(row[2]))
+        #     print(y1[0:20])
+        #     print("vector y1[0:20]  : ", y1[0:20])
+        #     print("\n", "CSV FILE FILE1_PATH IS: ", FILE1_PATH)
+        # except:
+        #     print("--------------error: row in plots")
 
 if __name__ == "__main__":
     main()

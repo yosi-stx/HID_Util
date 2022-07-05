@@ -150,3 +150,5 @@ src/WireShrk_analyzer_2.py
 src/libusb-1.0.dll
 libusb-1.0.dll
 hidapi.dll
+src/try_graph_1.py
+src/csv_plot.py
