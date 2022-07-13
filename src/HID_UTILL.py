@@ -111,6 +111,7 @@ TORQUE_INDEX = 2 + 4
 STATION_CURRENT_INDEX = 25
 MAX_LONG_POSITIVE = 2**31
 MAX_UNSIGNED_LONG = 2**32
+IMAGE_QUALITY_INDEX = INSERTION_INDEX + 4
 
 HID_STREAM_CHANNEL1_STYLE = "HIDStreamChannel1"
 HID_STREAM_CHANNEL2_STYLE = "HIDStreamChannel2"
@@ -290,6 +291,7 @@ def handler(value, do_print=False):
 #   torque from Avago: bytes 6..9
     torque = (int(value[TORQUE_INDEX + 2]) << 24) + (int(value[TORQUE_INDEX+3]) <<16) + (int(value[TORQUE_INDEX]) <<8) + int(value[TORQUE_INDEX+1])  
     insertion = (int(value[INSERTION_INDEX + 2]) << 24) + (int(value[INSERTION_INDEX+3]) <<16) + (int(value[INSERTION_INDEX]) <<8) + int(value[INSERTION_INDEX+1])  
+    image_quality = (int(value[IMAGE_QUALITY_INDEX]) )
     station_current = (int(value[STATION_CURRENT_INDEX + 1]) << 8) + int(value[STATION_CURRENT_INDEX]) #station Report.current
     #global MAX_LONG_POSITIVE
     torque = long_unsigned_to_long_signed(torque)
@@ -297,6 +299,7 @@ def handler(value, do_print=False):
 
     if do_print:
         print("Received data: %s" % hexlify(value))
+        print("insertion[last byte]: %02x  || image_quality: %02x  %d" % (int(value[INSERTION_INDEX+3]),image_quality, image_quality))
         # print("tool_size    : %d" % tool_size)
         # print("insertion : %d" % insertion , end="")
         # print("   torque : %d" % torque)
@@ -356,11 +359,12 @@ def handler(value, do_print=False):
     if PRODUCT_ID != PRODUCT_ID_STATION:
         int_hid_stream_channel1 = analog[1]
         int_inner_handle_channel1 = analog[0]
+        int_inner_handle_channel2 = analog[3]
     else:
         int_hid_stream_channel1 = insertion
         int_inner_handle_channel1 = torque
+        int_inner_handle_channel2 = image_quality
     int_hid_stream_channel2 = tool_size
-    int_inner_handle_channel2 = analog[3]
     int_clicker = clicker_analog
     int_sleepTimer = sleepTimer
     int_batteryLevel = batteryLevel
@@ -374,11 +378,13 @@ def handler(value, do_print=False):
     if PRODUCT_ID != PRODUCT_ID_STATION:
         precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
         precentage_inner_handle_channel1 = int((int_inner_handle_channel1 / 4096) * 100)
+        precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 4096) * 100)
     else:
         precentage_hid_stream_channel1 = abs(int((int_hid_stream_channel1 / 1000) * 100))
         precentage_inner_handle_channel1 = abs(int((int_inner_handle_channel1 / 1000) * 100))
+        precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 255) * 100)
+
     precentage_hid_stream_channel2 = int((int_hid_stream_channel2 / 4096) * 100)
-    precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 4096) * 100)
     precentage_clicker = int((int_clicker / 4096) * 100)
     # precentage_sleepTimer = int((int_sleepTimer / 600) * 100)
     precentage_sleepTimer = int(int_sleepTimer )
@@ -473,7 +479,7 @@ def my_channel_row(frame, row, label, style):
         ttk.Label(frame,text=text_name).grid(row=row,column=1)
     else:
         ttk.Label(frame,text="Torque").grid(row=row,column=0)
-        ttk.Label(frame,text="Channel 2").grid(row=row,column=1)
+        ttk.Label(frame,text="Image Quality").grid(row=row,column=1) # image_quality
 
     row += 1
 

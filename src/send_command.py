@@ -268,6 +268,15 @@ def handler(value, do_print=False):
             for i in range( value[3]):
                 print("%02X " % value[i+6], end="")
             print("")
+        # send_command.py  -c 88 01 00 01 0D
+        # 88 01 00 01 1f 20 70 fd 02 20 00 d4
+        if value[2] == 0x88 and value[3] == 1 and value[4] == 0 and value[5] == 1:
+            # loop on the length of the data payload:
+            print("")
+            print("data: ", end="")
+            for i in range( value[3]):
+                print("%02X " % value[i+6], end="")
+            print("")
         # handle here all other commands parsing
 
     return # do without gui

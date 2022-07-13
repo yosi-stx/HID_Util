@@ -2,6 +2,7 @@
 # C:\Work\Python\HID_Util\src\HID_recorder.py
 
 # file history:
+# 2022_07_06__01_39 - adding plotting by using matplotlib 
 # 2022_06_30__19_12 - adding special calculation for Torque and Insertion
 # last modified at: Friday, ‎March ‎12, ‎2021, ‏‎06:16:05 PM
 
