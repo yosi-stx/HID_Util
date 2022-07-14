@@ -107,7 +107,7 @@ PRINT_TIME = 1.0 # Print every 1 second
 START_INDEX = 2 + 4 # Ignore the first two bytes, then skip the version (4 bytes)
 # ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 4 * 2 + 1, 2)) + [START_INDEX + 6 * 2,]
 ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 8 * 2 + 1, 2)) 
-# print("ANALOG_INDEX_LIST=",ANALOG_INDEX_LIST)
+# yprint("ANALOG_INDEX_LIST=",ANALOG_INDEX_LIST)
 # ANALOG_INDEX_LIST= [8, 10, 12, 14, 16, 18, 20, 22]
 LAP_ANALOG_INDEX_LIST = list(range(2,8 * 2 + 1, 2)) 
 
@@ -119,8 +119,19 @@ CMOS_INDEX = 2 + 2   # maybe + 4???
 
 # global variables
 special_cmd = 0
+EXTRA_INFO = 1
+mission_completed = 0
 
 root = None
+def debug_print(*args):
+    global EXTRA_INFO
+    if EXTRA_INFO == 1:
+        print( " ".join(map(str,args)))
+
+def yprint(*args, **kwargs):
+    global EXTRA_INFO
+    if EXTRA_INFO == 1:
+        print( " ".join(map(str,args)), **kwargs)    
 
 def main_loop(device):
     do_print = True
@@ -143,7 +154,7 @@ def main_loop(device):
 #        if send_stream_request_command_once == 1:
 #            send_stream_request_command_once = 0
 #            if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-#                print("enforce streaming of data with command 0x82"
+#                yprint("enforce streaming of data with command 0x82"
                 # if device is attached enforce streaming of data.
                 # device.write(WRITE_DATA_CMD_START)
         
@@ -153,12 +164,12 @@ def main_loop(device):
             else:
                 WRITE_DATA = WRITE_DATA_CMD_START
             device.write(WRITE_DATA)
-            print("special_cmd Start")
+            yprint("special_cmd Start")
             special_cmd = 0
 #        elif special_cmd == 'S':
 #            WRITE_DATA = WRITE_DATA_CMD_GET_BOARD_TYPE
 #            device.write(WRITE_DATA)
-#            print("special_cmd CMD_GET_BOARD_TYPE")
+#            yprint("special_cmd CMD_GET_BOARD_TYPE")
 #            # print_flag = 1
 #            special_cmd = 0
         # this is where we get today 2022_06_26  ------------------------------------------
@@ -167,20 +178,20 @@ def main_loop(device):
             if PRODUCT_ID in PRODUCT_ID_types:
                 # WRITE_DATA = WRITE_DATA_CMD_GET_FW_VERSION
                 WRITE_DATA = WRITE_DATA_CMD___SEND_COMMAND
-                print("special_cmd A -> WRITE_DATA_CMD_GET_FW_VERSION")
+                yprint("special_cmd A -> WRITE_DATA_CMD_GET_FW_VERSION")
                 device.write(WRITE_DATA)
             else:
                 WRITE_DATA = WRITE_DATA_CMD_A
-                print("special_cmd A -> keep Alive + fast BLE update (every 20 msec)")
+                yprint("special_cmd A -> keep Alive + fast BLE update (every 20 msec)")
             special_cmd = 0
 #        elif special_cmd == 'M':
 #            WRITE_DATA = WRITE_DATA_CMD_M
-#            print("special_cmd M -> moderate BLE update rate every 50 mSec")
+#            yprint("special_cmd M -> moderate BLE update rate every 50 mSec")
 #            special_cmd = 0
         elif special_cmd == 'B':
            WRITE_DATA = WRITE_DATA_CMD_B
            device.write(WRITE_DATA)
-           print("special_cmd B -> set_BSL_mode  --- this will stop HID communication with this GUI")
+           yprint("special_cmd B -> set_BSL_mode  --- this will stop HID communication with this GUI")
            special_cmd = 0
 #        else:
 #            WRITE_DATA = DEFAULT_WRITE_DATA
@@ -189,7 +200,7 @@ def main_loop(device):
             break
 
         cycle_time = timer() - time
-        # print("cycle timer: %.10f" % cycle_time)
+        # yprint("cycle timer: %.10f" % cycle_time)
 
         # If not enough time has passed, sleep for SLEEP_AMOUNT seconds
         sleep_time = SLEEP_AMOUNT - (cycle_time)
@@ -219,19 +230,19 @@ def main_loop(device):
             L = [ str(channel_0),",   ", str(channel_1), ", " , str(channel_2),", " , str(channel_3),", " , str(channel_4), "\n" ]  
             #file1.writelines(L) 
             handler(value, do_print=do_print)
-            # print("Received data: %s" % hexlify(value))
+            # yprint("Received data: %s" % hexlify(value))
             Handler_Called = (timer() - handle_time)
             
             if Handler_Called > 0.002 :
             # if Handler_Called > 0.02 :
-                #print("handler called: %.6f" % Handler_Called)
+                #yprint("handler called: %.6f" % Handler_Called)
                 global print_every
                 print_every = print_every + 1
                 if print_every >= 500:
                     print_every = 0
-                    print("time:", time, end="")
-                    print("  Received data: %s" % hexlify(value))
-            # print("time: %.6f" % time)
+                    yprint("time:", time, end="")
+                    yprint("  Received data: %s" % hexlify(value))
+            # yprint("time: %.6f" % time)
             handle_time = timer() 
             prev_counter = counter
 
@@ -243,40 +254,47 @@ def date2dec(x):
     return s
 
 def handler(value, do_print=False):
+    global mission_completed
+    global EXTRA_INFO
+    
     if do_print:
-        print("Received data: %s" % hexlify(value))
+        yprint("Received data: %s" % hexlify(value))
 
     # parsing FW version response :
     if value[2] == 6 and value[3] == 6 and value[4] == 0 and value[5] == 1:
-        print("FW friendly version: %s" % hexlify(value))
+        yprint("FW friendly version: %s" % hexlify(value))
         #   0 1 2 3 4 5   6 7 8 9 0 1    2 3 4 5 6 7 8 9 0 
         # b'3f0a06060001  030004060321   d6bb2c3fc2b49c3fe877fecef602fffe5787dedfcf750cfb129efe7ffd7ed60daedefca4f9fff58efc5eb47c237eb5a93dd72f55'
-        print("")
-        print("FW version: "+str(value[6])+"." +str(value[7])+"." +str(value[8]))
-        print("FW date   : "+date2dec(value[9])+"/" +date2dec(value[10])+"/20" +date2dec(value[11]))
+        EXTRA_INFO = 1
+        yprint("")
+        yprint("FW version: "+str(value[6])+"." +str(value[7])+"." +str(value[8]))
+        yprint("FW date   : "+date2dec(value[9])+"/" +date2dec(value[10])+"/20" +date2dec(value[11]))
 
-        print(" ")
-        print(" Please press <Enter> to Exit")
+        yprint(" ")
+        yprint(" Please press <Enter> to Exit")
+        mission_completed = 1
     else:
         # handle "Get Param 168" parameter #6 from RAM 
         # aka: (<<) 83 02 00 01 06 00
         #      (>>) 83 15 00 01 04 87 00 00 03 FF 27 10 27 10 27 10 00 00 00 00 00 00 00 00 06
         if value[2] == 0x83 and value[3] == 0x15 and value[4] == 0 and value[5] == 1:
             # loop on the length of the data payload:
-            print("")
+            yprint("")
             print("data: ", end="")
             for i in range( value[3]):
                 print("%02X " % value[i+6], end="")
-            print("")
+            yprint("")
+            mission_completed = 1
         # send_command.py  -c 88 01 00 01 0D
         # 88 01 00 01 1f 20 70 fd 02 20 00 d4
         if value[2] == 0x88 and value[3] == 1 and value[4] == 0 and value[5] == 1:
             # loop on the length of the data payload:
-            print("")
+            yprint("")
             print("data: ", end="")
             for i in range( value[3]):
                 print("%02X " % value[i+6], end="")
-            print("")
+            yprint("")
+            mission_completed = 1
         # handle here all other commands parsing
 
     return # do without gui
@@ -326,6 +344,14 @@ def init_parser():
         required=False,
         help="command to the FW via the HID buffer"
     )
+    parser.add_argument("-e", "--extra_info",
+        dest="extra_info",
+        metavar="EXTRA_INFO",
+        type=int,
+        nargs='+',
+        required=False,
+        help="extra info to print on the screen, by default is on (1) to reset it set (0)"
+    )
     # parser.add_argument("-c1", "--command1", dest="command_param", metavar="COMMAND_PARAM", type=str, nargs=1, required=False, help="command via the HID buffer")
     # parser.add_argument("-c2", "--command2", dest="command_param", metavar="COMMAND_PARAM", type=str, nargs=2, required=False, help="command via the HID buffer")
     return parser
@@ -337,6 +363,7 @@ def main_func():
     global WRITE_DATA_CMD_GET_FW_VERSION
     global WRITE_DATA_CMD___SEND_COMMAND
     global WRITE_DATA_CMD___bytearray
+    global EXTRA_INFO
     PATH = None
     
     # Parse the command line arguments
@@ -348,54 +375,59 @@ def main_func():
     avail_pid = args.product_id != None
     avail_path = args.path != None
     avail_cmd = args.command_param != None
+    avail_extra = args.extra_info != None
     id_mode = avail_pid and avail_vid
     path_mode = avail_path
     default_mode = (not avail_vid) and (not avail_pid) and (not avail_path)
     if (path_mode and (avail_pid or avail_vid)):
-        print("The path argument can't be mixed with the ID arguments")
+        yprint("The path argument can't be mixed with the ID arguments")
         return
     if ((not avail_path) and ((avail_pid and (not avail_vid)) or ((not avail_pid) and avail_vid))):
-        print("Both the product ID and the vendor ID must be given as arguments")
+        yprint("Both the product ID and the vendor ID must be given as arguments")
         return
+    #-----------  EXTRA_INFO  -----------
+    if ( avail_extra ):
+        EXTRA_INFO = args.extra_info[0]
+        yprint("EXTRA_INFO",EXTRA_INFO)
     #-----------  COMMAND_PARAM  -----------
     if ( avail_cmd ):
         COMMAND_PARAM = args.command_param[0]
-        print("-----------  COMMAND_PARAM - ----------")
-        print("COMMAND_PARAM = %s" % COMMAND_PARAM)
-        print("args.command_param = %s" % args.command_param)
-        print("len(args.command_param) = %s" % len(args.command_param))
+        yprint("-----------  COMMAND_PARAM - ----------")
+        yprint("COMMAND_PARAM = %s" % COMMAND_PARAM)
+        yprint("args.command_param = %s" % args.command_param)
+        yprint("len(args.command_param) = %s" % len(args.command_param))
         num_of_param = len(args.command_param)
-        print("num_of_param = %s" % num_of_param)
-        print("WRITE_DATA_CMD_GET_FW_VERSION = %s" % WRITE_DATA_CMD_GET_FW_VERSION)
-        print("type(WRITE_DATA_CMD_GET_FW_VERSION = %s" % type(WRITE_DATA_CMD_GET_FW_VERSION))
+        yprint("num_of_param = %s" % num_of_param)
+        yprint("WRITE_DATA_CMD_GET_FW_VERSION = %s" % WRITE_DATA_CMD_GET_FW_VERSION)
+        yprint("type(WRITE_DATA_CMD_GET_FW_VERSION = %s" % type(WRITE_DATA_CMD_GET_FW_VERSION))
         # 3f0406000001 = GET VERSION
-        print("WRITE_DATA_CMD___SEND_COMMAND = %s" % WRITE_DATA_CMD___SEND_COMMAND)
+        yprint("WRITE_DATA_CMD___SEND_COMMAND = %s" % WRITE_DATA_CMD___SEND_COMMAND)
         # extra_bytes = bytes(len(WRITE_DATA_CMD_GET_FW_VERSION)-1)
         # WRITE_DATA_CMD___SEND_COMMAND = WRITE_DATA_CMD___SEND_COMMAND + extra_bytes
-        # print("WRITE_DATA_CMD___SEND_COMMAND = %s " % WRITE_DATA_CMD___SEND_COMMAND)
+        # yprint("WRITE_DATA_CMD___SEND_COMMAND = %s " % WRITE_DATA_CMD___SEND_COMMAND)
         if( num_of_param > 0 ):
             WRITE_DATA_CMD___bytearray.append(num_of_param)
             for i in range(num_of_param):
                 str_param = '0x'+ args.command_param[i]
-                print("str_param = ", str_param)
+                yprint("str_param = ", str_param)
                 int_param = int(str_param,16)
-                print("int_param = ", int_param)
+                yprint("int_param = ", int_param)
                 WRITE_DATA_CMD___bytearray.append(int_param)
                 # WRITE_DATA_CMD___bytearray.append(int(args.command_param[i]))
             for i in range(63-num_of_param):
                 WRITE_DATA_CMD___bytearray.append(0)
-            print("WRITE_DATA_CMD___bytearray = %s " % WRITE_DATA_CMD___bytearray)
+            yprint("WRITE_DATA_CMD___bytearray = %s " % WRITE_DATA_CMD___bytearray)
             WRITE_DATA_CMD___SEND_COMMAND = bytes(WRITE_DATA_CMD___bytearray)
-            print("WRITE_DATA_CMD___SEND_COMMAND = %s " % WRITE_DATA_CMD___SEND_COMMAND)
+            yprint("WRITE_DATA_CMD___SEND_COMMAND = %s " % WRITE_DATA_CMD___SEND_COMMAND)
         
 
-        print("--------------------------------------\n")
+        yprint("--------------------------------------\n")
 
 
     if (default_mode):
-        print("No arguments were given, defaulting to:")
-        print("VENDOR_ID = %X" % VENDOR_ID)
-        print("PRODUCT_ID = %X" % PRODUCT_ID)
+        yprint("No arguments were given, defaulting to:")
+        yprint("VENDOR_ID = %X" % VENDOR_ID)
+        yprint("PRODUCT_ID = %X" % PRODUCT_ID)
         id_mode = True
     elif (id_mode):
         VENDOR_ID = args.vendor_id[0]
@@ -410,30 +442,30 @@ def main_func():
     try:
         if (id_mode):
             try:
-                print("try with default device:")
-                print("VENDOR_ID = %X" % VENDOR_ID)
-                print("PRODUCT_ID = %X" % PRODUCT_ID)
+                yprint("try with default device:")
+                yprint("VENDOR_ID = %X" % VENDOR_ID)
+                yprint("PRODUCT_ID = %X" % PRODUCT_ID)
                 device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
             except:
-                print("wrong ID")
-                print(" ")
+                yprint("wrong ID")
+                yprint(" ")
             
             # 0x24B3 = 9395
             # 0x2005 = 8197
             for n in range(7):
                 if device is None:
                     try:
-                        # print("try with other device")
+                        # yprint("try with other device")
                         VENDOR_ID = 0x24b3 # Simb
                         PRODUCT_ID = 0x2000 + n # LAP_NEW_CAMERA. is 0x2005
-                        # print("VID = %X PID = %X " % VENDOR_ID, PRODUCT_ID)
-                        print("try with PID = %X " % PRODUCT_ID)
-                        # print("PRODUCT_ID = %X" % PRODUCT_ID)
+                        # yprint("VID = %X PID = %X " % VENDOR_ID, PRODUCT_ID)
+                        yprint("try with PID = %X " % PRODUCT_ID)
+                        # yprint("PRODUCT_ID = %X" % PRODUCT_ID)
                         device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
                         # device = hid.Device(vid=0x24B3, pid=0x2005)
-                        # print("success vid=0x24B3, pid=0x2005 !!")
+                        # yprint("success vid=0x24B3, pid=0x2005 !!")
                     except:
-                        print("wrong ID2")
+                        yprint("wrong ID2")
                     
             # VENDOR_ID = 2047
             # PRODUCT_ID = 304
@@ -443,28 +475,28 @@ def main_func():
             for n in range(len(PRODUCT_ID_types)):
                 if device is None:
                     try:
-                        # print("try with other device")
+                        # yprint("try with other device")
                         VENDOR_ID = 0x2047 # Texas Instrument
                         PRODUCT_ID = 0x301 + n # BOARD_TYPE_MAIN is 0x301
-                        print("try with PID = %X " % PRODUCT_ID)
+                        yprint("try with PID = %X " % PRODUCT_ID)
                         device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
                     except:
-                        print("wrong ID2")
+                        yprint("wrong ID2")
                     
             if device is None:
-                print("no device attached")
+                yprint("no device attached")
             else:
-                #print("VENDOR_ID = %X" % VENDOR_ID)
-                print("VENDOR_ID  = %X  =  %d     --- actual device" % (VENDOR_ID, VENDOR_ID))
-                print("PRODUCT_ID = %X  =  %d     --- actual device" % (PRODUCT_ID, PRODUCT_ID))
-                # print("PRODUCT_ID = %X" % PRODUCT_ID)
+                #yprint("VENDOR_ID = %X" % VENDOR_ID)
+                yprint("VENDOR_ID  = %X  =  %d     --- actual device" % (VENDOR_ID, VENDOR_ID))
+                yprint("PRODUCT_ID = %X  =  %d     --- actual device" % (PRODUCT_ID, PRODUCT_ID))
+                # yprint("PRODUCT_ID = %X" % PRODUCT_ID)
                 if PRODUCT_ID in PRODUCT_ID_types:
-                    print(PRODUCT_ID_types[PRODUCT_ID])
+                    yprint(PRODUCT_ID_types[PRODUCT_ID])
                     global special_cmd
                     # if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
                     if PRODUCT_ID in PRODUCT_ID_types:
                         special_cmd = 'A'
-                        print("set in init: special_cmd = 'A'")
+                        yprint("set in init: special_cmd = 'A'")
         elif (path_mode):
             device = hid.Device(path=PATH)
         else:
@@ -475,11 +507,18 @@ def main_func():
         threading.Thread(target=main_loop, args=(device,), daemon=True).start()
         global WRITE_DATA
         if WRITE_DATA == WRITE_DATA_CMD_B:
-            print("WRITE_DATA == WRITE_DATA_CMD_B")
-        # print(" Recording Ended !!!")
-        print(" ")
-        # print(" Please press <Enter> to Exit")
-        input()
+            yprint("WRITE_DATA == WRITE_DATA_CMD_B")
+        # yprint(" Recording Ended !!!")
+        yprint(" ")
+        # yprint(" Please press <Enter> to Exit")
+        wait_cuounter = 0
+        if EXTRA_INFO != 0:
+            input()
+        else:
+            while mission_completed == 0:
+                wait_cuounter = wait_cuounter + 1
+                pass 
+            # print("ended ",wait_cuounter)
 
     finally:
 #        global file1

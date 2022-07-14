@@ -230,13 +230,18 @@ def main():
     first_4_channels = 1
 
     if first_4_channels:
-        ax1.plot(packet_num, cha_00, 'c+-', linewidth=0.75)
+        ax1.plot(packet_num, cha_00, 'c+-', linewidth=0.75,label="tool_size")
         ax2.plot(ac_time, cha_00, 'c+', linewidth=0.75)
 
-        ax1.plot(packet_num, cha_01, 'm-', linewidth=0.75)
-        ax1.plot(packet_num, cha_02, 'b-', linewidth=0.75)
-        ax1.plot(packet_num, cha_03, 'ro-', linewidth=0.75)
+        # plt.plot(y0,label="tool_size")
+        # plt.plot(y1,label="insertion")
+        # plt.plot(y2,label="torque")
+
+        ax1.plot(packet_num, cha_01, 'm-', linewidth=0.75,label="torque")
+        ax1.plot(packet_num, cha_02, 'b-', linewidth=0.75,label="insertion")
+        ax1.plot(packet_num, cha_03, 'r-', linewidth=0.75,label="image_quality")
         ax1.set_xlabel("packet_num")
+        ax1.legend()
         # ax1.set_ylabel("Time [ms]")
         ax1.set_ylabel("ADC: 4095=3volt")
         ax2.set_ylabel("tool_size: 2047=Max")
