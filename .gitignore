@@ -152,3 +152,4 @@ libusb-1.0.dll
 hidapi.dll
 src/try_graph_1.py
 src/csv_plot.py
+src/try.py

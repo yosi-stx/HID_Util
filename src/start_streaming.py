@@ -13,6 +13,7 @@ from time import perf_counter as timer
 import include_dll_path
 import hid
 import os
+import keyboard
 
 # VENDOR_ID = 0x24b3 # Simb
 # PRODUCT_ID = 0x1005 # Simb MSP430 Controller
@@ -399,7 +400,8 @@ def main():
         # print(" Recording Ended !!!")
         print(" ")
         # print(" Please press <Enter> to Exit")
-        input()
+        keyboard.read_key() # wait for any key to be pressed on the keyboard.
+        # input()
 
     finally:
 #        global file1

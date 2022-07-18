@@ -2,6 +2,9 @@
 # file: WireShrk_Station_plot.py
 # date: 2022_07_13
 
+# usage:
+# WireShrk_Station_plot.py "C:\Work\USB\WireShark\2022_07_14\2022_07_14__17_34__streaming_recorded_with_movement.pcapng"
+
 import sys
 import pyshark
 import numpy as np
@@ -230,16 +233,21 @@ def main():
     first_4_channels = 1
 
     if first_4_channels:
-        ax1.plot(packet_num, cha_00, 'c+-', linewidth=0.75,label="tool_size")
         ax2.plot(ac_time, cha_00, 'c+', linewidth=0.75)
 
         # plt.plot(y0,label="tool_size")
         # plt.plot(y1,label="insertion")
         # plt.plot(y2,label="torque")
 
+        # color = #008000
+        # use_color = '#008000'
+        # use_color = '#ebaee8'
+        use_color = '#83fc95'
+        ax1.plot(packet_num, cha_03, color=use_color, linewidth=0.75,label="image_quality") # be first to overwrite
+        ax1.plot(packet_num, cha_00, 'c+-', linewidth=0.75,label="tool_size")
         ax1.plot(packet_num, cha_01, 'm-', linewidth=0.75,label="torque")
         ax1.plot(packet_num, cha_02, 'b-', linewidth=0.75,label="insertion")
-        ax1.plot(packet_num, cha_03, 'r-', linewidth=0.75,label="image_quality")
+        # ax1.plot(packet_num, cha_03, 'r-', linewidth=0.75,label="image_quality")
         ax1.set_xlabel("packet_num")
         ax1.legend()
         # ax1.set_ylabel("Time [ms]")
