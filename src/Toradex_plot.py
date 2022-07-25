@@ -138,7 +138,8 @@ def parse_usb_capdata2(capdata):
             # 'ch02': long_unsigned_to_long_signed((int(by[INSERTION_INDEX + 2]) << 24) + (int(by[INSERTION_INDEX+3]) <<16) + (int(by[INSERTION_INDEX]) <<8) + int(by[INSERTION_INDEX+1])),
             # 'ch02': long_unsigned_to_long_signed((int(by[INSERTION_INDEX + 2]) << 24) + (int(by[INSERTION_INDEX+3]) <<16) + (int(by[INSERTION_INDEX]) <<8) + int(by[INSERTION_INDEX+1])),
 
-            'ch03': int.from_bytes(by[11:(11 + 1)], 'little'), # Toradex: Report.Ch[9] = buf[6];	// Squal
+            # 'ch03': int.from_bytes(by[11:(11 + 1)], 'little'), # Toradex: Report.Ch[9] = buf[6];	// Squal
+            'ch03': by[12],  # image_quality
             # 'ch05': int.from_bytes(by[12:(13 + 1)], 'little'), # The analog value of this channel
             'data_index': data_index,
             'file_indx': file_indx,
@@ -146,12 +147,14 @@ def parse_usb_capdata2(capdata):
         data_index = data_index +1
         debug_print = debug_print + 1
         if (debug_print%100) == 0:
-            print("> data here:   ",data,"   debug_print   ", debug_print, "  ")
+            # print("> data here:   ",data,"   debug_print   ", debug_print, "  ")
+            pass
         # elif (debug_print>880 and debug_print< 900):
         #     print(" >")
         #     print("data here:   ", data, "   debug_print   ", debug_print, end="  ")
         elif (data['data_index'] >= 880 and data['data_index'] <= 900):
-            print("i> data here:   ", data, "   data_index   ", data['data_index'], "  ")
+            pass
+            # print("i> data here:   ", data, "   data_index   ", data['data_index'], "  ")
 
     return data
 
@@ -341,15 +344,15 @@ def main():
         use_color = '#83fc95'
         ax1.plot(packet_num, cha_03, color=use_color, linewidth=0.75,label="image_quality") # be first to overwrite
         ax1.plot(packet_num, cha_00, 'c+-', linewidth=0.75,label="tool_size")
-        ax1.plot(packet_num, cha_01, 'm-', linewidth=0.75,label="torque")
-        ax1.plot(packet_num, cha_02, 'b-', linewidth=0.75,label="insertion")
-        ax1.plot(packet_num, packet_num_mod, 'k.', linewidth=0.75,label="packet_num")
+        ax1.plot(packet_num, cha_01, 'm-', linewidth=0.75,label="insertion") # swapped with torque regarding Hamamatsu 
+        ax1.plot(packet_num, cha_02, 'b-', linewidth=0.75,label="torque")    # swapped with insertion regarding Hamamatsu 
+        # ax1.plot(packet_num, packet_num_mod, 'k.', linewidth=0.75,label="packet_num")
         # ax1.set_xlim([0, 5000])
         # ax1.set_ylim([-10, 600])
 
         # ax1.plot(packet_num, cha_03, 'r-', linewidth=0.75,label="image_quality")
         ax1.set_xlabel("packet_num")
-        # ax1.legend()
+        ax1.legend()
 
         # ax1.set_ylabel("Time [ms]")
         ax1.set_ylabel("ADC: 4095=3volt")
