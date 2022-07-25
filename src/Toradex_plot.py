@@ -1,9 +1,17 @@
-        #!/usr/bin/env python3
-# file: WireShrk_Station_plot.py
-# date: 2022_07_13
+#!/usr/bin/python3
+# C:\Work\Python\HID_Util\src\toradex_plot.py
+# toradex_plot.py  that uses a pcapng file and parse it and plot the values.
+# for plotting pcapng files by using matplotlib and tkinter
+# date: 2022_07_23
+
+# usage:
+#       toradex_plot.py -o
+#           or
+#       toradex_plot.py "C:\Work\USB\WireShark\2022_07_19\2022_07_19__19_00_Toradex.pcapng"
 
 # usage:
 # WireShrk_Station_plot.py "C:\Work\USB\WireShark\2022_07_14\2022_07_14__17_34__streaming_recorded_with_movement.pcapng"
+# Toradex_plot.py "C:\Work\USB\WireShark\2022_07_19\2022_07_19__19_00_Toradex.pcapng"
 
 import sys
 import pyshark
@@ -23,7 +31,8 @@ import os
 # packet.usb.endpoint_address_direction -- URB INTERRUPT IN/OUT
 # packet.usb.data_len -- Packet's payload length
 # packet.data.usb_capdata -- Packet's payload (in this format '3f:07:03:...:00')
-
+# global veriables:
+debug_print = 0
 direction = {
     'in': '1',
     'out': '0'
@@ -70,50 +79,94 @@ def pac_next(cap, pac_num):
     except StopIteration:
         return None, pac_num
 
+data_index = 0
+file_indx = 0
+aggregate_counter = 0
 def parse_usb_capdata2(capdata):
+    global  debug_print
+    global  data_index
+    global file_indx
     by = bytes.fromhex(capdata.replace(':', ''))
     data = None
-    TORQUE_INDEX = 6
-    INSERTION_INDEX = 10
-    if len(by) > 0:
+    # TORQUE_INDEX = 6
+    # INSERTION_INDEX = 10
+    # toradex index for reverse engineering
+    TORQUE_INDEX = 4
+    INSERTION_INDEX = 8
+    len_by = len(by)
+    if len_by > 0:
         # [3f, 07, 03, 03, 00, 00, args...]
         # [3f, 2e, xx, xx, xx, xx, xx ...] // in streaming mode.
-        args_len = int.from_bytes(by[3:(4 + 1)], 'little')
+        # [ ReturnCode , Param[31] ] // in Toradex protocol.
+        # args_len = int.from_bytes(by[3:(4 + 1)], 'little')
+        ReturnCode = by[0]
         data = {
-            'total_len': by[0] + 1, # The total number of bytes in the payload - this is always = 64
-            'len': by[1], # The total of number of actual bytes used in the payload
-            'raw': by[2:], # The actual command, unparsed
-            'fill': int.from_bytes(by[2:(3 + 1)], 'little'), # The dummy 2 bytes that are not used yet
-            'cmos': int.from_bytes(by[4:(5 + 1)], 'little'), # The analog value of this channel
+            'byte_0': by[0],
+            'word_0': int.from_bytes(by[0:(1 + 1)], 'little'), #The first 2 bytes in the data from the stream report: Report.Ch0_LSB  and Report.Ch0_MSB
+            # 'len': by[1], # The total of number of actual bytes used in the payload
+            # 'raw': by[2:], # The actual command, unparsed
+            # 'fill': int.from_bytes(by[2:(3 + 1)], 'little'), # The dummy 2 bytes that are not used yet
+            'cmos': int.from_bytes(by[2:(3 + 1)], 'little'), # The analog value of this channel
+            # 'cmos': int(by[2]), # The analog value of this channel
+
             # 'ch01': int.from_bytes(by[6:(9 + 1)], 'little'), # The Torque value 4 bytes signed integer
             # 'ch01': long_unsigned_to_long_signed(int.from_bytes(by[6:(9 + 1)], 'little')), # The Torque value 4 bytes signed integer
-            'ch01': long_unsigned_to_long_signed((int(by[TORQUE_INDEX + 2]) << 24) + (int(by[TORQUE_INDEX+3]) <<16) + (int(by[TORQUE_INDEX]) <<8) + int(by[TORQUE_INDEX+1])),
+
+            # 00 00 02 00
+            # 2  3  0  1
+            # 'ch01': long_unsigned_to_long_signed((int(by[TORQUE_INDEX + 2]) << 24) + (int(by[TORQUE_INDEX+3]) <<16) + (int(by[TORQUE_INDEX]) <<8) + int(by[TORQUE_INDEX+1])),
+            #
+            'ch01': long_unsigned_to_long_signed((int(by[TORQUE_INDEX+1]) << 24) + (int(by[TORQUE_INDEX]) <<16) + (int(by[TORQUE_INDEX+3]) <<8) + int(by[TORQUE_INDEX+2])),
+            # 'ch01_0': by[TORQUE_INDEX] ,
+            # 'ch01_1': by[TORQUE_INDEX+1] ,
+            # 'ch01_2': by[TORQUE_INDEX+2] ,
+            # 'ch01_3': by[TORQUE_INDEX+3] ,
+
+            # 'ch01': long_unsigned_to_long_signed((int(by[TORQUE_INDEX + 2]) << 24) + (int(by[TORQUE_INDEX+3]) <<16) + (int(by[TORQUE_INDEX]) <<8) + int(by[TORQUE_INDEX+1])),
+            # 'ch01': long_unsigned_to_long_signed((int(by[TORQUE_INDEX + 2]) << 24) + (int(by[TORQUE_INDEX+3]) <<16) + (int(by[TORQUE_INDEX]) <<8) + int(by[TORQUE_INDEX+1])),
+            # 'ch01': long_unsigned_to_long_signed((int(by[TORQUE_INDEX + 2]) << 24) + (int(by[TORQUE_INDEX+3]) <<16) + (int(by[TORQUE_INDEX]) <<8) + int(by[TORQUE_INDEX+1])),
 
             # 'ch02': int.from_bytes(by[10:(13 + 1)], 'little'), # The insertion value 4 bytes signed integer
             # 'ch03': int.from_bytes(by[14:(14 + 1)], 'little'), # The analog value of this channel
             # 'ch02': 17, # The insertion value 4 bytes signed integer
-            'ch02': long_unsigned_to_long_signed((int(by[INSERTION_INDEX + 2]) << 24) + (int(by[INSERTION_INDEX+3]) <<16) + (int(by[INSERTION_INDEX]) <<8) + int(by[INSERTION_INDEX+1])),
-            'ch03': int.from_bytes(by[14:(14 + 1)], 'little'), # The analog value of this channel
+
+            # 'ch02': long_unsigned_to_long_signed((int(by[INSERTION_INDEX + 2]) << 24) + (int(by[INSERTION_INDEX+3]) <<16) + (int(by[INSERTION_INDEX]) <<8) + int(by[INSERTION_INDEX+1])),
+            'ch02': long_unsigned_to_long_signed((int(by[INSERTION_INDEX+1]) << 24) + (int(by[INSERTION_INDEX]) <<16) + (int(by[INSERTION_INDEX+3]) <<8) + int(by[INSERTION_INDEX+2])),
+
+            # 'ch02_0': (int(by[INSERTION_INDEX]) ),
+            # 'ch02': long_unsigned_to_long_signed((int(by[INSERTION_INDEX + 2]) << 24) + (int(by[INSERTION_INDEX+3]) <<16) + (int(by[INSERTION_INDEX]) <<8) + int(by[INSERTION_INDEX+1])),
+            # 'ch02': long_unsigned_to_long_signed((int(by[INSERTION_INDEX + 2]) << 24) + (int(by[INSERTION_INDEX+3]) <<16) + (int(by[INSERTION_INDEX]) <<8) + int(by[INSERTION_INDEX+1])),
+            # 'ch02': long_unsigned_to_long_signed((int(by[INSERTION_INDEX + 2]) << 24) + (int(by[INSERTION_INDEX+3]) <<16) + (int(by[INSERTION_INDEX]) <<8) + int(by[INSERTION_INDEX+1])),
+
+            'ch03': int.from_bytes(by[11:(11 + 1)], 'little'), # Toradex: Report.Ch[9] = buf[6];	// Squal
             # 'ch05': int.from_bytes(by[12:(13 + 1)], 'little'), # The analog value of this channel
-            # 'ch06': int.from_bytes(by[14:(15 + 1)], 'little'), # The analog value of this channel
-            # 'ch07': int.from_bytes(by[16:(17 + 1)], 'little'), # The analog value of this channel
-            # 'ch08': int.from_bytes(by[18:(19 + 1)], 'little'), # The analog value of this channel
-            # 'ch09': int.from_bytes(by[20:(21 + 1)], 'little'), # The analog value of this channel
-            # 'ch10': int.from_bytes(by[22:(23 + 1)], 'little'), # The analog value of this channel
-            # 'ch11': int.from_bytes(by[24:(25 + 1)], 'little'), # The analog value of this channel
-            # 'ch12': int.from_bytes(by[26:(27 + 1)], 'little'), # The analog value of this channel
-            # 'ch13': int.from_bytes(by[28:(29 + 1)], 'little'), # The analog value of this channel
+            'data_index': data_index,
+            'file_indx': file_indx,
         }
+        data_index = data_index +1
+        debug_print = debug_print + 1
+        if (debug_print%100) == 0:
+            print("> data here:   ",data,"   debug_print   ", debug_print, "  ")
+        # elif (debug_print>880 and debug_print< 900):
+        #     print(" >")
+        #     print("data here:   ", data, "   debug_print   ", debug_print, end="  ")
+        elif (data['data_index'] >= 880 and data['data_index'] <= 900):
+            print("i> data here:   ", data, "   data_index   ", data['data_index'], "  ")
+
     return data
-'''
-'''
+
 
 def check_packet2(pac, pac_num, t_prev, timings):
     data = None # Equals to None if no data was sent in this packet
+    global file_indx
+    global aggregate_counter
+    file_indx = file_indx + 1
     try:
-        data = parse_usb_capdata2(pac.data.usb_capdata)
+        # data = parse_usb_capdata2(pac.data.usb_capdata)
+        data = parse_usb_capdata2(pac.data.usb_control_response)
     except AttributeError:
         pass
+
     if pac_num < 50:
         pass
         # print(data['total_len'])
@@ -133,12 +186,24 @@ def check_packet2(pac, pac_num, t_prev, timings):
         #     print("delta time less then zero: {}".format(delta_time))
         # delta_time_ms = delta_time/1000    # from microsecond to miliseconds
         delta_time_ms = delta_time.total_seconds() * 1000  # from microsecond to miliseconds
-        
-        if data['len'] == 0x26:       # aggregate only streaming packets 
-            # timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':data['ch01'], 'ana_02':data['ch02'], 'ana_03':data['ch03'], 'ana_04':data['ch04'], 'ana_05':data['ch05'], 'ana_06':data['ch06'], 'ana_07':data['ch07'], 'ana_08':data['ch08'], 'ana_09':data['ch09'], 'ana_10':data['ch10'], 'ana_11':data['ch11'], 'ana_12':data['ch12'], 'ana_13':data['ch13']})
-            
-            # removing the extra channels did not improve the parsing time 
-            timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':data['ch01'], 'ana_02':data['ch02'], 'ana_03':data['ch03']})
+
+        if data != None:  #2022_07_23__22_57
+            # if data['word_0'] != 0xff:       # aggregate only streaming packets
+            if data['byte_0'] != 0xff:       # aggregate only streaming packets
+                if (data['cmos'] < 4000)   and ( abs(data['ch01']) < 1000000) and ( abs(data['ch02']) < 1000000):
+            # if True:
+                # timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':data['ch01'], 'ana_02':data['ch02'], 'ana_03':data['ch03'], 'ana_04':data['ch04'], 'ana_05':data['ch05'], 'ana_06':data['ch06'], 'ana_07':data['ch07'], 'ana_08':data['ch08'], 'ana_09':data['ch09'], 'ana_10':data['ch10'], 'ana_11':data['ch11'], 'ana_12':data['ch12'], 'ana_13':data['ch13']})
+
+                    # removing the extra channels did not improve the parsing time
+                    # timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':data['ch01_0'], 'ana_02':data['ch02_0'], 'ana_03':data['ch03']})
+                    timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':data['ch01'], 'ana_02':data['ch02'], 'ana_03':data['ch03'], 'file_indx':file_indx})
+
+                    # timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':11, 'ana_02':22, 'ana_03':data['ch03'], 'file_indx':file_indx})
+                    # timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':11, 'ana_02':22, 'ana_03':33, 'file_indx':file_indx})
+
+                    # timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':1, 'ana_02':2, 'ana_03':data['ch03'], 'file_indx':file_indx })
+                    aggregate_counter = aggregate_counter +1
+
     #     if not data['response']:
     #         print("Packet no. %d: The device didn't echo the \"response\" byte (it's 0)" % (pac_num,))
         # if not any(i['cmd'] == data['cmd'] for i in cmds_queue):
@@ -210,6 +275,7 @@ def main():
     cmds_queue = []
     prev_time = pac.sniff_time
     prev_time =  check_packet2(pac, pac_num, prev_time, timings)
+    # return # for debug
     timings = []  # to remove the first element.
     pac, pac_num = pac_next(cap, pac_num)
     i=0
@@ -222,15 +288,19 @@ def main():
             # print(i)
         prev_time = check_packet2(pac, pac_num, prev_time, timings)
         pac, pac_num = pac_next(cap, pac_num)
-        # if i>4000:
-            # break
+        # 2022_07_25__16_09
+        # if i>2000:
+        #     break
         # if i>60:
         #     break
 
     # if len(cmds_queue) > 0:
     #     print("%d requests left without responses" % (len(cmds_queue),))
+    print("aggregate_counter: %d  ; pac_num: %d  file_indx: %d" % (aggregate_counter,pac_num,file_indx))
     
     timings = timings[1:]
+    timings_len = len(timings)
+    print("timings_len: ",timings_len)
     times = [i['time'] for i in timings]
     ac_time =[]
     ac=0
@@ -240,20 +310,15 @@ def main():
     print("len of ac_time= {}".format(len(ac_time)))
     times2 = [2*i['time'] for i in timings]
     packet_num = [i['number'] for i in timings]
+    packet_num_mod = [(i['number'])%100 for i in timings]
     responses = [2*i['number'] for i in timings]
     cha_00 = [i['ana_00'] for i in timings]
     cha_01 = [i['ana_01'] for i in timings]
     cha_02 = [i['ana_02'] for i in timings]
     cha_03 = [i['ana_03'] for i in timings]
+    used_index = [i['file_indx'] for i in timings]
     # print("timings[3310:3315]: ",timings[3310:3315])
 
-    # cha_08 = [i['ana_08'] for i in timings]
-    # cha_09 = [i['ana_09'] for i in timings]
-    # cha_10 = [i['ana_10'] for i in timings]
-    # cha_11 = [i['ana_11'] for i in timings]
-
-    # cha_12 = [i['ana_12'] for i in timings]
-    # cha_13 = [i['ana_13'] for i in timings]
 
     fig, (ax1,ax2) = plt.subplots(2, 1)
     ax1.grid(True)
@@ -264,6 +329,7 @@ def main():
 
     if first_4_channels:
         ax2.plot(ac_time, cha_00, 'c+', linewidth=0.75)
+        ax1.set_xlabel("ac_time")
 
         # plt.plot(y0,label="tool_size")
         # plt.plot(y1,label="insertion")
@@ -277,9 +343,14 @@ def main():
         ax1.plot(packet_num, cha_00, 'c+-', linewidth=0.75,label="tool_size")
         ax1.plot(packet_num, cha_01, 'm-', linewidth=0.75,label="torque")
         ax1.plot(packet_num, cha_02, 'b-', linewidth=0.75,label="insertion")
+        ax1.plot(packet_num, packet_num_mod, 'k.', linewidth=0.75,label="packet_num")
+        # ax1.set_xlim([0, 5000])
+        # ax1.set_ylim([-10, 600])
+
         # ax1.plot(packet_num, cha_03, 'r-', linewidth=0.75,label="image_quality")
         ax1.set_xlabel("packet_num")
-        ax1.legend()
+        # ax1.legend()
+
         # ax1.set_ylabel("Time [ms]")
         ax1.set_ylabel("ADC: 4095=3volt")
         ax2.set_ylabel("tool_size: 2047=Max")
