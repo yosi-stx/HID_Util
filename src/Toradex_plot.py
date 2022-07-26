@@ -191,22 +191,25 @@ def check_packet2(pac, pac_num, t_prev, timings):
         delta_time_ms = delta_time.total_seconds() * 1000  # from microsecond to miliseconds
 
         if data != None:  #2022_07_23__22_57
-            # if data['word_0'] != 0xff:       # aggregate only streaming packets
-            if data['byte_0'] != 0xff:       # aggregate only streaming packets
-                if (data['cmos'] < 4000)   and ( abs(data['ch01']) < 1000000) and ( abs(data['ch02']) < 1000000):
+            # if data['word_0'] != 0xff:
+            # aggregate only streaming and relevant packets
+            if data['byte_0'] != 0xff and (data['cmos'] < 4000) and ( abs(data['ch01']) < 1000000) and ( abs(data['ch02']) < 1000000):
             # if True:
                 # timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':data['ch01'], 'ana_02':data['ch02'], 'ana_03':data['ch03'], 'ana_04':data['ch04'], 'ana_05':data['ch05'], 'ana_06':data['ch06'], 'ana_07':data['ch07'], 'ana_08':data['ch08'], 'ana_09':data['ch09'], 'ana_10':data['ch10'], 'ana_11':data['ch11'], 'ana_12':data['ch12'], 'ana_13':data['ch13']})
 
                     # removing the extra channels did not improve the parsing time
                     # timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':data['ch01_0'], 'ana_02':data['ch02_0'], 'ana_03':data['ch03']})
-                    timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':data['ch01'], 'ana_02':data['ch02'], 'ana_03':data['ch03'], 'file_indx':file_indx})
+                    skipped = check_packet2.skip_cntr
+                    timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':data['ch01'], 'ana_02':data['ch02'], 'ana_03':data['ch03'], 'file_indx':file_indx,'skipped':skipped})
+                    check_packet2.skip_cntr = 0
 
-                    # timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':11, 'ana_02':22, 'ana_03':data['ch03'], 'file_indx':file_indx})
+            # timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':11, 'ana_02':22, 'ana_03':data['ch03'], 'file_indx':file_indx})
                     # timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':11, 'ana_02':22, 'ana_03':33, 'file_indx':file_indx})
 
                     # timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':1, 'ana_02':2, 'ana_03':data['ch03'], 'file_indx':file_indx })
                     aggregate_counter = aggregate_counter +1
-
+            else:
+                check_packet2.skip_cntr += 1
     #     if not data['response']:
     #         print("Packet no. %d: The device didn't echo the \"response\" byte (it's 0)" % (pac_num,))
         # if not any(i['cmd'] == data['cmd'] for i in cmds_queue):
@@ -222,6 +225,7 @@ def check_packet2(pac, pac_num, t_prev, timings):
         #         print("Packet no. %d: The device ignored the first %d commands in queue" % (pac_num, data['cmd']))
             # Found a legal response
     return pac.sniff_time
+check_packet2.skip_cntr = 0
 
 def main():
     global filepath
@@ -320,6 +324,7 @@ def main():
     cha_02 = [i['ana_02'] for i in timings]
     cha_03 = [i['ana_03'] for i in timings]
     used_index = [i['file_indx'] for i in timings]
+    skipped= [i['skipped'] for i in timings]
     # print("timings[3310:3315]: ",timings[3310:3315])
 
 
@@ -343,6 +348,8 @@ def main():
         # use_color = '#ebaee8'
         use_color = '#83fc95'
         ax1.plot(packet_num, cha_03, color=use_color, linewidth=0.75,label="image_quality") # be first to overwrite
+        use_color = '#735e53'
+        ax1.plot(packet_num, skipped, color=use_color, linewidth=0.75,label="skipped cntr") # be first to overwrite
         ax1.plot(packet_num, cha_00, 'c+-', linewidth=0.75,label="tool_size")
         ax1.plot(packet_num, cha_01, 'm-', linewidth=0.75,label="insertion") # swapped with torque regarding Hamamatsu 
         ax1.plot(packet_num, cha_02, 'b-', linewidth=0.75,label="torque")    # swapped with insertion regarding Hamamatsu 
