@@ -199,7 +199,7 @@ def check_packet2(pac, pac_num, t_prev, timings):
 
                     # removing the extra channels did not improve the parsing time
                     # timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':data['ch01_0'], 'ana_02':data['ch02_0'], 'ana_03':data['ch03']})
-                    skipped = check_packet2.skip_cntr
+                    skipped = check_packet2.skip_cntr  # static variable
                     timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':data['ch01'], 'ana_02':data['ch02'], 'ana_03':data['ch03'], 'file_indx':file_indx,'skipped':skipped})
                     check_packet2.skip_cntr = 0
 
@@ -209,7 +209,7 @@ def check_packet2(pac, pac_num, t_prev, timings):
                     # timings.append({'time': delta_time_ms, 'number': pac_num, 'ana_00':data['cmos'], 'ana_01':1, 'ana_02':2, 'ana_03':data['ch03'], 'file_indx':file_indx })
                     aggregate_counter = aggregate_counter +1
             else:
-                check_packet2.skip_cntr += 1
+                check_packet2.skip_cntr += 1   # increment static variable
     #     if not data['response']:
     #         print("Packet no. %d: The device didn't echo the \"response\" byte (it's 0)" % (pac_num,))
         # if not any(i['cmd'] == data['cmd'] for i in cmds_queue):
@@ -225,7 +225,7 @@ def check_packet2(pac, pac_num, t_prev, timings):
         #         print("Packet no. %d: The device ignored the first %d commands in queue" % (pac_num, data['cmd']))
             # Found a legal response
     return pac.sniff_time
-check_packet2.skip_cntr = 0
+check_packet2.skip_cntr = 0  # initializing static variable
 
 def main():
     global filepath
