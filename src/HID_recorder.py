@@ -120,8 +120,11 @@ CMOS_INDEX = 2 + 2   # maybe + 4???
 #                       0  1  2  3  4 5 6 7  8 9 1011
 # Received data: b'3f26 00 00 00 00 0674fc41 3f4efc70 0033a4513c5a0101210001000000650000000000000000000000167f070dd7aee89baff63fedcfcccb763acf041b00000010'
 #                                   TORQUE   INSERTION
-INSERTION_INDEX = 2 + 8
-TORQUE_INDEX = 2 + 4
+# INSERTION_INDEX = 2 + 8
+# TORQUE_INDEX = 2 + 4
+# after switching the X and Y orientation due to PixArt alignment. 
+INSERTION_INDEX = 2 + 4
+TORQUE_INDEX = 2 + 8
 STATION_CURRENT_INDEX = 25
 MAX_LONG_POSITIVE = 2**31
 MAX_UNSIGNED_LONG = 2**32

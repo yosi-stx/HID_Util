@@ -84,6 +84,7 @@ WRITE_DATA_CMD_S = bytes.fromhex("3f3ebb00b127ff00ff00ff0053ff33ff00000000000000
 # 'A' - keep Alive + fast BLE update (every 20 msec)
 WRITE_DATA_CMD_A = bytes.fromhex("3f3ebb00b127ff00ff00ff0041ff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 WRITE_DATA_CMD_GET_FW_VERSION = bytes.fromhex("3f040600000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+WRITE_DATA_CMD_RST_INS_TORQUE = bytes.fromhex("3f049200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # moderate BLE update rate every 50 mSec by 'M' command
 WRITE_DATA_CMD_M = bytes.fromhex("3f3ebb00b127ff00ff00ff004dff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # set_BSL_mode
@@ -106,12 +107,16 @@ CMOS_INDEX = 2 + 2   # maybe + 4???
 #                       0  1  2  3  4 5 6 7  8 9 1011
 # Received data: b'3f26 00 00 00 00 0674fc41 3f4efc70 0033a4513c5a0101210001000000650000000000000000000000167f070dd7aee89baff63fedcfcccb763acf041b00000010'
 #                                   TORQUE   INSERTION
-INSERTION_INDEX = 2 + 8
-TORQUE_INDEX = 2 + 4
+# INSERTION_INDEX = 2 + 8
+# TORQUE_INDEX = 2 + 4
+# after switching the X and Y orientation due to PixArt alignment. 
+INSERTION_INDEX = 2 + 4
+TORQUE_INDEX = 2 + 8
 STATION_CURRENT_INDEX = 25
 MAX_LONG_POSITIVE = 2**31
 MAX_UNSIGNED_LONG = 2**32
-IMAGE_QUALITY_INDEX = INSERTION_INDEX + 4
+# IMAGE_QUALITY_INDEX = INSERTION_INDEX + 4
+IMAGE_QUALITY_INDEX = TORQUE_INDEX + 4
 
 HID_STREAM_CHANNEL1_STYLE = "HIDStreamChannel1"
 HID_STREAM_CHANNEL2_STYLE = "HIDStreamChannel2"
@@ -218,8 +223,13 @@ def gui_loop(device):
                 print("special_cmd A -> keep Alive + fast BLE update (every 20 msec)")
             special_cmd = 0
         elif special_cmd == 'M':
-            WRITE_DATA = WRITE_DATA_CMD_M
-            print("special_cmd M -> moderate BLE update rate every 50 mSec")
+            if PRODUCT_ID == PRODUCT_ID_STATION:
+                print("special_cmd M -> reset to the Insertion and Torque")
+                WRITE_DATA = WRITE_DATA_CMD_RST_INS_TORQUE
+                device.write(WRITE_DATA)
+            else:
+                print("special_cmd M -> moderate BLE update rate every 50 mSec")
+                WRITE_DATA = WRITE_DATA_CMD_M
             special_cmd = 0
         elif special_cmd == 'B':
             WRITE_DATA = WRITE_DATA_CMD_B
@@ -554,7 +564,13 @@ def my_widgets(frame):
     row += 1
     ttk.Label(frame,text="----------------------").grid(row=row,sticky=tk.NW)
     row += 1
-    ttk.Label(frame,text="ADCs...").grid(row=row,sticky=tk.NW)
+    if PRODUCT_ID == PRODUCT_ID_STATION:
+        text_name =\
+"ADCs...  \t\t\t\t\t\
+NOTE: Zero value in Tool_size reset the Insertion value"
+        ttk.Label(frame,text=text_name).grid(row=row,sticky=tk.NW)
+    else:
+        ttk.Label(frame,text="ADCs...").grid(row=row,sticky=tk.NW)
     row += 1
 
     #
@@ -773,8 +789,10 @@ def my_widgets(frame):
     else:
         red_handle_ignore = tk.Button(frame,text ="Keep alive (fast BLE)",command = alive_button_CallBack)
     red_handle_ignore.grid(row=row,column=1)
-
-    red_handle_ignore = tk.Button(frame,text ="Moderate BLE",command = moderate_button_CallBack)
+    if PRODUCT_ID == PRODUCT_ID_STATION:
+        red_handle_ignore = tk.Button(frame,text ="Reset Ins & Torque",command = moderate_button_CallBack)
+    else:
+        red_handle_ignore = tk.Button(frame,text ="Moderate BLE",command = moderate_button_CallBack)
     red_handle_ignore.grid(row=row,column=2)
 
     row += 1
