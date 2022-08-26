@@ -91,6 +91,8 @@ WRITE_DATA_CMD_M = bytes.fromhex("3f3ebb00b127ff00ff00ff004dff33ff00000000000000
 # WRITE_DATA_CMD_B = bytes.fromhex("3f3eaa00b127ff00ff00ff004dff33ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 #0xAA	Run BSL
 WRITE_DATA_CMD_B = bytes.fromhex("3f04aa00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+# basic start for general command 
+WRITE_DATA_CMD___bytearray = bytearray(b'\x3f')  # initialization of the command
 
 
 SLEEP_AMOUNT = 0.002 # Read from HID every 2 milliseconds
@@ -183,6 +185,20 @@ def BSL_mode_button_CallBack():
     global special_cmd
     special_cmd = 'B'
 	
+def PWM_value_button_CallBack():
+    global special_cmd
+    global WRITE_DATA_CMD___bytearray
+    WRITE_DATA_CMD___bytearray.append(12)
+    special_cmd = 'G'
+
+prev_pwm = 0
+pwm_widget = 0
+def show_pwm_values():
+    global pwm_widget
+    # print (pwm_widget.get())
+    return pwm_widget.get()
+    
+	
 def gui_loop(device):
     do_print = True
     print_time = 0.0
@@ -237,6 +253,11 @@ def gui_loop(device):
                 device.write(WRITE_DATA)
             print("special_cmd B -> set_BSL_mode  --- this will stop HID communication with this GUI")
             special_cmd = 0
+        elif special_cmd == 'G':
+            WRITE_DATA = WRITE_DATA_CMD_G 
+            device.write(WRITE_DATA)
+            print("special_cmd G -> set_PWM_value  ")
+            special_cmd = 0
         else:
             WRITE_DATA = DEFAULT_WRITE_DATA
         
@@ -253,6 +274,32 @@ def gui_loop(device):
             #     if prev_cnt and cnt < prev_cnt:
             #         print("Invalid counter")
             sleep(SLEEP_AMOUNT)
+
+        # handle the PWM command to device
+        global prev_pwm
+        # global special_cmd
+        # global WRITE_DATA_CMD___bytearray
+        WRITE_DATA_CMD___bytearray = bytearray(b'\x3f')  # initialization of the command
+        pwm_val = show_pwm_values()
+        if (prev_pwm) != (pwm_val):
+            print("prev_pwm=  ",int(prev_pwm), "     pwm_val= ",int(pwm_val) )
+            WRITE_DATA_CMD___bytearray.append(5)
+            WRITE_DATA_CMD___bytearray.append(0x95)
+            WRITE_DATA_CMD___bytearray.append(1)
+            WRITE_DATA_CMD___bytearray.append(0)
+            WRITE_DATA_CMD___bytearray.append(0)
+            pwm_10 = pwm_val//10
+            pwm_01 = pwm_val%10
+            hex_pwm_val = pwm_10*16+pwm_01
+            WRITE_DATA_CMD___bytearray.append(int(hex_pwm_val))
+            for i in range(63-5):
+                WRITE_DATA_CMD___bytearray.append(0)
+            print("WRITE_DATA_CMD___bytearray = %s " % WRITE_DATA_CMD___bytearray)
+            WRITE_DATA_CMD_G = bytes(WRITE_DATA_CMD___bytearray)
+            print("WRITE_DATA_CMD_G = %s " % WRITE_DATA_CMD_G)
+            special_cmd = 'G'
+            
+        prev_pwm = pwm_val
 
         # Measure the time
         time = timer()
@@ -276,6 +323,7 @@ def date2dec(x):
     s = "%02x" % x
     return s
 
+
 def handler(value, do_print=False):
     # global print_flag
 
@@ -287,6 +335,7 @@ def handler(value, do_print=False):
 #   tool_size from CMOS: bytes 5..6
 #   3f260000370b
     global handler_counter
+
     handler_counter = handler_counter + 1
     global hid_util_fault
     hid_util_fault = (int(value[START_INDEX+1]) & 0xF )
@@ -420,7 +469,7 @@ def handler(value, do_print=False):
     progressbar_sleepTimer = progressbars[5]
     progressbar_batteryLevel = progressbars[6]
     progressbar_MotorCur = progressbars[7]
-    checkbox_inner_clicker = inner_clicker
+#    checkbox_inner_clicker = inner_clicker
     checkbox_red_handle = red_handle
     checkbox_reset_check = reset_check
     checkbox_ignore_red_handle = ignore_red_handle_checkbutton
@@ -456,7 +505,7 @@ def handler(value, do_print=False):
     progressbar_batteryLevel["value"] = precentage_batteryLevel
     progressbar_MotorCur["value"] = precentage_MotorCur
 
-    update_checkbox(checkbox_inner_clicker, bool_clicker)
+#    update_checkbox(checkbox_inner_clicker, bool_clicker)
     update_checkbox(checkbox_red_handle, bool_red_handle)
     update_checkbox(checkbox_reset_check, bool_reset)
     update_checkbox(checkbox_ignore_red_handle, bool_ignore_red_handle)
@@ -510,12 +559,13 @@ def my_seperator(frame, row):
     ).grid(
         pady=10,
         row=row,
-        columnspan=3,
+        columnspan=4,
         sticky=(tk.W + tk.E)
     )
     return row + 1
 
 def my_widgets(frame):
+    global pwm_widget
     # Add style for labeled progress bar
     for name in style_names:
         style = ttk.Style(
@@ -619,20 +669,20 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     row = my_seperator(frame, row)
 
     # Clicker labels
-    ttk.Label(frame,text="InnerClicker").grid(row=row,column=0,sticky=tk.W)
-    ttk.Label(frame,text="Channel 9").grid(row=row,column=1)
-    ttk.Label(frame,text="Channel_22 Numeric (bytes 44,45)").grid(row=row,column=2)  #ClickerCounter -> Channel_22 Numeric
+#    ttk.Label(frame,text="InnerClicker").grid(row=row,column=0,sticky=tk.W)
+    ttk.Label(frame,text="Channel 9").grid(row=row,column=0)
+    ttk.Label(frame,text="Channel_22 Numeric (bytes 44,45)").grid(row=row,column=1)  #ClickerCounter -> Channel_22 Numeric
 
     row += 1
 
     # Clicker data
-    w = tk.Checkbutton(frame,state=tk.DISABLED)
-    global inner_clicker
-    inner_clicker = w
-    w.grid(row=row,column=0)
+#    w = tk.Checkbutton(frame,state=tk.DISABLED)
+#    global inner_clicker
+#    inner_clicker = w
+#    w.grid(row=row,column=0)
     w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style="Clicker")
     progressbars.append(w)
-    w.grid(row=row,column=1)
+    w.grid(row=row,column=0)
     # yg: adding clicker counter display
     w = ttk.Entry(frame,width=20,)
     global clicker_counter_entry
@@ -640,19 +690,19 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     w.grid(
         #padx=10,#pady=5,
         row=row,
-        column=2,#sticky=tk.W,
+        column=1,#sticky=tk.W,
         )
 
     row += 1
 
     # Seperator
     row = my_seperator(frame, row)
+    # ------------------------------------------------------
 
-    # Red handle and reset button labels
-    ttk.Label(frame,text="RedHandle").grid(row=row,column=0,sticky=tk.W)
-    ttk.Label(frame,text="ResetButton").grid(row=row,column=1)
-
-    ttk.Label(frame,text="IgnoreRedHandlefault").grid(row=row,column=2)
+    # was: Red handle and reset button labels
+    ttk.Label(frame,text="TBD_digital_1").grid(row=row,column=0) # without the sticky it is in the middle by default.
+    ttk.Label(frame,text="TBD_digital_2").grid(row=row,column=1)
+    ttk.Label(frame,text="TBD_digital_3").grid(row=row,column=2)
 
     row += 1
 
@@ -666,9 +716,6 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     reset_check = w
     w.grid(row=row,column=1)
 
-    red_handle_ignore = tk.Button(frame,text ="Start streaming",command = streaming_button_CallBack)
-    red_handle_ignore.grid(row=row,column=3)
-    
     # checkbox for the ignore red handle 
     w = tk.Checkbutton(frame,state=tk.DISABLED)
     # global ignore_red
@@ -677,40 +724,46 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     ignore_red_handle_checkbutton = w
     w.grid(row=row,column=2)
 
+    temp_widget = tk.Button(frame,text ="Start streaming",command = streaming_button_CallBack)
+    temp_widget.grid(row=row,column=3)
+
     row += 1
 
     # Seperator
     row = my_seperator(frame, row)
+    # ------------------------------------------------------
 
     # Counter
-    ttk.Label(frame,text="PacketsCounter:").grid(row=row,column=0,sticky=tk.E,)
-    w = ttk.Entry(frame,width=20,
-        # """state=tk.DISABLED"""
-        )
+    # ttk.Label(frame,text="PacketsCounter:").grid(row=row,column=0,sticky=tk.E,)
+    w = ttk.Label(frame,text="PacketsCounter:")
+    w.grid(row=row,column=0,sticky=tk.W,)
+    
+    w = ttk.Entry(frame,width=25)
+    #w.grid(row=row,column=0,sticky=tk.W,)
+# width=20 make the Entry window for 20 chars long.    
+# adding the state=tk.DISABLED  to widget : makes it gray        
     global counter_entry
     counter_entry = w
-    w.grid(padx=10,pady=5,row=row,column=1,columnspan=2,sticky=tk.W,)
+    # w.grid(padx=10,pady=5,row=row,column=1,columnspan=2,sticky=tk.W,)
+    next_row = row+1
+    # w.grid(padx=10,pady=5,row=row,column=0,columnspan=1,sticky=tk.E,)
+    w.grid(padx=10,pady=5,row=row,column=0,columnspan=1)
+    # columnspan − How many columns widget occupies; default 1
+
+    #                       |||||                       #
     # HID_Util Fault indication
-    ttk.Label(frame,text="Faultindication:").grid(row=row,column=1,sticky=tk.E,)
-    w = ttk.Entry(
-        frame,
-        width=20,
-    )
+    ttk.Label(frame,text="Faultindication:").grid(row=row,column=1,sticky=tk.W,)
+    w = ttk.Entry(frame,width=20,)
     global fault_entry
     fault_entry = w
-    w.grid(
-        padx=10,
-        pady=5,
-        row=row,
-        column=2,
-        columnspan=2,
-        sticky=tk.W,
-    )
+    w.grid(padx=10,pady=5,row=row,column=1,columnspan=1)#,sticky=tk.E,)
 
+    row += 1
     row += 1
 
     # Seperator
     row = my_seperator(frame, row)
+    # ------------------------------------------------------
 
     # sleepTimer
     ttk.Label(frame,text="SleepTimer").grid(row=row,column=0,sticky=tk.E,)
@@ -725,13 +778,15 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     w.grid(
         row=row,
         column=1,
-        columnspan=3
+        # columnspan=3
+        columnspan=2
     )
 
     row += 1
 
     # Seperator
     row = my_seperator(frame, row)
+    # ------------------------------------------------------
 
     # battery level
     text_name = "batterylevel"
@@ -749,13 +804,15 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     w.grid(
         row=row,
         column=1,
-        columnspan=3
+        # columnspan=3
+        columnspan=2
     )
 
     row += 1
 
     # Seperator
     row = my_seperator(frame, row)
+    # ------------------------------------------------------
 
     # Motor Cur
     if PRODUCT_ID != PRODUCT_ID_STATION:
@@ -773,33 +830,48 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     w.grid(
         row=row,
         column=1,
-        columnspan=3
+        # columnspan=3
+        columnspan=2
     )
 
     row += 1
 
     # Seperator
     row = my_seperator(frame, row)
+    # ------------------------------------------------------
 
-    red_handle_ignore = tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
-    red_handle_ignore.grid(row=row,column=0)
+    pwm_widget = tk.Scale(frame, from_=0, to=100, orient='horizontal')#, orient=HORIZONTAL)
+    # tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
+    pwm_widget.grid(row=row,column=0)
+
+    temp_widget = tk.Button(frame, text='Print PWM', command=show_pwm_values).grid(row=row,column=1)
+    
+    row += 1
+
+    # Seperator
+    row = my_seperator(frame, row)
+    # ------------------------------------------------------
+
+    temp_widget = tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
+    temp_widget.grid(row=row,column=0)
 
     if PRODUCT_ID != PRODUCT_ID_CTAG: # PRODUCT_ID_LAP_NEW_CAMERA, PRODUCT_ID_STATION...
-        red_handle_ignore = tk.Button(frame,text ="Get friendly FW version",command = alive_button_CallBack)
+        temp_widget = tk.Button(frame,text ="Get friendly FW version",command = alive_button_CallBack)
     else:
-        red_handle_ignore = tk.Button(frame,text ="Keep alive (fast BLE)",command = alive_button_CallBack)
-    red_handle_ignore.grid(row=row,column=1)
+        temp_widget = tk.Button(frame,text ="Keep alive (fast BLE)",command = alive_button_CallBack)
+    temp_widget.grid(row=row,column=1)
     if PRODUCT_ID == PRODUCT_ID_STATION:
-        red_handle_ignore = tk.Button(frame,text ="Reset Ins & Torque",command = moderate_button_CallBack)
+        temp_widget = tk.Button(frame,text ="Reset Ins & Torque",command = moderate_button_CallBack)
     else:
-        red_handle_ignore = tk.Button(frame,text ="Moderate BLE",command = moderate_button_CallBack)
-    red_handle_ignore.grid(row=row,column=2)
+        temp_widget = tk.Button(frame,text ="Moderate BLE",command = moderate_button_CallBack)
+    temp_widget.grid(row=row,column=2)
 
     row += 1
 
     row = my_seperator(frame, row)
-    red_handle_ignore = tk.Button(frame,text ="BSL !!!(DONT PRESS)",command = BSL_mode_button_CallBack)
-    red_handle_ignore.grid(row=row,column=2)
+    # ------------------------------------------------------
+    temp_widget = tk.Button(frame,text ="BSL !!!(DONT PRESS)",command = BSL_mode_button_CallBack)
+    temp_widget.grid(row=row,column=2)
 def init_parser():
     parser = argparse.ArgumentParser(
         description="Read the HID data from target board.\nIf no argument is given, the program exits."
@@ -949,7 +1021,7 @@ def main():
         # Initialize the main window
         global root
         root = tk.Tk()
-        root.title("HID_Util")
+        root.title("SIMBionix HID_Util")
 
         # Initialize the GUI widgets
         my_widgets(root)
@@ -967,3 +1039,14 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+'''
+history changes
+2022_08_25
+- to remove:
+ "inner_clicker" and "InnerClicker" indication. and to move left the rest of item in this line.
+ "red_handle" "RedHandle"
+- added: WRITE_DATA_CMD___bytearray
+  based on send_command.py 
+
+'''    
