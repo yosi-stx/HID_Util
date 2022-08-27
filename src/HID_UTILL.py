@@ -154,7 +154,8 @@ ignore_red_handle_button = None
 ignore_red_handle_checkbutton = None
 ignore_red_handle_state = False
 handler_counter = 0
-
+debug_pwm_print = True
+cb = None
 root = None
 
 def update_checkbox(checkbox, bool_value):
@@ -195,10 +196,14 @@ prev_pwm = 0
 pwm_widget = 0
 def show_pwm_values():
     global pwm_widget
-    # print (pwm_widget.get())
     return pwm_widget.get()
     
-	
+prev_pwm_16 = 0
+pwm_16_widget = 0
+def show_pwm_16_values():
+    global pwm_16_widget
+    return pwm_16_widget.get()
+    
 def gui_loop(device):
     do_print = True
     print_time = 0.0
@@ -208,6 +213,7 @@ def gui_loop(device):
     # value = None
     global special_cmd
     # global print_flag
+    global debug_pwm_print
     
     while True:
         # Reset the counter
@@ -256,7 +262,7 @@ def gui_loop(device):
         elif special_cmd == 'G':
             WRITE_DATA = WRITE_DATA_CMD_G 
             device.write(WRITE_DATA)
-            print("special_cmd G -> set_PWM_value  ")
+            #print("special_cmd G -> set_PWM_value  ")
             special_cmd = 0
         else:
             WRITE_DATA = DEFAULT_WRITE_DATA
@@ -277,8 +283,6 @@ def gui_loop(device):
 
         # handle the PWM command to device
         global prev_pwm
-        # global special_cmd
-        # global WRITE_DATA_CMD___bytearray
         WRITE_DATA_CMD___bytearray = bytearray(b'\x3f')  # initialization of the command
         pwm_val = show_pwm_values()
         if (prev_pwm) != (pwm_val):
@@ -294,12 +298,36 @@ def gui_loop(device):
             WRITE_DATA_CMD___bytearray.append(int(hex_pwm_val))
             for i in range(63-5):
                 WRITE_DATA_CMD___bytearray.append(0)
-            print("WRITE_DATA_CMD___bytearray = %s " % WRITE_DATA_CMD___bytearray)
+            # print("WRITE_DATA_CMD___bytearray = %s " % WRITE_DATA_CMD___bytearray)
             WRITE_DATA_CMD_G = bytes(WRITE_DATA_CMD___bytearray)
-            print("WRITE_DATA_CMD_G = %s " % WRITE_DATA_CMD_G)
+            if debug_pwm_print:
+                print("WRITE_DATA_CMD_G = %s " % WRITE_DATA_CMD_G)
             special_cmd = 'G'
-            
         prev_pwm = pwm_val
+
+        global prev_pwm_16
+        # send_command.py  -c 97 08 00 00 55 20 03 04 05 06 07 08
+        WRITE_DATA_CMD___bytearray = bytearray(b'\x3f')  # initialization of the command
+        pwm_16 = show_pwm_16_values()
+        if (prev_pwm_16) != (pwm_16):
+            print("prev_pwm=  ",int(prev_pwm), "     pwm_val= ",int(pwm_val) )
+            WRITE_DATA_CMD___bytearray.append(12)
+            WRITE_DATA_CMD___bytearray.append(0x97)
+            WRITE_DATA_CMD___bytearray.append(8)
+            WRITE_DATA_CMD___bytearray.append(0)
+            WRITE_DATA_CMD___bytearray.append(0)
+            pwm_16_lo = pwm_16 & 0x00FF
+            pwm_16_hi = pwm_16 >> 8
+            WRITE_DATA_CMD___bytearray.append(int(pwm_16_lo))
+            WRITE_DATA_CMD___bytearray.append(int(pwm_16_hi))
+            for i in range(63-6):
+                WRITE_DATA_CMD___bytearray.append(0)
+            # print("WRITE_DATA_CMD___bytearray = %s " % WRITE_DATA_CMD___bytearray)
+            WRITE_DATA_CMD_G = bytes(WRITE_DATA_CMD___bytearray)
+            if debug_pwm_print:
+                print("WRITE_DATA_CMD_G = %s " % WRITE_DATA_CMD_G)
+            special_cmd = 'G'
+        prev_pwm_16 = pwm_16
 
         # Measure the time
         time = timer()
@@ -566,6 +594,7 @@ def my_seperator(frame, row):
 
 def my_widgets(frame):
     global pwm_widget
+    global pwm_16_widget
     # Add style for labeled progress bar
     for name in style_names:
         style = ttk.Style(
@@ -840,11 +869,24 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     row = my_seperator(frame, row)
     # ------------------------------------------------------
 
-    pwm_widget = tk.Scale(frame, from_=0, to=100, orient='horizontal')#, orient=HORIZONTAL)
+    pwm_widget = tk.Scale(frame, from_=0, to=99, orient='horizontal',length=200)#, orient=HORIZONTAL)
     # tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
     pwm_widget.grid(row=row,column=0)
 
-    temp_widget = tk.Button(frame, text='Print PWM', command=show_pwm_values).grid(row=row,column=1)
+    # w = ttk.Label(frame,text="PWM debug print:").grid(row=row,column=1,sticky='W')
+    
+    global cb
+    cb = tk.IntVar()
+    # cb.grid(row=row,column=1)#,tk.sticky='E')
+    w = tk.Checkbutton(frame,text="PWM debug print:",variable=cb,onvalue=1,offvalue=0,command=isChecked)
+    w.grid(row=row,column=1,sticky='W')
+    
+   
+    # temp_widget = tk.Button(frame, text='Print PWM', command=show_pwm_values).grid(row=row,column=1)
+    pwm_16_widget = tk.Scale(frame, from_=0, to=2**16-1, orient='horizontal',length=400)#, orient=HORIZONTAL)
+    # tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
+    pwm_16_widget.grid(row=row,column=2,sticky='W')
+
     
     row += 1
 
@@ -872,6 +914,24 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     # ------------------------------------------------------
     temp_widget = tk.Button(frame,text ="BSL !!!(DONT PRESS)",command = BSL_mode_button_CallBack)
     temp_widget.grid(row=row,column=2)
+    
+def isChecked():
+    global debug_pwm_print
+    global cb
+    if cb.get() == 1:
+        debug_pwm_print = 1
+        print("debug_pwm_print = 1")
+        # btn['state'] = NORMAL
+        # btn.configure(text='Awake!')
+    elif cb.get() == 0:
+        debug_pwm_print = 0
+        print("debug_pwm_print = 0")
+        # btn['state'] = DISABLED
+        # btn.configure(text='Sleeping!')
+    else:
+        messagebox.showerror('PythonGuides', 'Something went wrong!')
+
+    
 def init_parser():
     parser = argparse.ArgumentParser(
         description="Read the HID data from target board.\nIf no argument is given, the program exits."
@@ -1048,5 +1108,6 @@ history changes
  "red_handle" "RedHandle"
 - added: WRITE_DATA_CMD___bytearray
   based on send_command.py 
-
+2022_08_27
+- adding the scale widget for PWM.
 '''    
