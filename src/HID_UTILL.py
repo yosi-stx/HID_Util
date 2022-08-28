@@ -199,9 +199,19 @@ def show_pwm_values():
     return pwm_widget.get()
     
 prev_pwm_16 = 0
+pwm_16 = 256
 pwm_16_widget = 0
+pwm_text_widget = 0
+pwm_text = None
 def show_pwm_16_values():
     global pwm_16_widget
+    global pwm_text_widget
+    global pwm_text
+    pwm_percent = pwm_16/(2**16-1)*100
+    temp_txt = ("{:.2f}".format(pwm_percent))
+    # str(pwm_16/(2**16-1)*100)
+    label_pwm16_text = "PWM: "+ temp_txt +"%"
+    pwm_text.set(label_pwm16_text)
     return pwm_16_widget.get()
     
 def gui_loop(device):
@@ -306,11 +316,12 @@ def gui_loop(device):
         prev_pwm = pwm_val
 
         global prev_pwm_16
+        global pwm_16
         # send_command.py  -c 97 08 00 00 55 20 03 04 05 06 07 08
         WRITE_DATA_CMD___bytearray = bytearray(b'\x3f')  # initialization of the command
         pwm_16 = show_pwm_16_values()
         if (prev_pwm_16) != (pwm_16):
-            print("prev_pwm=  ",int(prev_pwm), "     pwm_val= ",int(pwm_val) )
+            print("prev_pwm_16=  ",int(prev_pwm_16), "     pwm_16= ",int(pwm_16) )
             WRITE_DATA_CMD___bytearray.append(12)
             WRITE_DATA_CMD___bytearray.append(0x97)
             WRITE_DATA_CMD___bytearray.append(8)
@@ -887,7 +898,11 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     # tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
     pwm_16_widget.grid(row=row,column=2,sticky='W')
 
-    
+    global pwm_text
+    # pwm_text = "PWM: "+str(pwm_16)
+    pwm_text = tk.StringVar()
+    # pwm_text_widget = ttk.Label(frame,text=pwm_text).grid(row=row,column=3,sticky=tk.W,)
+    pwm_text_widget = ttk.Label(frame,textvariable=pwm_text).grid(row=row,column=3,sticky=tk.W,)
     row += 1
 
     # Seperator
