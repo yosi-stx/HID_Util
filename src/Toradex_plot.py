@@ -336,7 +336,13 @@ def main():
     first_4_channels = 1
 
     if first_4_channels:
-        ax2.plot(ac_time, cha_00, 'c+', linewidth=0.75)
+        use_image_quality = 1
+        if (use_image_quality == 0):
+            ax2.plot(ac_time, cha_00, 'c+', linewidth=0.75)
+        else:
+            use_color = '#83fc95'
+            ax2.plot(ac_time, cha_03, color=use_color, linewidth=0.75)
+            ax2.plot(ac_time, cha_03, '+', linewidth=0.75)
         ax1.set_xlabel("ac_time")
 
         # plt.plot(y0,label="tool_size")
@@ -363,7 +369,10 @@ def main():
 
         # ax1.set_ylabel("Time [ms]")
         ax1.set_ylabel("ADC: 4095=3volt")
-        ax2.set_ylabel("tool_size: 2047=Max")
+        if (use_image_quality == 0):
+            ax2.set_ylabel("tool_size: 2047=Max")
+        else:
+            ax2.set_ylabel("image_quality (SQUAL): 255=Max")
         # fig.suptitle('Voltage in channels: 0,1,2,3')
         fine_name = fine_name + " -- [ tool_size   torque   insertion    image_quality ]"
         fig.suptitle(fine_name)
