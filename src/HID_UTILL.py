@@ -32,7 +32,9 @@ VENDOR_ID = 0x2047 # Texas Instruments
 PRODUCT_ID = 0x0302 # Joystick.
 PRODUCT_ID_JOYSTICK = 0x0302 # Joystick.
 PRODUCT_ID_ROUTER   = 0x0301 # Router
+PRODUCT_ID_TOOLS = 0x0303
 PRODUCT_ID_STATION = 0x0304
+PRODUCT_ID_GBU_TOOLS = 0x0309
 PRODUCT_ID_LAP_NEW_CAMERA = 0x2005
 # 2021_01_24
 # USB\VID_24B3&PID_2005&REV_0200
@@ -49,6 +51,7 @@ PRODUCT_ID_types =  {
   0x0306: "BOARD_TYPE: TOOLS_SLAVE",
   0x0307: "BOARD_TYPE: GBU",
   0x0308: "BOARD_TYPE: LAP camera",
+  0x0309: "BOARD_TYPE: GBU-TOOLS_MASTER",
   0x2005: "BOARD_TYPE: PRODUCT_ID_LAP_NEW_CAMERA",  #board type is enforced in FW (descriptors.h)
   0x1965: "yosi"
 }
@@ -72,6 +75,7 @@ WRITE_DATA_CMD_START = bytes.fromhex("3f0482000000000000000000000000000000000000
 WRITE_DATA_CMD_START_ = bytes.fromhex("3f048200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # start streaming command for station 0x303:
 WRITE_DATA_CMD_START_0x304 = bytes.fromhex("3f048d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+WRITE_DATA_CMD_START_0x303 = bytes.fromhex("3f048300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 
 # Get Board Type command:
 # 01h 00h 00h 01h
@@ -102,7 +106,10 @@ PRINT_TIME = 2 # Print every 2 second
 
 START_INDEX = 2 + 4 # Ignore the first two bytes, then skip the version (4 bytes)
 # ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 4 * 2 + 1, 2)) + [START_INDEX + 6 * 2,]
+# for 8 analog channels:
 ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 8 * 2 + 1, 2)) 
+# for 12+10=22 analog channels:
+ANALOG_INDEX_LIST_TOOLS = list(range(START_INDEX + 2, START_INDEX + 22 * 2 + 1, 2)) 
 # ANALOG_INDEX_LIST = [8, 10, 12, 14, 16, 18, 20, 22]
 COUNTER_INDEX = 2 + 22 + 18 # Ignore the first two bytes, then skip XData1 (22 bytes) and OverSample (==XDataSlave1; 18 bytes)
 CMOS_INDEX = 2 + 2   # maybe + 4???
@@ -234,6 +241,8 @@ def gui_loop(device):
         if special_cmd == 'I':
             if PRODUCT_ID == PRODUCT_ID_STATION:
                 WRITE_DATA = WRITE_DATA_CMD_START_0x304
+            elif PRODUCT_ID == PRODUCT_ID_TOOLS or PRODUCT_ID == PRODUCT_ID_GBU_TOOLS:
+                WRITE_DATA = WRITE_DATA_CMD_START_0x303 
             else:
                 WRITE_DATA = WRITE_DATA_CMD_START
             device.write(WRITE_DATA)
@@ -374,12 +383,16 @@ def handler(value, do_print=False):
 #   tool_size from CMOS: bytes 5..6
 #   3f260000370b
     global handler_counter
+    global PRODUCT_ID
 
     handler_counter = handler_counter + 1
     global hid_util_fault
     hid_util_fault = (int(value[START_INDEX+1]) & 0xF )
     digital = (int(value[START_INDEX + 1]) << 8) + int(value[START_INDEX + 0])
-    analog = [(int(value[i + 1]) << 8) + int(value[i]) for i in ANALOG_INDEX_LIST]
+    if PRODUCT_ID == PRODUCT_ID_TOOLS:
+        analog = [(int(value[i + 1]) << 8) + int(value[i]) for i in ANALOG_INDEX_LIST_TOOLS]
+    else:
+        analog = [(int(value[i + 1]) << 8) + int(value[i]) for i in ANALOG_INDEX_LIST]
     counter = (int(value[COUNTER_INDEX + 1]) << 8) + int(value[COUNTER_INDEX])
     tool_size = (int(value[CMOS_INDEX + 1]) << 8) + int(value[CMOS_INDEX])
 # Received data: b'3f26 00 00 00 00 0674fc41 3f4efc70 0033a4513c5a0101210001000000650000000000000000000000167f070dd7aee89baff63fedcfcccb763acf041b00000010'
@@ -397,7 +410,11 @@ def handler(value, do_print=False):
 
     if do_print:
         print("Received data: %s" % hexlify(value))
-        print("insertion[last byte]: %02x  || image_quality: %02x  %d" % (int(value[INSERTION_INDEX+3]),image_quality, image_quality))
+        if PRODUCT_ID == PRODUCT_ID_STATION:
+            print("insertion[last byte]: %02x  || image_quality: %02x  %d" % (int(value[INSERTION_INDEX+3]),image_quality, image_quality))
+        if PRODUCT_ID == PRODUCT_ID_TOOLS:
+            pass 
+            # print(analog)
         # print("tool_size    : %d" % tool_size)
         # print("insertion : %d" % insertion , end="")
         # print("   torque : %d" % torque)
@@ -441,6 +458,8 @@ def handler(value, do_print=False):
     
     # 
     batteryLevel = analog[7]
+    if PRODUCT_ID == PRODUCT_ID_TOOLS:
+        batteryLevel = analog[13] #injector_Sig1
     
     # file1 = open("C:\Work\Python\HID_Util\src\log\log2.txt","w") 
     # global file1
@@ -832,6 +851,8 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     text_name = "batterylevel"
     if PRODUCT_ID == PRODUCT_ID_STATION:
         text_name = "Pressure   (bytes 22,23)"
+    if PRODUCT_ID == PRODUCT_ID_TOOLS:
+        text_name = "injector_Sig1   (bytes 32,33)"
     ttk.Label(frame,text=text_name).grid(row=row,column=0,sticky=tk.E,) #bytes 22,23 
 
     w = ttk.Progressbar(
