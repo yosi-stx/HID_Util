@@ -1,15 +1,21 @@
-# file: PrimeVer.py
-# by: YG.  (2020_07_17__18_33)
-# modified by: YG.  (2022_10_16__21_47)
-# Retrieve the FM version and Date from TI-file (*.txt)
-# or Retrieve the FM version and Date from INTEL-HEX-file (*.HEX)
+# file: PrimeSTM32Ver.py
+# by: YG.  (2022_10_16__13_39)
+# Retrive the FM version and Date from INTEL-HEX-file (*.HEX)
 # passing the argument to this python from cmd line.
 # -
 # example: 
-# PrimeVer.py flex3.txt
+# PrimeSTM32Ver.py Prime_L552.hex
 # the output is: 
+#                FW version: 6.0.2
+#                FW date   : 22/09/2022
+
 #                Version: 3.0.0
 #                Date: 10.10.2017
+
+# algorithm:
+# the offset of PAR32_VERSION_VALUE is: 8*PAR8 + 8*PAR16 + 2*PAR32 = 8+16+8 = 32bytes offset.
+# // need to look for line start with: :10F020 
+# // and focus on the 9-th byte after the ":"
 
 # special treatment for Bootloader files that includes the 
 # values of registers at address: 0x10001014  = UICR.NRFFW[0]
@@ -19,7 +25,7 @@ import os
 import sys
 
 def print1(x):
-    # print(x)
+    print(x)
     return
     
 root = tkinter.Tk()
@@ -36,9 +42,9 @@ else:
 if len(tempfile) > 0:
     print( "You chose: %s" % tempfile)
 
-file_extension = tempfile.split(".")  #split
-file_extension = file_extension[len(file_extension)-1]
-print1( "file_extension = %s" % file_extension )
+file_extention = tempfile.split(".")  #split
+file_extention = file_extention[len(file_extention)-1]
+print1( "file_extention = %s" % file_extention )
 
 fhand = open(tempfile)
 
@@ -46,27 +52,16 @@ number_line = 0
 version_line = 0
 version_line_number = 0
 for line in fhand:
-  if file_extension == "hex":
-    temp_line = line[0:15]
-    number_line += 1
-    # if the project mapping file will be changed: next line must be changed too
-    if temp_line == ':020000040803EF':
-      version_line_number = number_line + 3
-      print1('number_line')
-      print1(number_line)
-      continue
-  elif file_extension == "txt":
-    temp_line = line[0:5]
-    number_line += 1
-    # if temp_line == '@fc00':  # this line is for TI file.
-    if temp_line == '@fc00':
-      version_line_number = number_line + 3
-      print1('number_line')
-      print1(number_line)
-      continue
-  else:
-    print('unknown file extension, Try another file')
-    
+  temp_line = line[0:15]
+  number_line += 1
+  # if temp_line == '@fc00':  # this line is for TI file.
+  #if temp_line == ':10F020':
+  if temp_line == ':020000040803EF':
+    version_line_number = number_line + 3
+    #version_line_number = number_line # since 10F020 includes the offset from 10F000
+    print1('number_line')
+    print1(number_line)
+    continue
   if number_line == version_line_number:
     version_line = line
 
@@ -91,20 +86,11 @@ if version_line_number == 0:
     print('Try another file')
     quit()
 
-if file_extension == "hex":
-    # for Prime based on STM32 MCU 
-    print1(version_line[9:17])
-    version_line = version_line[9:17]
-    #01234567
-    #62911660
-    aligned_version = version_line[6:8] + version_line[4:6] + version_line[2:4] + version_line[0:2]
-elif file_extension == "txt":
-    # for Prime based on TI MSP430 MCU 
-    print1(version_line[0:12])    
-    aligned_version = version_line[9:11] + version_line[6:8] + version_line[3:5] + version_line[0:2]
-else:
-    print('unknown file extension, Try another file')
-
+print1(version_line[9:17])
+version_line = version_line[9:17]
+#01234567
+#62911660
+aligned_version = version_line[6:8] + version_line[4:6] + version_line[2:4] + version_line[0:2]
 print1(aligned_version)
 VERSION_PRIMARY = aligned_version[0]
 print1("VERSION_PRIMARY   %s" % aligned_version[0])
