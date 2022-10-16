@@ -10,6 +10,7 @@ from time import process_time as timer
 
 import tkinter as tk
 from tkinter import ttk
+import tkinter.messagebox
 
 import include_dll_path
 import hid
@@ -164,7 +165,15 @@ handler_counter = 0
 debug_pwm_print = True
 cb = None
 root = None
+Fw_Version = "NA"
+Fw_Date = "NA"
+popup_message = 0
 
+def msg1():
+    tkinter.messagebox.showinfo('information', 'Hi! You got a prompt.')
+def msg2(txt1,txt2):
+    tkinter.messagebox.showinfo(txt1, txt2)
+    
 def update_checkbox(checkbox, bool_value):
     if (bool_value):
         checkbox.select()
@@ -349,6 +358,11 @@ def gui_loop(device):
             special_cmd = 'G'
         prev_pwm_16 = pwm_16
 
+        # global popup_message
+        # if( popup_message==1):
+            # popup_message==0
+            # tkinter.messagebox.showinfo("Welcome to GFG", "East Button clicked")
+
         # Measure the time
         time = timer()
 
@@ -427,9 +441,19 @@ def handler(value, do_print=False):
         #   0 1 2 3 4 5   6 7 8 9 0 1    2 3 4 5 6 7 8 9 0 
         # b'3f0a06060001  030004060321   d6bb2c3fc2b49c3fe877fecef602fffe5787dedfcf750cfb129efe7ffd7ed60daedefca4f9fff58efc5eb47c237eb5a93dd72f55'
         print("")
-        print("FW version: "+str(value[6])+"." +str(value[7])+"." +str(value[8]))
+        Fw_Version = "FW version: "+str(value[6])+"." +str(value[7])+"." +str(value[8])
+        print(Fw_Version )
+        # print("FW version: "+str(value[6])+"." +str(value[7])+"." +str(value[8]))
         # print("FW date   : "+str(value[9])+"/" +str(value[10])+"/20" +str(value[11]))
-        print("FW date   : "+date2dec(value[9])+"/" +date2dec(value[10])+"/20" +date2dec(value[11]))
+        Fw_Date = "FW date   : "+date2dec(value[9])+"/" +date2dec(value[10])+"/20" +date2dec(value[11])
+        print(Fw_Date)
+        # print("FW date   : "+date2dec(value[9])+"/" +date2dec(value[10])+"/20" +date2dec(value[11]))
+        global popup_message
+        popup_message = 1;
+        # msg2(Fw_Version,Fw_Date)
+        popup_txt = Fw_Version + "\n" + Fw_Date
+        msg2("Version Info",popup_txt)
+        
 
     # parsing FW version response :
     if value[2] == 1 and value[3] == 1 and value[4] == 0 and value[5] == 1:
