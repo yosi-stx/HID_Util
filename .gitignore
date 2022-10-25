@@ -155,3 +155,5 @@ src/csv_plot.py
 src/try.py
 src/FLEX3.txt
 src/Prime_L552.hex
+src/Prime_L552.bin
+src/Ver_from_bin.py
