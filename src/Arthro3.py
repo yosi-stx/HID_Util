@@ -822,10 +822,13 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     # ------------------------------------------------------
 
     # was: Red handle and reset button labels
-    ttk.Label(frame,text="TBD_digital_1").grid(row=row,column=0) # without the sticky it is in the middle by default.
-    ttk.Label(frame,text="TBD_digital_2").grid(row=row,column=1)
-    ttk.Label(frame,text="TBD_digital_3").grid(row=row,column=2)
-
+    ttk.Label(frame,text="Port_8_pin_2").grid(row=row,column=0) # without the sticky it is in the middle by default.
+    ttk.Label(frame,text="Port_8_pin_1").grid(row=row,column=1)
+    ttk.Label(frame,text="Port_8_pin_0").grid(row=row,column=2)
+    row += 1
+    ttk.Label(frame,foreground="#6e6e6e",text="[Shaver_Det]").grid(row=row,column=0) # without the sticky it is in the middle by default.
+    ttk.Label(frame,foreground="#6e6e6e",text="[Shaver_Dig_2]").grid(row=row,column=1)
+    ttk.Label(frame,foreground="#6e6e6e",text="[Shaver_Dig_1]").grid(row=row,column=2)
     row += 1
 
     # Red handle and reset button data
