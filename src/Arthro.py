@@ -148,7 +148,7 @@ style_names = [
 progressbar_styles = list()
 progressbars = list()
 inner_clicker = list()
-red_handle = list()
+Port_8_pin_2 = list()
 reset_check = list()
 counter_entry = list()
 clicker_counter_entry = list()
@@ -521,11 +521,20 @@ def handler(value, do_print=False):
     # file1.writelines(L) 
 
 
-
-
+    # Received data: b'3f3d04015200ffff2c042e0856044e048105c8038a02380300000000000000000000000000000000000007323032325f31315f31375f5f31365f333600000010'
+    #  00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263
+    # '3f3d04015200ffff2c042e0856044e048105c8038a02380300000000000000000000000000000000000007323032325f31315f31375f5f31365f333600000010'
+    #                                                                                     |42| <<<----- byte 42 for Data.DigitalIO3
+    
+    DigitalIO_3 = (int(value[42]))
     bool_clicker = bool((digital >> 2) & 0x0001)
     bool_reset = bool((digital >> 4) & 0x0001)
     bool_red_handle = bool((digital >> 7) & 0x0001)
+    
+    bool_Port_8_pin_2 = bool((DigitalIO_3 >> 2) & 0x0001)
+    bool_Port_8_pin_1 = bool((DigitalIO_3 >> 1) & 0x0001)
+    bool_Port_8_pin_0 = bool((DigitalIO_3 >> 0) & 0x0001)
+
     bool_ignore_red_handle = ignore_red_handle_state
     if PRODUCT_ID != PRODUCT_ID_STATION:
         int_hid_stream_channel1 = analog[1]
@@ -582,7 +591,7 @@ def handler(value, do_print=False):
     progressbar_batteryLevel = progressbars[6]
     progressbar_MotorCur = progressbars[7]
 #    checkbox_inner_clicker = inner_clicker
-    checkbox_red_handle = red_handle
+    # checkbox_red_handle = red_handle
     checkbox_reset_check = reset_check
     checkbox_ignore_red_handle = ignore_red_handle_checkbutton
     entry_counter = counter_entry
@@ -618,9 +627,9 @@ def handler(value, do_print=False):
     progressbar_MotorCur["value"] = precentage_MotorCur
 
 #    update_checkbox(checkbox_inner_clicker, bool_clicker)
-    update_checkbox(checkbox_red_handle, bool_red_handle)
-    update_checkbox(checkbox_reset_check, bool_reset)
-    update_checkbox(checkbox_ignore_red_handle, bool_ignore_red_handle)
+    update_checkbox(Port_8_pin_2, bool_Port_8_pin_2)
+    update_checkbox(checkbox_reset_check, bool_Port_8_pin_1)
+    update_checkbox(checkbox_ignore_red_handle, bool_Port_8_pin_0)
 
     entry_counter.delete(0, tk.END)
     entry_counter.insert(tk.END, "%d" % int_counter)
@@ -654,12 +663,12 @@ def my_channel_row(frame, row, label, style):
 
     row += 1
 
-    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("%sChannel1"%style))
-    progressbars.append(w)
-    w.grid(row=row,column=0)
-    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("%sChannel2"%style))
-    progressbars.append(w)
-    w.grid(row=row,column=1)
+    widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("%sChannel1"%style))
+    progressbars.append(widget)
+    widget.grid(row=row,column=0)
+    widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("%sChannel2"%style))
+    progressbars.append(widget)
+    widget.grid(row=row,column=1)
 
     return row + 1
 
@@ -745,9 +754,9 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     ttk.Label(frame,text=text_name).grid(row=row,column=0)
     
     row += 1
-    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("HIDStreamChannel1"))
-    progressbars.append(w)
-    w.grid(row=row,column=0)
+    widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("HIDStreamChannel1"))
+    progressbars.append(widget)
+    widget.grid(row=row,column=0)
 
     row -= 1    # go line back for text header
 
@@ -758,9 +767,9 @@ NOTE: Zero value in Tool_size reset the Insertion value"
 
     row += 1
 
-    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("HIDStreamChannel2"))
-    progressbars.append(w)
-    w.grid(row=row,column=1)
+    widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("HIDStreamChannel2"))
+    progressbars.append(widget)
+    widget.grid(row=row,column=1)
 
     row += 1
 
@@ -789,18 +798,18 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     row += 1
 
     # Clicker data
-#    w = tk.Checkbutton(frame,state=tk.DISABLED)
+#    widget = tk.Checkbutton(frame,state=tk.DISABLED)
 #    global inner_clicker
-#    inner_clicker = w
-#    w.grid(row=row,column=0)
-    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style="Clicker")
-    progressbars.append(w)
-    w.grid(row=row,column=0)
+#    inner_clicker = widget
+#    widget.grid(row=row,column=0)
+    widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style="Clicker")
+    progressbars.append(widget)
+    widget.grid(row=row,column=0)
     # yg: adding clicker counter display
-    w = ttk.Entry(frame,width=20,)
+    widget = ttk.Entry(frame,width=20,)
     global clicker_counter_entry
-    clicker_counter_entry = w
-    w.grid(
+    clicker_counter_entry = widget
+    widget.grid(
         #padx=10,#pady=5,
         row=row,
         column=1,#sticky=tk.W,
@@ -813,29 +822,31 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     # ------------------------------------------------------
 
     # was: Red handle and reset button labels
-    ttk.Label(frame,text="TBD_digital_1").grid(row=row,column=0) # without the sticky it is in the middle by default.
-    ttk.Label(frame,text="TBD_digital_2").grid(row=row,column=1)
-    ttk.Label(frame,text="TBD_digital_3").grid(row=row,column=2)
-
+    ttk.Label(frame,text="Port_8_pin_2").grid(row=row,column=0) # without the sticky it is in the middle by default.
+    ttk.Label(frame,text="Port_8_pin_1").grid(row=row,column=1)
+    ttk.Label(frame,text="Port_8_pin_0").grid(row=row,column=2)
+    row += 1
+    ttk.Label(frame,foreground="#6e6e6e",text="[Shaver_Det]").grid(row=row,column=0) # without the sticky it is in the middle by default.
+    ttk.Label(frame,foreground="#6e6e6e",text="[Shaver_Dig_2]").grid(row=row,column=1)
+    ttk.Label(frame,foreground="#6e6e6e",text="[Shaver_Dig_1]").grid(row=row,column=2)
     row += 1
 
     # Red handle and reset button data
-    w = tk.Checkbutton(frame,state=tk.DISABLED)
-    global red_handle
-    red_handle = w
-    w.grid(row=row,column=0)
-    w = tk.Checkbutton(frame,state=tk.DISABLED)
+    widget = tk.Checkbutton(frame,state=tk.DISABLED)
+    global Port_8_pin_2
+    Port_8_pin_2 = widget
+    widget.grid(row=row,column=0)
+    
+    widget = tk.Checkbutton(frame,state=tk.DISABLED)
     global reset_check
-    reset_check = w
-    w.grid(row=row,column=1)
+    reset_check = widget
+    widget.grid(row=row,column=1)
 
     # checkbox for the ignore red handle 
-    w = tk.Checkbutton(frame,state=tk.DISABLED)
-    # global ignore_red
-    # ignore_red = w
+    widget = tk.Checkbutton(frame,state=tk.DISABLED)
     global ignore_red_handle_checkbutton
-    ignore_red_handle_checkbutton = w
-    w.grid(row=row,column=2)
+    ignore_red_handle_checkbutton = widget
+    widget.grid(row=row,column=2)
 
     temp_widget = tk.Button(frame,text ="Start streaming",command = streaming_button_CallBack)
     temp_widget.grid(row=row,column=3)
@@ -848,28 +859,28 @@ NOTE: Zero value in Tool_size reset the Insertion value"
 
     # Counter
     # ttk.Label(frame,text="PacketsCounter:").grid(row=row,column=0,sticky=tk.E,)
-    w = ttk.Label(frame,text="PacketsCounter:")
-    w.grid(row=row,column=0,sticky=tk.W,)
+    widget = ttk.Label(frame,text="PacketsCounter:")
+    widget.grid(row=row,column=0,sticky=tk.W,)
     
-    w = ttk.Entry(frame,width=25)
-    #w.grid(row=row,column=0,sticky=tk.W,)
+    widget = ttk.Entry(frame,width=25)
+    #widget.grid(row=row,column=0,sticky=tk.W,)
 # width=20 make the Entry window for 20 chars long.    
 # adding the state=tk.DISABLED  to widget : makes it gray        
     global counter_entry
-    counter_entry = w
-    # w.grid(padx=10,pady=5,row=row,column=1,columnspan=2,sticky=tk.W,)
+    counter_entry = widget
+    # widget.grid(padx=10,pady=5,row=row,column=1,columnspan=2,sticky=tk.W,)
     next_row = row+1
-    # w.grid(padx=10,pady=5,row=row,column=0,columnspan=1,sticky=tk.E,)
-    w.grid(padx=10,pady=5,row=row,column=0,columnspan=1)
+    # widget.grid(padx=10,pady=5,row=row,column=0,columnspan=1,sticky=tk.E,)
+    widget.grid(padx=10,pady=5,row=row,column=0,columnspan=1)
     # columnspan − How many columns widget occupies; default 1
 
     #                       |||||                       #
     # HID_Util Fault indication
     ttk.Label(frame,text="Faultindication:").grid(row=row,column=1,sticky=tk.W,)
-    w = ttk.Entry(frame,width=20,)
+    widget = ttk.Entry(frame,width=20,)
     global fault_entry
-    fault_entry = w
-    w.grid(padx=10,pady=5,row=row,column=1,columnspan=1)#,sticky=tk.E,)
+    fault_entry = widget
+    widget.grid(padx=10,pady=5,row=row,column=1,columnspan=1)#,sticky=tk.E,)
 
     row += 1
     row += 1
@@ -881,20 +892,9 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     # sleepTimer
     ttk.Label(frame,text="SleepTimer").grid(row=row,column=0,sticky=tk.E,)
 
-    w = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=LONG_PROGRESS_BAR_LEN,
-        style="sleepTimer"
-    )
-    progressbars.append(w)
-    w.grid(
-        row=row,
-        column=1,
-        # columnspan=3
-        columnspan=2
-    )
-
+    widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN,style="sleepTimer")
+    progressbars.append(widget)
+    widget.grid(row=row,column=1,columnspan=2)
     row += 1
 
     # Seperator
@@ -909,14 +909,14 @@ NOTE: Zero value in Tool_size reset the Insertion value"
         text_name = "injector_Sig1   (bytes 32,33)"
     ttk.Label(frame,text=text_name).grid(row=row,column=0,sticky=tk.E,) #bytes 22,23 
 
-    w = ttk.Progressbar(
+    widget = ttk.Progressbar(
         frame,
         orient=tk.HORIZONTAL,
         length=LONG_PROGRESS_BAR_LEN,
         style="batteryLevel"
     )
-    progressbars.append(w)
-    w.grid(
+    progressbars.append(widget)
+    widget.grid(
         row=row,
         column=1,
         # columnspan=3
@@ -935,14 +935,14 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     else:
         ttk.Label(frame,text="Station MotorCurrent (bytes 25,26)").grid(row=row,column=0,sticky=tk.E,)
 
-    w = ttk.Progressbar(
+    widget = ttk.Progressbar(
         frame,
         orient=tk.HORIZONTAL,
         length=LONG_PROGRESS_BAR_LEN,
         style="motorCurrent"
     )
-    progressbars.append(w)
-    w.grid(
+    progressbars.append(widget)
+    widget.grid(
         row=row,
         column=1,
         # columnspan=3
@@ -959,13 +959,13 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     # tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
     pwm_widget.grid(row=row,column=0)
 
-    # w = ttk.Label(frame,text="PWM debug print:").grid(row=row,column=1,sticky='W')
+    # widget = ttk.Label(frame,text="PWM debug print:").grid(row=row,column=1,sticky='W')
     
     global cb
     cb = tk.IntVar()
     # cb.grid(row=row,column=1)#,tk.sticky='E')
-    w = tk.Checkbutton(frame,text="PWM debug print:",variable=cb,onvalue=1,offvalue=0,command=isChecked)
-    w.grid(row=row,column=1,sticky='W')
+    widget = tk.Checkbutton(frame,text="PWM debug print:",variable=cb,onvalue=1,offvalue=0,command=isChecked)
+    widget.grid(row=row,column=1,sticky='W')
     
    
     # temp_widget = tk.Button(frame, text='Print PWM', command=show_pwm_values).grid(row=row,column=1)
@@ -1163,12 +1163,10 @@ if __name__ == "__main__":
 
 '''
 history changes
-2022_08_25
-- to remove:
- "inner_clicker" and "InnerClicker" indication. and to move left the rest of item in this line.
- "red_handle" "RedHandle"
-- added: WRITE_DATA_CMD___bytearray
-  based on send_command.py 
-2022_08_27
-- adding the scale widget for PWM.
+2022_11_18
+- replace variables:
+    red_handle reset_check ignore_red_handle_checkbutton
+  with:
+  Port_8_pin_2, Port_8_pin_1 and Port_8_pin_0
+
 '''    
