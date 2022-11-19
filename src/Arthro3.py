@@ -151,7 +151,7 @@ inner_clicker = list()
 Port_8_pin_2 = list()
 reset_check = list()
 counter_entry = list()
-clicker_counter_entry = list()
+# clicker_counter_entry = list()
 fault_entry = list()
 special_cmd = 0
 ignore_red_handle_button = None
@@ -160,6 +160,7 @@ ignore_red_handle_state = False
 handler_counter = 0
 g_prints_counter = 0
 g_handler_counter = 0
+g_packets_counter = 0
 handler_called_counter = 0
 debug_pwm_print = True
 cb = None
@@ -190,8 +191,14 @@ def board_type_button_callback():
     special_cmd = 'S'
 
 def alive_button_CallBack():
-    global special_cmd
-    special_cmd = 'A'
+    global Fw_Date
+    global Fw_Version
+    print(Fw_Version)
+    print(Fw_Date)
+    popup_txt = Fw_Version + "\n" + Fw_Date
+    msg2("Version Info",popup_txt)
+    
+    # special_cmd = 'A'
 
 def moderate_button_CallBack():
     global special_cmd
@@ -256,7 +263,8 @@ def gui_loop(device):
             else:
                 WRITE_DATA = WRITE_DATA_CMD_START
             device.write(WRITE_DATA)
-            print("special_cmd Start")
+            print("special_cmd_Start")
+            print("Bytes numbers: %s" % "   0 1 2 3 4 5 6 7 8 9101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263")
             special_cmd = 0
         elif special_cmd == 'S':
             WRITE_DATA = WRITE_DATA_CMD_GET_BOARD_TYPE
@@ -383,6 +391,8 @@ def gui_loop(device):
         if len(value) >= READ_SIZE:
             # call the handler only once every 20 cycles
             global g_handler_counter
+            global g_packets_counter
+            g_packets_counter += 1  # inside gui_loop()
             g_handler_counter += 1
             if g_handler_counter == 1:
                 if (do_print):
@@ -421,7 +431,7 @@ def handler(value, do_print=False):
     global handler_counter
     global PRODUCT_ID
 
-    handler_counter = handler_counter + 1
+    handler_counter += 1
     global hid_util_fault
     hid_util_fault = (int(value[START_INDEX+1]) & 0xF )
     digital = (int(value[START_INDEX + 1]) << 8) + int(value[START_INDEX + 0])
@@ -443,16 +453,22 @@ def handler(value, do_print=False):
     #global MAX_LONG_POSITIVE
     torque = long_unsigned_to_long_signed(torque)
     insertion = long_unsigned_to_long_signed(insertion)
+    global Fw_Version
+    Fw_Version = "FW version: "+str(value[2])+"." +str(value[3])+"." +str(value[4])
+    global Fw_Date
+    Fw_Date = "FW date   : "+chr(value[43])+chr(value[44])+chr(value[45])+chr(value[46])+"."+chr(value[48])+chr(value[49])+"."+chr(value[51])+chr(value[52])
 
+    
     if do_print:
         print("Received data: %s" % hexlify(value))
+        # print("Bytes numbers: %s" % "   0 1 2 3 4 5 6 7 8 9101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263")
         global g_prints_counter
         g_prints_counter += 1
         if( g_prints_counter == 10 ):
             g_prints_counter = 0
             # print(" ------------------- ")
             global special_cmd
-            special_cmd = 'I'
+            special_cmd = 'I'  #special_cmd_Start
 
         if PRODUCT_ID == PRODUCT_ID_STATION:
             print("insertion[last byte]: %02x  || image_quality: %02x  %d" % (int(value[INSERTION_INDEX+3]),image_quality, image_quality))
@@ -495,12 +511,6 @@ def handler(value, do_print=False):
         print("")
         print("Board type: "+str(value[6]))
 
-    # if value[2] == 6 and value[3] == 6 and value[4] == 0 :
-        # print("value[2] == 6 and value[3] == 6 and value[4] == 0: %s" % hexlify(value))
-    # if value[2] == 6 and value[3] == 6 :
-        # print("value[2] == 6 and value[3] == 6 : %s" % hexlify(value))
-    # if value[2] == 6 :
-        # print("value[2] == 6  : %s" % hexlify(value))
         
     clicker_counter = (int(value[COUNTER_INDEX+2 + 1]) << 8) + int(value[COUNTER_INDEX+2]) #clicker_counter --> numeric_box_view
     sleepTimer = (int(value[COUNTER_INDEX+4 + 1]) << 8) + int(value[COUNTER_INDEX+4])
@@ -549,9 +559,10 @@ def handler(value, do_print=False):
     int_sleepTimer = sleepTimer
     int_batteryLevel = batteryLevel
     int_MotorCur = MotorCur
-    if PRODUCT_ID == PRODUCT_ID_STATION:
-        counter = handler_counter
-    int_counter = counter
+    # if PRODUCT_ID == PRODUCT_ID_STATION:
+        # counter = handler_counter
+    # int_counter = handler_counter
+    int_counter = g_packets_counter
     int_hid_util_fault = hid_util_fault
     int_clicker_counter = clicker_counter
     int_hid_stream_insertion = insertion
@@ -594,8 +605,8 @@ def handler(value, do_print=False):
     # checkbox_red_handle = red_handle
     checkbox_reset_check = reset_check
     checkbox_ignore_red_handle = ignore_red_handle_checkbutton
-    entry_counter = counter_entry
-    entry_clicker_counter = clicker_counter_entry
+    # entry_counter = counter_entry
+    # entry_clicker_counter = clicker_counter_entry
     entry_fault = fault_entry
     
     progressbar_style_hid_stream_channel1.configure(HID_STREAM_CHANNEL1_STYLE,text=("%d"%int_hid_stream_channel1))
@@ -631,11 +642,11 @@ def handler(value, do_print=False):
     update_checkbox(checkbox_reset_check, bool_Port_8_pin_1)
     update_checkbox(checkbox_ignore_red_handle, bool_Port_8_pin_0)
 
-    entry_counter.delete(0, tk.END)
-    entry_counter.insert(tk.END, "%d" % int_counter)
+    counter_entry.delete(0, tk.END)
+    counter_entry.insert(tk.END, "%d" % int_counter)
 
-    entry_clicker_counter.delete(0, tk.END)
-    entry_clicker_counter.insert(tk.END, "%d" % int_clicker_counter)
+    # entry_clicker_counter.delete(0, tk.END)
+    # entry_clicker_counter.insert(tk.END, "%d" % int_clicker_counter)
 
     entry_fault.delete(0, tk.END)
     entry_fault.insert(tk.END, "%d" % int_hid_util_fault)
@@ -805,15 +816,12 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style="Clicker")
     progressbars.append(widget)
     widget.grid(row=row,column=0)
-    # yg: adding clicker counter display
-    widget = ttk.Entry(frame,width=20,)
-    global clicker_counter_entry
-    clicker_counter_entry = widget
-    widget.grid(
-        #padx=10,#pady=5,
-        row=row,
-        column=1,#sticky=tk.W,
-        )
+
+    # # yg: adding clicker counter display
+    # widget = ttk.Entry(frame,width=20,)
+    # global clicker_counter_entry
+    # clicker_counter_entry = widget
+    # widget.grid(row=row,column=1,)
 
     row += 1
 
@@ -859,10 +867,10 @@ NOTE: Zero value in Tool_size reset the Insertion value"
 
     # Counter
     # ttk.Label(frame,text="PacketsCounter:").grid(row=row,column=0,sticky=tk.E,)
-    widget = ttk.Label(frame,text="PacketsCounter:")
-    widget.grid(row=row,column=0,sticky=tk.W,)
-    
-    widget = ttk.Entry(frame,width=25)
+    widget = ttk.Label(frame,text="PacketsCounter:").grid(row=row,column=0,sticky=tk.W,)
+    # widget.grid(row=row,column=0,sticky=tk.W,)
+
+    widget = ttk.Entry(frame,width=17)
     #widget.grid(row=row,column=0,sticky=tk.W,)
 # width=20 make the Entry window for 20 chars long.    
 # adding the state=tk.DISABLED  to widget : makes it gray        
@@ -987,11 +995,9 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     temp_widget = tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
     temp_widget.grid(row=row,column=0)
 
-    if PRODUCT_ID != PRODUCT_ID_CTAG: # PRODUCT_ID_LAP_NEW_CAMERA, PRODUCT_ID_STATION...
-        temp_widget = tk.Button(frame,text ="Get friendly FW version",command = alive_button_CallBack)
-    else:
-        temp_widget = tk.Button(frame,text ="Keep alive (fast BLE)",command = alive_button_CallBack)
+    temp_widget = tk.Button(frame,text ="Show FW version",command = alive_button_CallBack)
     temp_widget.grid(row=row,column=1)
+    
     if PRODUCT_ID == PRODUCT_ID_STATION:
         temp_widget = tk.Button(frame,text ="Reset Ins & Torque",command = moderate_button_CallBack)
     elif PRODUCT_ID == PRODUCT_ID_ARTHRO:
