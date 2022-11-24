@@ -399,6 +399,12 @@ def handler(value, do_print=False):
         analog = [(int(value[i + 1]) << 8) + int(value[i]) for i in ANALOG_INDEX_LIST]
     counter = (int(value[COUNTER_INDEX + 1]) << 8) + int(value[COUNTER_INDEX])
     tool_size = (int(value[CMOS_INDEX + 1]) << 8) + int(value[CMOS_INDEX])
+    
+    # for Arthro:
+#                                          LbHb    
+# Bytes numbers:    0 1 2 3 4 5 6 7 8 9101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263
+# Received data: b'3f3d04015200ffff0f05610402009001cc055006a9026f0300000000000000000000000000000000000007323032325f31315f31375f5f31365f333600000010'
+    tool_size = (int(value[12 + 1]) << 8) + int(value[12])
 # Received data: b'3f26 00 00 00 00 0674fc41 3f4efc70 0033a4513c5a0101210001000000650000000000000000000000167f070dd7aee89baff63fedcfcccb763acf041b00000010'
 #                                   TORQUE   INSERTION
             # 0674 fc41
@@ -528,10 +534,6 @@ def handler(value, do_print=False):
         precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
         precentage_inner_handle_channel1 = int((int_inner_handle_channel1 / 4096) * 100)
         precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 4096) * 100)
-    else:
-        precentage_hid_stream_channel1 = abs(int((int_hid_stream_channel1 / 1000) * 100))
-        precentage_inner_handle_channel1 = abs(int((int_inner_handle_channel1 / 1000) * 100))
-        precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 255) * 100)
 
     precentage_hid_stream_channel2 = int((int_hid_stream_channel2 / 4096) * 100)
     precentage_clicker = int((int_clicker / 4096) * 100)
@@ -622,36 +624,35 @@ def my_channel_row(frame, row, label, style):
 
     if PRODUCT_ID != PRODUCT_ID_STATION:
         # InnerHandle
-        text_name = "Channel 4 (analog[0] = bytes 8,9)"
+        text_name = "Channel 0 (analog[0] = bytes 8,9)"
         ttk.Label(frame,text=text_name).grid(row=row,column=0)
-        text_name = "Channel 7 (analog[3] = bytes 14,15)"
+        text_name = "Channel 3 (analog[3] = bytes 14,15)"
         ttk.Label(frame,text=text_name).grid(row=row,column=1)
-    else:
-        ttk.Label(frame,text="Torque").grid(row=row,column=0)
-        ttk.Label(frame,text="Image Quality").grid(row=row,column=1) # image_quality
 
     row += 1
 
     widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("%sChannel1"%style))
-    progressbars.append(widget)
+    progressbars.append(widget)         # progressbars[2] -- since my_channel_row is called after the 2 first appends
     widget.grid(row=row,column=0)
     widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("%sChannel2"%style))
-    progressbars.append(widget)
+    progressbars.append(widget)         # progressbars[3]
     widget.grid(row=row,column=1)
 
     return row + 1
 
-
+    
 def my_seperator(frame, row):
-    ttk.Separator(
-        frame,
-        orient=tk.HORIZONTAL
-    ).grid(
-        pady=10,
-        row=row,
-        columnspan=4,
-        sticky=(tk.W + tk.E)
-    )
+    # ttk.Separator(
+        # frame,
+        # orient=tk.HORIZONTAL
+    # ).grid(
+        # pady=10,
+        # row=row,
+        # columnspan=4,
+        # sticky=(tk.W + tk.E)
+    # )
+    widget = ttk.Separator(frame,orient=tk.HORIZONTAL)
+    widget.grid(pady=10,row=row,columnspan=4,sticky='WE') 
     return row + 1
 
 def my_widgets(frame):
@@ -717,19 +718,19 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     #
     # 0,1 (packet length,data length); 2,3 (Chanel 1); 4,5 (Chanel 2); 6,7 (Chanel 3); 8,9 (Chanel 4); 10,11 (Chanel 5); 
     # 12,13 (Chanel 6); 14,15 (Chanel 7);
-    text_name = "Channel 5 (analog[1] = bytes 10,11)"
+    text_name = "Channel 1 (analog[1] = bytes 10,11)"
     if PRODUCT_ID == PRODUCT_ID_STATION:
         text_name = "Insertion"
     ttk.Label(frame,text=text_name).grid(row=row,column=0)
     
     row += 1
     widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("HIDStreamChannel1"))
-    progressbars.append(widget)
+    progressbars.append(widget)         # progressbars[0]
     widget.grid(row=row,column=0)
 
     row -= 1    # go line back for text header
 
-    text_name = "Channel 2 (analog[?] = bytes 4,5)"
+    text_name = "Channel 2 (analog[2] = bytes 12,13)"
     if PRODUCT_ID == PRODUCT_ID_STATION:
         text_name = "Tool Size"
     ttk.Label(frame,text=text_name).grid(row=row,column=1)
@@ -737,7 +738,7 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     row += 1
 
     widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style=("HIDStreamChannel2"))
-    progressbars.append(widget)
+    progressbars.append(widget)         # progressbars[1]
     widget.grid(row=row,column=1)
 
     row += 1
@@ -761,8 +762,10 @@ NOTE: Zero value in Tool_size reset the Insertion value"
 
     # Clicker labels
 #    ttk.Label(frame,text="InnerClicker").grid(row=row,column=0,sticky=tk.W)
-    ttk.Label(frame,text="Channel 9").grid(row=row,column=0)
-    ttk.Label(frame,text="Channel_22 Numeric (bytes 44,45)").grid(row=row,column=1)  #ClickerCounter -> Channel_22 Numeric
+    ttk.Label(frame,text="Shaver_Sig (analog[5] = bytes 18,19)").grid(row=row,column=0)
+    # ttk.Label(frame,text="OC_Grassper_Sig (analog[4] = bytes 16,17) -- TBD").grid(row=row,column=1)
+    ttk.Label(frame,text=" -- ").grid(row=row,column=1)
+    # ttk.Label(frame,text="Channel_22 Numeric (bytes 44,45)").grid(row=row,column=1)  #ClickerCounter -> Channel_22 Numeric
 
     row += 1
 
@@ -772,7 +775,7 @@ NOTE: Zero value in Tool_size reset the Insertion value"
 #    inner_clicker = widget
 #    widget.grid(row=row,column=0)
     widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style="Clicker")
-    progressbars.append(widget)
+    progressbars.append(widget)         # progressbars[4]
     widget.grid(row=row,column=0)
 
     # # yg: adding clicker counter display
@@ -856,10 +859,10 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     # ------------------------------------------------------
 
     # sleepTimer
-    ttk.Label(frame,text="SleepTimer").grid(row=row,column=0,sticky=tk.E,)
+    ttk.Label(frame,text="TBD 1").grid(row=row,column=0,sticky=tk.E,)
 
     widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN,style="sleepTimer")
-    progressbars.append(widget)
+    progressbars.append(widget)         # progressbars[5]
     widget.grid(row=row,column=1,columnspan=2)
     row += 1
 
@@ -868,26 +871,16 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     # ------------------------------------------------------
 
     # battery level
-    text_name = "batterylevel"
+    text_name = "TBD 2"
     if PRODUCT_ID == PRODUCT_ID_STATION:
         text_name = "Pressure   (bytes 22,23)"
     if PRODUCT_ID == PRODUCT_ID_TOOLS:
         text_name = "injector_Sig1   (bytes 32,33)"
     ttk.Label(frame,text=text_name).grid(row=row,column=0,sticky=tk.E,) #bytes 22,23 
 
-    widget = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=LONG_PROGRESS_BAR_LEN,
-        style="batteryLevel"
-    )
-    progressbars.append(widget)
-    widget.grid(
-        row=row,
-        column=1,
-        # columnspan=3
-        columnspan=2
-    )
+    widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN,style="batteryLevel")
+    progressbars.append(widget)         # progressbars[6]
+    widget.grid(row=row,column=1,columnspan=2)
 
     row += 1
 
@@ -897,23 +890,13 @@ NOTE: Zero value in Tool_size reset the Insertion value"
 
     # Motor Cur
     if PRODUCT_ID != PRODUCT_ID_STATION:
-        ttk.Label(frame,text="MotorCurrent").grid(row=row,column=0,sticky=tk.E,)
+        ttk.Label(frame,text="OC_Grassper_Sig (analog[4] = bytes 16,17) ").grid(row=row,column=0,sticky=tk.E,)
     else:
         ttk.Label(frame,text="Station MotorCurrent (bytes 25,26)").grid(row=row,column=0,sticky=tk.E,)
 
-    widget = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=LONG_PROGRESS_BAR_LEN,
-        style="motorCurrent"
-    )
-    progressbars.append(widget)
-    widget.grid(
-        row=row,
-        column=1,
-        # columnspan=3
-        columnspan=2
-    )
+    widget = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN,style="motorCurrent")
+    progressbars.append(widget)         # progressbars[7]
+    widget.grid(row=row,column=1,columnspan=2)
 
     row += 1
 #
