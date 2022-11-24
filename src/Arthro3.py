@@ -152,7 +152,7 @@ Port_8_pin_2 = list()
 reset_check = list()
 counter_entry = list()
 # clicker_counter_entry = list()
-fault_entry = list()
+# fault_entry = list()
 special_cmd = 0
 ignore_red_handle_button = None
 ignore_red_handle_checkbutton = None
@@ -168,6 +168,8 @@ root = None
 Fw_Version = "NA"
 Fw_Date = "NA"
 popup_message = 0
+global Skip_Reading_From_Device
+Skip_Reading_From_Device = False
 
 def msg1():
     tkinter.messagebox.showinfo('information', 'Hi! You got a prompt.')
@@ -187,6 +189,8 @@ def streaming_button_CallBack():
     ignore_red_handle_state = True
 
 def board_type_button_callback():
+    print("TBD - button not used yet by Arthro GUI")
+    return
     global special_cmd
     special_cmd = 'S'
 
@@ -246,6 +250,8 @@ def gui_loop(device):
     global special_cmd
     # global print_flag
     global debug_pwm_print
+    global Skip_Reading_From_Device
+
     
     while True:
         # Reset the counter
@@ -266,12 +272,12 @@ def gui_loop(device):
             print("special_cmd_Start")
             print("Bytes numbers: %s" % "   0 1 2 3 4 5 6 7 8 9101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263")
             special_cmd = 0
-        elif special_cmd == 'S':
-            WRITE_DATA = WRITE_DATA_CMD_GET_BOARD_TYPE
-            device.write(WRITE_DATA)
-            print("special_cmd CMD_GET_BOARD_TYPE")
-            # print_flag = 1
-            special_cmd = 0
+        # elif special_cmd == 'S':
+            # WRITE_DATA = WRITE_DATA_CMD_GET_BOARD_TYPE
+            # device.write(WRITE_DATA)
+            # print("special_cmd CMD_GET_BOARD_TYPE")
+            # # print_flag = 1
+            # special_cmd = 0
         elif special_cmd == 'A':
             if PRODUCT_ID != PRODUCT_ID_CTAG: 
                 WRITE_DATA = WRITE_DATA_CMD_GET_FW_VERSION
@@ -289,6 +295,7 @@ def gui_loop(device):
             elif PRODUCT_ID == PRODUCT_ID_ARTHRO:
                 print("special_cmd M -> stop streaming by KeepAliveTimer = 0")
                 WRITE_DATA = WRITE_DATA_CMD_STOP_STREAM
+                Skip_Reading_From_Device = True
                 device.write(WRITE_DATA)
                 device.write(WRITE_DATA)
                 device.write(WRITE_DATA)
@@ -323,55 +330,6 @@ def gui_loop(device):
             #     if prev_cnt and cnt < prev_cnt:
             #         print("Invalid counter")
             sleep(SLEEP_AMOUNT)
-
-        # handle the PWM command to device
-        global prev_pwm
-        WRITE_DATA_CMD___bytearray = bytearray(b'\x3f')  # initialization of the command
-        pwm_val = show_pwm_values()
-        if (prev_pwm) != (pwm_val):
-            print("prev_pwm=  ",int(prev_pwm), "     pwm_val= ",int(pwm_val) )
-            WRITE_DATA_CMD___bytearray.append(5)
-            WRITE_DATA_CMD___bytearray.append(0x95)
-            WRITE_DATA_CMD___bytearray.append(1)
-            WRITE_DATA_CMD___bytearray.append(0)
-            WRITE_DATA_CMD___bytearray.append(0)
-            pwm_10 = pwm_val//10
-            pwm_01 = pwm_val%10
-            hex_pwm_val = pwm_10*16+pwm_01
-            WRITE_DATA_CMD___bytearray.append(int(hex_pwm_val))
-            for i in range(63-5):
-                WRITE_DATA_CMD___bytearray.append(0)
-            # print("WRITE_DATA_CMD___bytearray = %s " % WRITE_DATA_CMD___bytearray)
-            WRITE_DATA_CMD_G = bytes(WRITE_DATA_CMD___bytearray)
-            if debug_pwm_print:
-                print("WRITE_DATA_CMD_G = %s " % WRITE_DATA_CMD_G)
-            special_cmd = 'G'
-        prev_pwm = pwm_val
-
-        global prev_pwm_16
-        global pwm_16
-        # send_command.py  -c 97 08 00 00 55 20 03 04 05 06 07 08
-        WRITE_DATA_CMD___bytearray = bytearray(b'\x3f')  # initialization of the command
-        pwm_16 = show_pwm_16_values()
-        if (prev_pwm_16) != (pwm_16):
-            print("prev_pwm_16=  ",int(prev_pwm_16), "     pwm_16= ",int(pwm_16) )
-            WRITE_DATA_CMD___bytearray.append(12)
-            WRITE_DATA_CMD___bytearray.append(0x97)
-            WRITE_DATA_CMD___bytearray.append(8)
-            WRITE_DATA_CMD___bytearray.append(0)
-            WRITE_DATA_CMD___bytearray.append(0)
-            pwm_16_lo = pwm_16 & 0x00FF
-            pwm_16_hi = pwm_16 >> 8
-            WRITE_DATA_CMD___bytearray.append(int(pwm_16_lo))
-            WRITE_DATA_CMD___bytearray.append(int(pwm_16_hi))
-            for i in range(63-6):
-                WRITE_DATA_CMD___bytearray.append(0)
-            # print("WRITE_DATA_CMD___bytearray = %s " % WRITE_DATA_CMD___bytearray)
-            WRITE_DATA_CMD_G = bytes(WRITE_DATA_CMD___bytearray)
-            if debug_pwm_print:
-                print("WRITE_DATA_CMD_G = %s " % WRITE_DATA_CMD_G)
-            special_cmd = 'G'
-        prev_pwm_16 = pwm_16
 
         # global popup_message
         # if( popup_message==1):
@@ -607,7 +565,7 @@ def handler(value, do_print=False):
     checkbox_ignore_red_handle = ignore_red_handle_checkbutton
     # entry_counter = counter_entry
     # entry_clicker_counter = clicker_counter_entry
-    entry_fault = fault_entry
+    # entry_fault = fault_entry
     
     progressbar_style_hid_stream_channel1.configure(HID_STREAM_CHANNEL1_STYLE,text=("%d"%int_hid_stream_channel1))
     progressbar_style_hid_stream_channel2.configure(HID_STREAM_CHANNEL2_STYLE,text=("%d"%int_hid_stream_channel2))
@@ -648,8 +606,8 @@ def handler(value, do_print=False):
     # entry_clicker_counter.delete(0, tk.END)
     # entry_clicker_counter.insert(tk.END, "%d" % int_clicker_counter)
 
-    entry_fault.delete(0, tk.END)
-    entry_fault.insert(tk.END, "%d" % int_hid_util_fault)
+    # entry_fault.delete(0, tk.END)
+    # entry_fault.insert(tk.END, "%d" % int_hid_util_fault)
 
     root.update()
 
@@ -884,13 +842,13 @@ NOTE: Zero value in Tool_size reset the Insertion value"
 
     #                       |||||                       #
     # HID_Util Fault indication
-    ttk.Label(frame,text="Faultindication:").grid(row=row,column=1,sticky=tk.W,)
-    widget = ttk.Entry(frame,width=20,)
-    global fault_entry
-    fault_entry = widget
-    widget.grid(padx=10,pady=5,row=row,column=1,columnspan=1)#,sticky=tk.E,)
+    # ttk.Label(frame,text="Faultindication:").grid(row=row,column=1,sticky=tk.W,)
+    # widget = ttk.Entry(frame,width=20,)
+    # global fault_entry
+    # fault_entry = widget
+    # widget.grid(padx=10,pady=5,row=row,column=1,columnspan=1)#,sticky=tk.E,)
 
-    row += 1
+    # row += 1
     row += 1
 
     # Seperator
@@ -958,41 +916,39 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     )
 
     row += 1
+#
+#    # Seperator
+#    row = my_seperator(frame, row)
+#    # ------------------------------------------------------
+#
+#    pwm_widget = tk.Scale(frame, from_=0, to=99, orient='horizontal',length=200)#, orient=HORIZONTAL)
+#    pwm_widget.grid(row=row,column=0)
+#
+#    # widget = ttk.Label(frame,text="PWM debug print:").grid(row=row,column=1,sticky='W')
+#    
+#    global cb
+#    cb = tk.IntVar()
+#    # cb.grid(row=row,column=1)#,tk.sticky='E')
+#    widget = tk.Checkbutton(frame,text="PWM debug print:",variable=cb,onvalue=1,offvalue=0,command=isChecked)
+#    widget.grid(row=row,column=1,sticky='W')
+#    
+#   
+#    # temp_widget = tk.Button(frame, text='Print PWM', command=show_pwm_values).grid(row=row,column=1)
+#    pwm_16_widget = tk.Scale(frame, from_=0, to=2**16-1, orient='horizontal',length=400)#, orient=HORIZONTAL)
+#    pwm_16_widget.grid(row=row,column=2,sticky='W')
+#
+#    global pwm_text
+#    # pwm_text = "PWM: "+str(pwm_16)
+#    pwm_text = tk.StringVar()
+#    # pwm_text_widget = ttk.Label(frame,text=pwm_text).grid(row=row,column=3,sticky=tk.W,)
+#    pwm_text_widget = ttk.Label(frame,textvariable=pwm_text).grid(row=row,column=3,sticky=tk.W,)
+#    row += 1
 
     # Seperator
     row = my_seperator(frame, row)
     # ------------------------------------------------------
 
-    pwm_widget = tk.Scale(frame, from_=0, to=99, orient='horizontal',length=200)#, orient=HORIZONTAL)
-    # tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
-    pwm_widget.grid(row=row,column=0)
-
-    # widget = ttk.Label(frame,text="PWM debug print:").grid(row=row,column=1,sticky='W')
-    
-    global cb
-    cb = tk.IntVar()
-    # cb.grid(row=row,column=1)#,tk.sticky='E')
-    widget = tk.Checkbutton(frame,text="PWM debug print:",variable=cb,onvalue=1,offvalue=0,command=isChecked)
-    widget.grid(row=row,column=1,sticky='W')
-    
-   
-    # temp_widget = tk.Button(frame, text='Print PWM', command=show_pwm_values).grid(row=row,column=1)
-    pwm_16_widget = tk.Scale(frame, from_=0, to=2**16-1, orient='horizontal',length=400)#, orient=HORIZONTAL)
-    # tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
-    pwm_16_widget.grid(row=row,column=2,sticky='W')
-
-    global pwm_text
-    # pwm_text = "PWM: "+str(pwm_16)
-    pwm_text = tk.StringVar()
-    # pwm_text_widget = ttk.Label(frame,text=pwm_text).grid(row=row,column=3,sticky=tk.W,)
-    pwm_text_widget = ttk.Label(frame,textvariable=pwm_text).grid(row=row,column=3,sticky=tk.W,)
-    row += 1
-
-    # Seperator
-    row = my_seperator(frame, row)
-    # ------------------------------------------------------
-
-    temp_widget = tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
+    temp_widget = tk.Button(frame,text ="TBD (not used yet)",command = board_type_button_callback)
     temp_widget.grid(row=row,column=0)
 
     temp_widget = tk.Button(frame,text ="Show FW version",command = alive_button_CallBack)
