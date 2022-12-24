@@ -23,6 +23,7 @@ PRODUCT_ID_JOYSTICK = 0x0302 # Joystick.
 PRODUCT_ID_ROUTER   = 0x0301 # Router
 PRODUCT_ID_STATION = 0x0304
 PRODUCT_ID_LAP_NEW_CAMERA = 0x2005
+PRODUCT_ID_LAP_OLD_CAMERA = 0x3005
 # 2021_01_24
 # USB\VID_24B3&PID_2005&REV_0200
 # 0x24B3 = 9395
@@ -40,6 +41,7 @@ PRODUCT_ID_types =  {
   0x0308: "BOARD_TYPE: LAP camera",
   0x0309: "BOARD_TYPE: GBU-TOOLS_MASTER",
   0x2005: "BOARD_TYPE: PRODUCT_ID_LAP_NEW_CAMERA",  #board type is enforced in FW (descriptors.h)
+  0x3005: "BOARD_TYPE: PRODUCT_ID_LAP_OLD_CAMERA",  #board type is enforced in FW (descriptors.h)
   0x1965: "yosi"
 }
 
@@ -348,6 +350,21 @@ def main():
                         # print("success vid=0x24B3, pid=0x2005 !!")
                     except:
                         print("wrong ID2")
+
+            # new device based on old camera, added at: 2022_12_22
+            if device is None:
+                try:
+                    # print("try with other device")
+                    VENDOR_ID = 0x24b3 # Simb
+                    PRODUCT_ID = PRODUCT_ID_LAP_OLD_CAMERA # LAP_OLD_CAMERA. is 0x3005
+                    # print("VID = %X PID = %X " % VENDOR_ID, PRODUCT_ID)
+                    print("try with PID = %X " % PRODUCT_ID)
+                    # print("PRODUCT_ID = %X" % PRODUCT_ID)
+                    device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+                    # device = hid.Device(vid=0x24B3, pid=0x2005)
+                    # print("success vid=0x24B3, pid=0x2005 !!")
+                except:
+                    print("wrong ID2")
                     
             # VENDOR_ID = 2047
             # PRODUCT_ID = 304
