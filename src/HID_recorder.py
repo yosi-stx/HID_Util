@@ -4,6 +4,7 @@
 # file history:
 # 2022_07_06__01_39 - adding plotting by using matplotlib 
 # 2022_06_30__19_12 - adding special calculation for Torque and Insertion
+# 2023_02_03__15_46 - print the version of this file 
 # last modified at: Friday, ‎March ‎12, ‎2021, ‏‎06:16:05 PM
 
 from binascii import hexlify
@@ -20,6 +21,8 @@ import csv
 import time
 import matplotlib.pyplot as plt
 
+this_file_version = "2023_02_03.a"
+print("This Recorder Version: ",this_file_version)
 # BOARD_TYPE_MAIN = 0,
 # BOARD_TYPE_JOYSTICKS = 1,
 # BOARD_TYPE_TOOLS_MASTER = 2,
