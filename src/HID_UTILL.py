@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
+util_verstion = "2023_02_05.a"
+
 from binascii import hexlify
 import sys
 import argparse
@@ -694,6 +696,8 @@ def my_widgets(frame):
     # Outer Handle
     ttk.Label(frame,text="HID Streaming Values").grid(row=row,sticky=tk.W)
 
+    # ttk.Label(frame,text="Tool Version:  2023_02_05.a").grid(row=row,column=1)
+
     row += 1
     ttk.Label(frame,text="----------------------").grid(row=row,sticky=tk.NW)
     row += 1
@@ -1140,8 +1144,11 @@ def main():
 
         # Initialize the main window
         global root
+        global util_verstion
         root = tk.Tk()
-        root.title("SIMBionix HID_Util")
+        util_title = "SIMBionix HID_Util"+" (version:"+util_verstion+")"
+        # root.title("SIMBionix HID_Util")
+        root.title(util_title)
 
         # Initialize the GUI widgets
         my_widgets(root)
