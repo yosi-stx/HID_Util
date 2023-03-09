@@ -537,6 +537,10 @@ def handler(value, do_print=False):
         precentage_MotorCur = int((int_MotorCur / 4096) * 100)
     else:
         precentage_MotorCur = int((station_current / 4096) * 100)
+
+    # the following lines are allocation of variables (on the left side) to progressbar_styles
+    # that were created in my_widgets() function in a sophisticated loop the go over all style_names[]
+    # were progressbar_styles[] is global list of styles.
     progressbar_style_hid_stream_channel1 = progressbar_styles[0]
     progressbar_style_hid_stream_channel2 = progressbar_styles[1]
     progressbar_style_inner_handle_channel1 = progressbar_styles[2]
@@ -545,6 +549,9 @@ def handler(value, do_print=False):
     progressbar_style_sleepTimer = progressbar_styles[5]
     progressbar_style_batteryLevel = progressbar_styles[6]
     progressbar_style_MotorCur = progressbar_styles[7]
+    
+    # the following lines are allocation of variables (on the left side) to ProgressBars
+    # that were created in my_widgets() function, were progressbars[] is global list of widgets.
     progressbar_hid_stream_channel1 = progressbars[0]
     progressbar_hid_insertion = progressbars[0] #can I duplicate it?
     progressbar_hid_stream_channel2 = progressbars[1]
@@ -1179,4 +1186,6 @@ history changes
   based on send_command.py 
 2022_08_27
 - adding the scale widget for PWM.
+2023_03_09
+- adding explanatory comments
 '''    

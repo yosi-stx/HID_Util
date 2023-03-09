@@ -22,8 +22,8 @@ import csv
 import time
 import matplotlib.pyplot as plt
 
-this_file_version = "2023_02_21.a"
-print("This Recorder Version: ",this_file_version)
+recorder_version = "2023_03_09.a"
+print("This Recorder Version: ",recorder_version)
 # BOARD_TYPE_MAIN = 0,
 # BOARD_TYPE_JOYSTICKS = 1,
 # BOARD_TYPE_TOOLS_MASTER = 2,
@@ -134,6 +134,7 @@ MAX_LONG_POSITIVE = 2**31
 MAX_UNSIGNED_LONG = 2**32
 MAX_U16_POSITIVE = 2**15
 MAX_U16  = 2**16
+IMAGE_QUALITY_INDEX = TORQUE_INDEX + 4
 
 # global variables
 special_cmd = 0
@@ -208,6 +209,7 @@ def gui_loop(device):
             #global MAX_LONG_POSITIVE
             torque = long_unsigned_to_long_signed(torque)
             insertion = long_unsigned_to_long_signed(insertion)
+            image_quality = (int(value[IMAGE_QUALITY_INDEX]) )
             analog = [(int(value[i + 1]) << 8) + int(value[i]) for i in LAP_ANALOG_INDEX_LIST]
             channel_0 = analog[0]
             channel_1 = analog[1]
@@ -222,7 +224,12 @@ def gui_loop(device):
             #else:
             #    L = [ str(counter),",   ", str(clicker_analog), ", " , str(count_dif), "\n" ]  
             # L = [ str(channel_0),",   ", str(channel_1), ", " , str(channel_2),", " , str(channel_3),", " , str(channel_4), "\n" ]  
-            L = [ str(tool_size),",   ", str(insertion), ", " , str(torque), "\n" ]  
+
+            ### recording ::  tool_size, insertion and  torque ###
+            # L = [ str(tool_size),",   ", str(insertion), ", " , str(torque), "\n" ]  
+
+            ### recording ::  tool_size, insertion, torque and  image_quality ###
+            L = [ str(tool_size),",   ", str(insertion), ", " , str(torque), ", " , str(image_quality), "\n" ]  
             file1.writelines(L) 
             # handler(value, do_print=do_print)
             # print("Received data: %s" % hexlify(value))
@@ -471,17 +478,36 @@ def main():
         y0 = []
         y1 = []
         y2 = []
+        y3 = []
         for row in plots:
             y0.append(int(row[0]))
             y1.append(int(row[1]))
             y2.append(int(row[2]))
+            y3.append(int(row[3]))
+        # WinMove, ,,367,144,1358,598
+        # resize the figure to w: 1358	h: 598
+        my_dpi = 96 # by calculating width resolution / screen size = 2560/31.25' = 81.9
+        # plt.figure(figsize=(1358/my_dpi, 598/my_dpi), dpi=my_dpi)
+        height_fix =  598/671 # from measuring the actual results.
+        plt.figure(figsize=(13.58, 5.98*height_fix), dpi=100)
         #print(y0[0:200])
         plt.plot(y0,label="tool_size")
         plt.plot(y1,label="insertion")
+        #plt.plot(y1,marker='o',label="insertion")
         plt.plot(y2,label="torque")
-        plt.xlabel('Time')
+        plt.plot(y3,label="image_quality")  # 2023_03_09 added.
+        # plt.xlabel('Time')
+        display_f_name = FILE1_PATH.split('\\')
+        display_f_n = display_f_name[len(display_f_name)-1]
+        text = 'Time...' + "\n" + display_f_n
+        # text = 'Time...' + "\n" + FILE1_PATH
+        plt.xlabel(text)
         plt.ylabel('Value')
-        plt.title('tool_size, insertion and  torque"')
+        # plt.title('tool_size, insertion and  torque"')
+        plt.title(display_f_n,fontsize=10, fontweight="ultralight")    
+        # text = 'tool_size, insertion, torque and image_quality' + "\n" + file_name
+        # plt.title('tool_size, insertion, torque and image_quality "', fontweight="bold")
+        plt.suptitle('tool_size, insertion, torque and image_quality', fontsize=16, fontweight="bold")
         plt.legend()
         plt.grid() # 2023_02_20 added.
         plt.show()        
@@ -506,3 +532,11 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+'''
+history changes
+2023_03_09 
+- adding image_quality to recording. 
+- resize the figure to w: 1358	h: 598
+- adding csv file name to title 
+'''        

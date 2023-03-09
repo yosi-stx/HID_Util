@@ -16,6 +16,9 @@ from tkinter import *
 from tkinter.filedialog import askopenfilename
 import os
 
+plot_version = "2023_03_09.a"
+print("This Recorder Version: ",plot_version)
+
 # from ctag_hid_log_files_path import *
 
 FILE1_PATH = "log\hid_2022_06_30__23_33.csv"
@@ -68,36 +71,60 @@ def main():
         if use_tKinter == 1:
             print("we have a path from gui %s" % filepath)
             file1 = open(filepath,"r+")
-            plot_file( file1 )
+            plot_file( file1, filepath )
             
         else:
             file1 = open(cap_file,"r+")
-            plot_file( file1 )
+            plot_file( file1, cap_file )
     except FileNotFoundError:
-        print("dad file path in user input argument: %s  !!!" % cap_file)
+        print("Bad file path in user input argument: %s  !!!" % cap_file)
         return
     exit()
     return
         
-def plot_file( file1 ):
+def plot_file( file1, file_name ):
     # return
     plots = csv.reader(file1, delimiter=',')
     y0 = []
     y1 = []
     y2 = []
+    y3 = []
     for row in plots:
         y0.append(int(row[0]))
         y1.append(int(row[1]))
         y2.append(int(row[2]))
+        y3.append(int(row[3]))
+
+    # WinMove, ,,367,144,1358,598
+    # resize the figure to w: 1358	h: 598
+    my_dpi = 96 # by calculating width resolution / screen size = 2560/31.25' = 81.9
+    # plt.figure(figsize=(1358/my_dpi, 598/my_dpi), dpi=my_dpi)
+    height_fix =  598/671 # from measuring the actual results.
+    plt.figure(figsize=(13.58, 5.98*height_fix), dpi=100)
+
     #print(y0[0:200])
-    # plt.plot(y0,label="tool_size")
-    plt.plot(y0,label="Delta_insertion")
+    plt.plot(y0,label="tool_size")
+    # plt.plot(y0,label="Delta_insertion")
     plt.plot(y1,marker='o',label="insertion")
     plt.plot(y2,label="torque")
-    plt.xlabel('Time')
+    plt.plot(y3,label="image_quality")  # 2023_03_09 added.
+    # plt.xlabel('Time')
+    display_f_name = file_name.split('\\')
+    display_f_n = display_f_name[len(display_f_name)-1]
+    text = 'Time...' + "\n" + display_f_n
+    plt.xlabel(text)
     plt.ylabel('Value')
     # plt.title('tool_size, insertion and  torque"')
-    plt.title('Delta_insertion, insertion and  torque"')
+    # plt.title('Delta_insertion, insertion and  torque"')
+    #plt.suptitle(file_name) 
+    # plt.suptitle(file_name, x=0.5, y=1.05, fontsize=16, fontweight="bold")    
+    # https://matplotlib.org/stable/api/text_api.html#matplotlib.text.Text.set_fontweight
+    plt.title(display_f_n,fontsize=10, fontweight="ultralight")    
+    # text = 'tool_size, insertion, torque and image_quality' + "\n" + file_name
+    # plt.title('tool_size, insertion, torque and image_quality "', fontweight="bold")
+    plt.suptitle('tool_size, insertion, torque and image_quality', fontsize=16, fontweight="bold")
+    
+    # plt.title(text)
     plt.legend()
     plt.grid() # 2023_02_20 added.
     plt.show() 
@@ -107,3 +134,13 @@ def plot_file( file1 ):
 
 if __name__ == "__main__":
     main()
+
+
+'''
+history changes
+2023_03_09 
+- adding image_quality to recording. 
+- resize the figure to w: 1358	h: 598
+- adding csv file name to title 
+
+'''            
