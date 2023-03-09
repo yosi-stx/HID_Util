@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_02_05.a"
+util_verstion = "2023_02_16.a"
 
 from binascii import hexlify
 import sys
@@ -225,7 +225,8 @@ def show_pwm_16_values():
     global pwm_16_widget
     global pwm_text_widget
     global pwm_text
-    pwm_percent = pwm_16/(2**16-1)*100
+    #pwm_percent = pwm_16/(2**16-1)*100
+    pwm_percent = pwm_16/(2**12-1)*100
     temp_txt = ("{:.2f}".format(pwm_percent))
     # str(pwm_16/(2**16-1)*100)
     label_pwm16_text = "PWM: "+ temp_txt +"%"
@@ -943,7 +944,8 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     
    
     # temp_widget = tk.Button(frame, text='Print PWM', command=show_pwm_values).grid(row=row,column=1)
-    pwm_16_widget = tk.Scale(frame, from_=0, to=2**16-1, orient='horizontal',length=400)#, orient=HORIZONTAL)
+    # pwm_16_widget = tk.Scale(frame, from_=0, to=2**16-1, orient='horizontal',length=400)#, orient=HORIZONTAL)
+    pwm_16_widget = tk.Scale(frame, from_=0, to=2**12-1, orient='horizontal',length=400)#, orient=HORIZONTAL)
     # tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
     pwm_16_widget.grid(row=row,column=2,sticky='W')
 

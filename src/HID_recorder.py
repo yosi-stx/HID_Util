@@ -5,6 +5,7 @@
 # 2022_07_06__01_39 - adding plotting by using matplotlib 
 # 2022_06_30__19_12 - adding special calculation for Torque and Insertion
 # 2023_02_03__15_46 - print the version of this file 
+# 2023_02_21__00_30 - added uint_16_unsigned_to_int_signed()
 # last modified at: Friday, ‎March ‎12, ‎2021, ‏‎06:16:05 PM
 
 from binascii import hexlify
@@ -21,7 +22,7 @@ import csv
 import time
 import matplotlib.pyplot as plt
 
-this_file_version = "2023_02_03.a"
+this_file_version = "2023_02_21.a"
 print("This Recorder Version: ",this_file_version)
 # BOARD_TYPE_MAIN = 0,
 # BOARD_TYPE_JOYSTICKS = 1,
@@ -131,6 +132,8 @@ TORQUE_INDEX = 2 + 8
 STATION_CURRENT_INDEX = 25
 MAX_LONG_POSITIVE = 2**31
 MAX_UNSIGNED_LONG = 2**32
+MAX_U16_POSITIVE = 2**15
+MAX_U16  = 2**16
 
 # global variables
 special_cmd = 0
@@ -193,6 +196,7 @@ def gui_loop(device):
             # save into file:
             #INSERTION_INDEX
             tool_size = (int(value[CMOS_INDEX + 1]) << 8) + int(value[CMOS_INDEX])
+            tool_size = uint_16_unsigned_to_int_signed(tool_size)
 # Received data: b'3f26 00 00 00 00 0674fc41 3f4efc70 0033a4513c5a0101210001000000650000000000000000000000167f070dd7aee89baff63fedcfcccb763acf041b00000010'
 #                                   TORQUE   INSERTION
             # 0674 fc41
@@ -248,6 +252,11 @@ def gui_loop(device):
 def long_unsigned_to_long_signed( x ):
     if x > MAX_LONG_POSITIVE:
         x = x - MAX_UNSIGNED_LONG
+    return x
+
+def uint_16_unsigned_to_int_signed( x ):
+    if x > MAX_U16_POSITIVE:
+        x = x - MAX_U16
     return x
 
 def date2dec(x):
@@ -474,6 +483,7 @@ def main():
         plt.ylabel('Value')
         plt.title('tool_size, insertion and  torque"')
         plt.legend()
+        plt.grid() # 2023_02_20 added.
         plt.show()        
         if device != None:
             device.close()
