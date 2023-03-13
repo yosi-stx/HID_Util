@@ -22,7 +22,7 @@ import csv
 import time
 import matplotlib.pyplot as plt
 
-recorder_version = "2023_03_09.a"
+recorder_version = "2023_03_13.a"
 print("This Recorder Version: ",recorder_version)
 # BOARD_TYPE_MAIN = 0,
 # BOARD_TYPE_JOYSTICKS = 1,
@@ -64,7 +64,9 @@ PRODUCT_ID_types =  {
 # FILE1_PATH = "log\hid_log.csv"
 FILE1_PATH = "log\hid_" # log.csv"
 start_date_time = get_date_time()
+FIGURE_FILE1_PATH = FILE1_PATH + start_date_time + ".png"
 FILE1_PATH = FILE1_PATH + start_date_time + ".csv"
+
 print("Recording result at: ", FILE1_PATH, "\n")
 if not os.path.exists('log'):
     os.makedirs('log')
@@ -510,7 +512,16 @@ def main():
         plt.suptitle('tool_size, insertion, torque and image_quality', fontsize=16, fontweight="bold")
         plt.legend()
         plt.grid() # 2023_02_20 added.
-        plt.show()        
+        
+        # Save plot to disk to subfolder log
+        # Create 'log' subfolder if it doesn't exist
+        if not os.path.exists('log'):
+            os.makedirs('log')
+        # plt.savefig("log/figure.png", bbox_inches='tight', dpi=150)
+        plt.savefig(FIGURE_FILE1_PATH, bbox_inches='tight', dpi=150)
+        
+
+        plt.show() 
         if device != None:
             device.close()
         # time.sleep(2.5)
@@ -539,4 +550,6 @@ history changes
 - adding image_quality to recording. 
 - resize the figure to w: 1358	h: 598
 - adding csv file name to title 
+- to save the plot file with the full date&time name at \log\
+
 '''        

@@ -137,6 +137,7 @@ clicker_log.txt
 src/HID_UTILL -2021_01_25__13_03.py
 history_py_files
 *.xlsx
+src/log/*png
 src/HID_recorder -2021_03_09__12_00.py
 src/HID_recorder - 2021_03_09__12_36.py
 src/bsl - Copy.py
@@ -159,3 +160,5 @@ src/Prime_L552.bin
 src/Ver_from_bin.py
 src/try_gui_generator.py
 src/local_backup.bat
+src/can_gui(temp_tries)
+src/figure.png

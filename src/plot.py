@@ -16,7 +16,7 @@ from tkinter import *
 from tkinter.filedialog import askopenfilename
 import os
 
-plot_version = "2023_03_09.a"
+plot_version = "2023_03_13.a"
 print("This Recorder Version: ",plot_version)
 
 # from ctag_hid_log_files_path import *
@@ -71,29 +71,59 @@ def main():
         if use_tKinter == 1:
             print("we have a path from gui %s" % filepath)
             file1 = open(filepath,"r+")
+            # csv_size( file1, filepath )
             plot_file( file1, filepath )
             
         else:
             file1 = open(cap_file,"r+")
+            # csv_size( file1, cap_file )
             plot_file( file1, cap_file )
     except FileNotFoundError:
         print("Bad file path in user input argument: %s  !!!" % cap_file)
         return
     exit()
     return
+
+def csv_size( file1, file_name ):
+    # return
+    plots = csv.reader(file1, delimiter=',')
+    print("csv size:")
+    rows = 0
+    columns = 0
+    for temp in plots:
+        rows += 1
+        if len(temp) > columns:
+            columns = len(temp)
+    print("Number of rows:", rows)
+    print("Number of columns:", columns)
+    return(rows,columns)
         
 def plot_file( file1, file_name ):
     # return
+    plots = csv.reader(file1, delimiter=',')
+    print("csv size:")
+    rows = 0
+    columns = 0
+    for temp in plots:
+        rows += 1
+        if len(temp) > columns:
+            columns = len(temp)
+    print("Number of rows:", rows)
+    print("Number of columns:", columns)
     plots = csv.reader(file1, delimiter=',')
     y0 = []
     y1 = []
     y2 = []
     y3 = []
+    # plots = csv.reader(file1, delimiter=',')
+    file1.seek(0) # to start from begining of the file.
     for row in plots:
         y0.append(int(row[0]))
         y1.append(int(row[1]))
-        y2.append(int(row[2]))
-        y3.append(int(row[3]))
+        if columns > 2:  #len(row) > 2:
+            y2.append(int(row[2]))
+        if columns > 3:  #len(row) > 3:
+            y3.append(int(row[3]))
 
     # WinMove, ,,367,144,1358,598
     # resize the figure to w: 1358	h: 598
@@ -107,7 +137,8 @@ def plot_file( file1, file_name ):
     # plt.plot(y0,label="Delta_insertion")
     plt.plot(y1,marker='o',label="insertion")
     plt.plot(y2,label="torque")
-    plt.plot(y3,label="image_quality")  # 2023_03_09 added.
+    if columns > 3:
+        plt.plot(y3,label="image_quality")  # 2023_03_09 added.
     # plt.xlabel('Time')
     display_f_name = file_name.split('\\')
     display_f_n = display_f_name[len(display_f_name)-1]
@@ -142,5 +173,6 @@ history changes
 - adding image_quality to recording. 
 - resize the figure to w: 1358	h: 598
 - adding csv file name to title 
+- be able to plot also 3 column csv files.
 
 '''            
