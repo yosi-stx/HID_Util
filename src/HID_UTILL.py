@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_02_16.a"
+util_verstion = "2023_03_16.a"
 
 from binascii import hexlify
 import sys
@@ -819,8 +819,9 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     ignore_red_handle_checkbutton = w
     w.grid(row=row,column=2)
 
-    temp_widget = tk.Button(frame,text ="Start streaming",command = streaming_button_CallBack)
-    temp_widget.grid(row=row,column=3)
+    # move to lower widgets line:
+    # temp_widget = tk.Button(frame,text ="Start streaming",command = streaming_button_CallBack)
+    # temp_widget.grid(row=row,column=3)
 
     row += 1
 
@@ -975,17 +976,28 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     else:
         temp_widget = tk.Button(frame,text ="Keep alive (fast BLE)",command = alive_button_CallBack)
     temp_widget.grid(row=row,column=1)
+    row += 1
+
+    row = my_seperator(frame, row)
+    # ------------------------------------------------------ 
+    temp_widget = tk.Button(frame,text ="Start streaming",command = streaming_button_CallBack, bg="#66FFFF")
+    temp_widget.grid(row=row,column=0)
+
     if PRODUCT_ID == PRODUCT_ID_STATION:
-        temp_widget = tk.Button(frame,text ="Reset Ins & Torque",command = moderate_button_CallBack)
+        temp_widget = tk.Button(frame,text ="Reset Ins & Torque",command = moderate_button_CallBack, bg="#00FF00") # green button.
     else:
-        temp_widget = tk.Button(frame,text ="Moderate BLE",command = moderate_button_CallBack)
-    temp_widget.grid(row=row,column=2)
+        temp_widget = tk.Button(frame,text ="Moderate BLE",command = moderate_button_CallBack, bg="#00FF00") 
+    temp_widget.grid(row=row,column=1)
+
+    # Bind hotkey to root window :  Ctrl+r to press "Reset Ins & Torque" button.
+    frame.bind("<Control-r>", lambda event: moderate_button_CallBack())
 
     row += 1
 
     row = my_seperator(frame, row)
-    # ------------------------------------------------------
-    temp_widget = tk.Button(frame,text ="BSL !!!(DONT PRESS)",command = BSL_mode_button_CallBack)
+    # ------------------------------------------------------ 
+    # temp_widget = tk.Button(frame,text ="BSL !!!(DONT PRESS)",command = BSL_mode_button_CallBack, bg="red")
+    temp_widget = tk.Button(frame,text ="BSL !!!(DONT PRESS)",command = BSL_mode_button_CallBack, bg="#FFE0E0")
     temp_widget.grid(row=row,column=2)
     
 def isChecked():
@@ -1188,4 +1200,8 @@ history changes
 - adding the scale widget for PWM.
 2023_03_09
 - adding explanatory comments
+2023_03_16
+- put some colors in the buttons 
+- move the location of the buttons.
+- Ctrl+r to press "Reset Ins & Torque" button.
 '''    
