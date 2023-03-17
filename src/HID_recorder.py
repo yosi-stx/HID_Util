@@ -24,6 +24,10 @@ import matplotlib.pyplot as plt
 
 recorder_version = "2023_03_13.a"
 print("This Recorder Version: ",recorder_version)
+
+# for debugging the slippage issue:
+use_delta_instead_of_tool_size = 1
+
 # BOARD_TYPE_MAIN = 0,
 # BOARD_TYPE_JOYSTICKS = 1,
 # BOARD_TYPE_TOOLS_MASTER = 2,
@@ -66,6 +70,7 @@ FILE1_PATH = "log\hid_" # log.csv"
 start_date_time = get_date_time()
 FIGURE_FILE1_PATH = FILE1_PATH + start_date_time + ".png"
 FILE1_PATH = FILE1_PATH + start_date_time + ".csv"
+display_text = ""
 
 print("Recording result at: ", FILE1_PATH, "\n")
 if not os.path.exists('log'):
@@ -142,6 +147,9 @@ IMAGE_QUALITY_INDEX = TORQUE_INDEX + 4
 special_cmd = 0
 my_thread_run = True
 my_thread_ended = False
+max_insertion = 0
+insertion = 0
+start_insertion = 0
 
 def gui_loop(device):
     do_print = True
@@ -152,10 +160,14 @@ def gui_loop(device):
     skip_write = 0
     prev_counter = 0
     send_stream_request_command_once = 1
+    do_once = 1
     # cnt = None
     # prev_cnt = None
     # value = None
     global special_cmd
+    global max_insertion
+    global insertion
+    global start_insertion
     # global print_flag
     
     while my_thread_run:
@@ -230,6 +242,12 @@ def gui_loop(device):
             ### recording ::  tool_size, insertion and  torque ###
             # L = [ str(tool_size),",   ", str(insertion), ", " , str(torque), "\n" ]  
 
+            # save the max_insertion for % calculating later.
+            if( abs(insertion) > abs(max_insertion) ):
+                max_insertion = insertion
+            if(do_once):  # do only once, for the first streaming value
+                start_insertion = insertion
+                do_once = 0
             ### recording ::  tool_size, insertion, torque and  image_quality ###
             L = [ str(tool_size),",   ", str(insertion), ", " , str(torque), ", " , str(image_quality), "\n" ]  
             file1.writelines(L) 
@@ -326,7 +344,8 @@ def main():
     global VENDOR_ID
     global PRODUCT_ID
     global file1
-    
+    global insertion
+    global max_insertion    
     PATH = None
     
     # open recording log file:
@@ -453,6 +472,15 @@ def main():
         input()
         print("Recording start: ", start_date_time)
         print("Recording end  : ", get_date_time())
+        global insertion
+        global max_insertion
+        global start_insertion
+        # print("start_insertion: ", start_insertion)
+        # print("max_insertion: ", max_insertion,"   | Last insertion: ", insertion,"   | error (%): ", int(insertion/max_insertion*100),"%" )
+        motion_error = abs(insertion-start_insertion)/max_insertion*100
+        # print("max_insertion: %d   | Last insertion: %d    | error :%2.1f %%" % (max_insertion,insertion, motion_error))
+        display_text = ("Max_insertion: %d   | Start_insertion: %d   | Last insertion: %d    | error :%2.1f %%" % ( max_insertion,start_insertion, insertion, motion_error))
+        print(display_text)
         print("\n","Recording result at: ", FILE1_PATH)
         # try:
         #     with open(FILE1_PATH, 'r') as csvfile:
@@ -493,7 +521,10 @@ def main():
         height_fix =  598/671 # from measuring the actual results.
         plt.figure(figsize=(13.58, 5.98*height_fix), dpi=100)
         #print(y0[0:200])
-        plt.plot(y0,label="tool_size")
+        if( use_delta_instead_of_tool_size):
+            plt.plot(y0,label="Delta_insertion")
+        else:
+            plt.plot(y0,label="tool_size")
         plt.plot(y1,label="insertion")
         #plt.plot(y1,marker='o',label="insertion")
         plt.plot(y2,label="torque")
@@ -501,7 +532,11 @@ def main():
         # plt.xlabel('Time')
         display_f_name = FILE1_PATH.split('\\')
         display_f_n = display_f_name[len(display_f_name)-1]
-        text = 'Time...' + "\n" + display_f_n
+        # text = 'Time...' + "\n" + display_f_n
+        if display_text == "":
+            text = 'Time...' + "\n" + "no streaming was captured"
+        else:
+            text = 'Time...' + "\n" + display_text
         # text = 'Time...' + "\n" + FILE1_PATH
         plt.xlabel(text)
         plt.ylabel('Value')
@@ -509,7 +544,10 @@ def main():
         plt.title(display_f_n,fontsize=10, fontweight="ultralight")    
         # text = 'tool_size, insertion, torque and image_quality' + "\n" + file_name
         # plt.title('tool_size, insertion, torque and image_quality "', fontweight="bold")
-        plt.suptitle('tool_size, insertion, torque and image_quality', fontsize=16, fontweight="bold")
+        if( use_delta_instead_of_tool_size):
+            plt.suptitle('Delta-insertion, insertion, torque and image_quality', fontsize=16, fontweight="bold")
+        else:
+            plt.suptitle('tool_size, insertion, torque and image_quality', fontsize=16, fontweight="bold")
         plt.legend()
         plt.grid() # 2023_02_20 added.
         
@@ -518,7 +556,8 @@ def main():
         if not os.path.exists('log'):
             os.makedirs('log')
         # plt.savefig("log/figure.png", bbox_inches='tight', dpi=150)
-        plt.savefig(FIGURE_FILE1_PATH, bbox_inches='tight', dpi=150)
+        # plt.savefig(FIGURE_FILE1_PATH, bbox_inches='tight', dpi=150)
+        plt.savefig(FIGURE_FILE1_PATH, bbox_inches='tight')
         
 
         plt.show() 
@@ -551,5 +590,9 @@ history changes
 - resize the figure to w: 1358	h: 598
 - adding csv file name to title 
 - to save the plot file with the full date&time name at \log\
-
+2023_03_17
+- change the dpi of autoSave plot to same as the figure
+- add to the recorder auto calculate of the error in %
+- display extra information on the graph (Max_insertion, motion_error, etc.)
+- change the label to : Delta-insertion
 '''        
