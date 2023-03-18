@@ -112,7 +112,8 @@ def print_info( file1 ):
     global result_file
     posx = 0
     posy = 0
-        
+    read_status_register = 0
+    
     for line in file1:
         deltaX = 0
         deltaY = 0
@@ -132,6 +133,9 @@ def print_info( file1 ):
         if (list[4] == '0x12'): 
             read_deltaY_h = line_number
         
+        if (list[4] == '0x02'): # read status register
+            read_status_register = 1
+
         if list[1] == '"result"':
             if read_deltaX_l == prev_line:
                 deltaX_l = list[5]
@@ -159,8 +163,10 @@ def print_info( file1 ):
         posx += deltaX
         posy += deltaY
         tool_size = 0
-        L = [ str(tool_size),",   ", str(posy), ", " , str(posx), "\n" ]  
-        result_file.writelines(L) 
+        if read_status_register:
+            L = [ str(tool_size),",   ", str(posy), ", " , str(posx), "\n" ]  
+            result_file.writelines(L) 
+            read_status_register = 0 # put the into into file only once per read_motion_burst()
         if printed_lines > 20 :
             pass
             # break
@@ -198,3 +204,9 @@ def plot_file( file1 ):
 
 if __name__ == "__main__":
     main()
+    
+'''
+2023_03_18
+- to find the problem in  LogicAnalyzer_spi2csv that create 32 repeats of value in the output file
+
+'''    
