@@ -25,17 +25,15 @@ from tkinter.filedialog import askopenfilename
 import os
 from string_date_time import get_date_time
 
-# from ctag_hid_log_files_path import *
 
 FILE1_PATH = "log\hid_2022_06_30__23_33.csv"
-# FILE2_PATH = "log\clicker_overSample.csv"
 # "C:\Work\Python\HID_Util\src\log\hid_2022_06_30__23_33.csv"
 filepath = "here_should_be_path"
 
 FILE1_PATH = "log\spi_data_" # log.csv"
 start_date_time = get_date_time()
 FILE1_PATH = FILE1_PATH + start_date_time + ".csv"
-print("Recording result at: ", FILE1_PATH, "\n")
+print("Converting result to: ", FILE1_PATH, "\n")
 if not os.path.exists('log'):
     os.makedirs('log')
 # open recording log file:
@@ -113,6 +111,9 @@ def print_info( file1 ):
     posx = 0
     posy = 0
     read_status_register = 0
+    last_deltaY = 0
+    status_register_read_line = 0
+    motion_register = 0
     
     for line in file1:
         deltaX = 0
@@ -133,10 +134,17 @@ def print_info( file1 ):
         if (list[4] == '0x12'): 
             read_deltaY_h = line_number
         
-        if (list[4] == '0x02'): # read status register
+        if (list[4] == '0x02'): # read status register // once for every "burst"
+            status_register_read_line = line_number
             read_status_register = 1
 
         if list[1] == '"result"':
+            if status_register_read_line == prev_line:
+                motion_register = list[5]
+                if motion_register == '0x80':
+                    pass
+                else:
+                    last_deltaY = 0 # this is not completely true since there could be X movement...
             if read_deltaX_l == prev_line:
                 deltaX_l = list[5]
                 # print(list, end="")
@@ -157,14 +165,20 @@ def print_info( file1 ):
                     deltaX = uint16_to_signed(int(deltaX_h,16)*256 + int(deltaX_l,16))
                     deltaY = uint16_to_signed(int(deltaY_h,16)*256 + int(deltaY_l,16))
                     print("    ", deltaX,deltaY)
-                    
                     printed_lines += 1
+                    last_deltaY = deltaY
+                    
+            # if read_status_register:
+                # last_deltaY = deltaY
+                    
         prev_line = line_number
         posx += deltaX
         posy += deltaY
         tool_size = 0
         if read_status_register:
-            L = [ str(tool_size),",   ", str(posy), ", " , str(posx), "\n" ]  
+            # L = [ str(tool_size),",   ", str(posy), ", " , str(posx), "\n" ]             
+            # instead of (tool_size) we want to see in the graph (deltaY)
+            L = [ str(last_deltaY),",   ", str(posy), ", " , str(posx), "\n" ]  
             result_file.writelines(L) 
             read_status_register = 0 # put the into into file only once per read_motion_burst()
         if printed_lines > 20 :
