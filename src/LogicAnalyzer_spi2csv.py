@@ -24,6 +24,12 @@ from tkinter import *
 from tkinter.filedialog import askopenfilename
 import os
 from string_date_time import get_date_time
+from colorama import Fore, Back, Style
+
+# Define ANSI escape sequences for various colors
+GREEN = '\033[32m'
+YELLOW = '\033[33m'
+RESET = '\033[0m'
 
 
 FILE1_PATH = "log\hid_2022_06_30__23_33.csv"
@@ -59,7 +65,8 @@ def main():
         return
 
     if sys.argv[1] == "-o" :
-        my_Path = "C:\\Work\\Logic_Analyzer\\2023_02_21"
+        # my_Path = "C:\\Work\\Logic_Analyzer\\2023_02_21"
+        my_Path = "C:\\Work\\Logic_Analyzer\\2023_03_19"
         print("Use tKinter")
         use_tKinter = 1
         
@@ -142,8 +149,10 @@ def print_info( file1 ):
             if status_register_read_line == prev_line:
                 motion_register = list[5]
                 if motion_register == '0x80':
+                    # there is movement in this query -> will be followed by "burst" query!
                     pass
                 else:
+                    # there is no movement (in both axes)  --> we zeroing the last delta Y 
                     last_deltaY = 0 # this is not completely true since there could be X movement...
             if read_deltaX_l == prev_line:
                 deltaX_l = list[5]
@@ -161,15 +170,17 @@ def print_info( file1 ):
                 # therefore in the 4th read, we accomplished the sample movement information.
                 # if motion_lines > 1000:  
                 if 1:  
-                    print("deltaX: ", deltaX_h,deltaX_l,"   deltaY: ", deltaY_h,deltaY_l,end="")
+                    # print("deltaX: ", deltaX_h,deltaX_l,"   deltaY: ", deltaY_h,deltaY_l,end="")
+                    print(GREEN + "deltaX: ", deltaX_h,deltaX_l,"   deltaY: ", deltaY_h,deltaY_l,end="")
                     deltaX = uint16_to_signed(int(deltaX_h,16)*256 + int(deltaX_l,16))
                     deltaY = uint16_to_signed(int(deltaY_h,16)*256 + int(deltaY_l,16))
-                    print("    ", deltaX,deltaY)
+                    print("    " + RESET, deltaX,deltaY)
                     printed_lines += 1
                     last_deltaY = deltaY
-                    
-            # if read_status_register:
-                # last_deltaY = deltaY
+                    #if deltaX != 0 and deltaY == 0:   # this is for debug only.
+                    #    print(Back.RED + " movement only on X but no Y movement:", "    deltaX: ",deltaX,"     deltaY: ",deltaY)
+                    #    print(Style.RESET_ALL)
+                        
                     
         prev_line = line_number
         posx += deltaX
