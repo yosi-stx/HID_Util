@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_03_16.a"
+util_verstion = "2023_03_30.a"
+DEBUG_SLIPPAGE = 1
 
 from binascii import hexlify
 import sys
@@ -127,6 +128,8 @@ TORQUE_INDEX = 2 + 8
 STATION_CURRENT_INDEX = 25
 MAX_LONG_POSITIVE = 2**31
 MAX_UNSIGNED_LONG = 2**32
+MAX_INT16_POSITIVE = 2**15
+MAX_UNSIGNED_INT = 2**16
 # IMAGE_QUALITY_INDEX = INSERTION_INDEX + 4
 IMAGE_QUALITY_INDEX = TORQUE_INDEX + 4
 
@@ -384,6 +387,11 @@ def long_unsigned_to_long_signed( x ):
         x = x - MAX_UNSIGNED_LONG
     return x
 
+def unsigned_to_signed( x ):
+    if x > MAX_INT16_POSITIVE:
+        x = x - MAX_UNSIGNED_INT
+    return x
+
 def date2dec(x):
     s = "%02x" % x
     return s
@@ -421,6 +429,8 @@ def handler(value, do_print=False):
     insertion = (int(value[INSERTION_INDEX + 2]) << 24) + (int(value[INSERTION_INDEX+3]) <<16) + (int(value[INSERTION_INDEX]) <<8) + int(value[INSERTION_INDEX+1])  
     image_quality = (int(value[IMAGE_QUALITY_INDEX]) )
     station_current = (int(value[STATION_CURRENT_INDEX + 1]) << 8) + int(value[STATION_CURRENT_INDEX]) #station Report.current
+    if DEBUG_SLIPPAGE == 1:   # Delta insertion
+        station_current = unsigned_to_signed(station_current)
     #global MAX_LONG_POSITIVE
     torque = long_unsigned_to_long_signed(torque)
     insertion = long_unsigned_to_long_signed(insertion)
@@ -537,6 +547,10 @@ def handler(value, do_print=False):
         precentage_MotorCur = int((int_MotorCur / 4096) * 100)
     else:
         precentage_MotorCur = int((station_current / 4096) * 100)
+        if DEBUG_SLIPPAGE == 1:
+            # use the station_current to show the Delta insertion , scaled to 255
+            precentage_MotorCur = abs(int((station_current / 255) * 100))
+            
 
     # the following lines are allocation of variables (on the left side) to progressbar_styles
     # that were created in my_widgets() function in a sophisticated loop the go over all style_names[]
@@ -579,7 +593,14 @@ def handler(value, do_print=False):
     if PRODUCT_ID != PRODUCT_ID_STATION:
         progressbar_style_MotorCur.configure(MOTOR_CURRENT_STYLE,text=("%d"%MotorCur))
     else:
-        progressbar_style_MotorCur.configure(MOTOR_CURRENT_STYLE,text=("%d"%station_current))
+        if DEBUG_SLIPPAGE == 1:
+            if( station_current > 0 ):
+                progressbar_style_MotorCur.configure(MOTOR_CURRENT_STYLE,text=("%d"%station_current), background="green")
+            else:
+                # for negative direction show the bar in red color 
+                progressbar_style_MotorCur.configure(MOTOR_CURRENT_STYLE,text=("%d"%station_current), background="red")
+        else:
+            progressbar_style_MotorCur.configure(MOTOR_CURRENT_STYLE,text=("%d"%station_current))
     # if ( batteryLevel <= 2310 ):
     if ( batteryLevel <= 2288 ):  # about 2.8 volt
         progressbar_style_batteryLevel.configure(BATTERY_LEVEL_STYLE,foreground="white", background="#d92929")
@@ -661,9 +682,7 @@ def my_widgets(frame):
     global pwm_16_widget
     # Add style for labeled progress bar
     for name in style_names:
-        style = ttk.Style(
-            frame
-        )
+        style = ttk.Style(frame)
         progressbar_styles.append(style)
         style.layout(
             name,
@@ -673,14 +692,8 @@ def my_widgets(frame):
                     {
                         "children":
                         [
-                            (
-                                "%s.pbar" % name,
-                                {"side": "left", "sticky": "ns"}
-                            ),
-                            (
-                                "%s.label" % name,
-                                {"sticky": ""}
-                            )
+                            ("%s.pbar" % name,{"side": "left", "sticky": "ns"}),
+                            ("%s.label" % name,{"sticky": ""})
                         ],
                         "sticky": "nswe"
                     }
@@ -734,8 +747,11 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     row -= 1    # go line back for text header
 
     text_name = "Channel 2 (analog[?] = bytes 4,5)"
+    global DEBUG_SLIPPAGE
     if PRODUCT_ID == PRODUCT_ID_STATION:
         text_name = "Tool Size"
+        if DEBUG_SLIPPAGE == 1:
+            text_name = "Delta insertion (or Tool Size)"
     ttk.Label(frame,text=text_name).grid(row=row,column=1)
 
     row += 1
@@ -861,15 +877,14 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     row = my_seperator(frame, row)
     # ------------------------------------------------------
 
-    # sleepTimer
-    ttk.Label(frame,text="SleepTimer").grid(row=row,column=0,sticky=tk.E,)
+    # sleepTimer    "#0000FF" 
+    ttk.Label(frame,text="Sleep Timer",foreground="#999999").grid(row=row,column=0,sticky=tk.E,)
+    # ttk.Label(frame,text="Sleep Timer").grid(row=row,column=0,sticky=tk.E,)
+    # ttk.Label.tag_configure("blue", foreground="blue")
+    # ttk.Label.tag_add("blue", "1.0", "1.4")
 
-    w = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=LONG_PROGRESS_BAR_LEN,
-        style="sleepTimer"
-    )
+   #w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=PROGRESS_BAR_LEN,style="Clicker")
+    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN,style="sleepTimer")
     progressbars.append(w)
     w.grid(
         row=row,
@@ -884,20 +899,28 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     row = my_seperator(frame, row)
     # ------------------------------------------------------
 
+    two_color_style = ttk.Style()
+    two_color_style.configure("Main_text.TLabel", foreground="black")
+    two_color_style.configure("Second_text.TLabel", foreground="#999999")
+
     # battery level
     text_name = "batterylevel"
     if PRODUCT_ID == PRODUCT_ID_STATION:
         text_name = "Pressure   (bytes 22,23)"
+        if DEBUG_SLIPPAGE == 1:
+            text_name = "Tool Size [was: Pressure] (bytes 22,23)"
     if PRODUCT_ID == PRODUCT_ID_TOOLS:
         text_name = "injector_Sig1   (bytes 32,33)"
-    ttk.Label(frame,text=text_name).grid(row=row,column=0,sticky=tk.E,) #bytes 22,23 
+    
+    if DEBUG_SLIPPAGE == 0:
+        ttk.Label(frame,text=text_name).grid(row=row,column=0,sticky=tk.E,) #bytes 22,23 
+    else:
+        # use two colors label:
+        # ttk.Label(frame,text=text_name).grid(row=row,column=0,sticky=tk.E,) #bytes 22,23 
+        ttk.Label(frame, text="Tool Size ------------------------------", style="Main_text.TLabel").grid(row=row, column=0, sticky=tk.E)
+        ttk.Label(frame, text=           "[was: Pressure] (bytes 22,23)", style="Second_text.TLabel").grid(row=row, column=0, sticky=tk.E)
 
-    w = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=LONG_PROGRESS_BAR_LEN,
-        style="batteryLevel"
-    )
+    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN,style="batteryLevel")
     progressbars.append(w)
     w.grid(
         row=row,
@@ -916,21 +939,18 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     if PRODUCT_ID != PRODUCT_ID_STATION:
         ttk.Label(frame,text="MotorCurrent").grid(row=row,column=0,sticky=tk.E,)
     else:
-        ttk.Label(frame,text="Station MotorCurrent (bytes 25,26)").grid(row=row,column=0,sticky=tk.E,)
+        text_name = "Station MotorCurrent (bytes 25,26)"
+        if DEBUG_SLIPPAGE == 0:
+            ttk.Label(frame,text=text_name).grid(row=row,column=0,sticky=tk.E,)
+        else:
+            # use two colors label:
+            # ttk.Label(frame,text=text_name).grid(row=row,column=0,sticky=tk.E,) #bytes 22,23 
+            ttk.Label(frame, text="Delta insertion____________________________________________", style="Main_text.TLabel").grid(row=row, column=0, sticky=tk.E)
+            ttk.Label(frame, text=                  "[was: Station MotorCurrent] (bytes 25,26)", style="Second_text.TLabel").grid(row=row, column=0, sticky=tk.E)
 
-    w = ttk.Progressbar(
-        frame,
-        orient=tk.HORIZONTAL,
-        length=LONG_PROGRESS_BAR_LEN,
-        style="motorCurrent"
-    )
+    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN,style="motorCurrent")
     progressbars.append(w)
-    w.grid(
-        row=row,
-        column=1,
-        # columnspan=3
-        columnspan=2
-    )
+    w.grid(row=row,column=1,columnspan=2)
 
     row += 1
 
@@ -1204,4 +1224,7 @@ history changes
 - put some colors in the buttons 
 - move the location of the buttons.
 - Ctrl+r to press "Reset Ins & Torque" button.
+2023_04_02
+- use the station_current to show the Delta insertion , scaled to 255
+- for negative direction show the bar in red color
 '''    
