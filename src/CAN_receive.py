@@ -1,4 +1,8 @@
+# C:\Work\Python\HID_Util\src\CAN_receive.py
 import can
+import sys
+import time  # for use with : time.sleep(0.1) # 100ms sleep
+import threading  #2023_04_05__23_42
 
 # create a CAN bus instance
 bus = can.interface.Bus(bustype='ixxat', channel=0, bitrate=1000000)
@@ -20,16 +24,43 @@ can_filter = [{"can_id": 0x103, "can_mask": 0x7FF}]
 # start the CAN bus
 # bus.start()
 
-# read messages from the bus
-while True:
-    msg = bus.recv()
-    if msg is not None and msg.arbitration_id == 0x103:
-        print("Received message with data:", msg.data)
-        if msg.data == 'quit':
-            break
-        if msg.data == b'quit':
-            break
+def Read_Messages():
+    # read messages from the bus
+    skips = 0 
+    while True:
+        msg = bus.recv()
+        if msg is not None and msg.arbitration_id == 0x103:
+            skips += 1 
+            if (skips%800) == 0:
+                print("Received message with data:", msg.data)
+                if msg.data == 'quit':
+                    break
+                if msg.data == b'quit':
+                    break
         
+def my_function():
+    a = 0
+    while True:
+        # a = input("press Enter")
+        print(a)
+        time.sleep(0.5)
+        a += 1
+        # print(a)
+        # break
+        pass
+
+threading.Thread(target=my_function, daemon=True).start()
+
+# Read_Messages()
+threading.Thread(target=Read_Messages, daemon=True).start()
+input()
+    
+print("Exit from CAN_receive")
+
+
+#-------------------  EXIT -------------------#
+sys.exit()
+#---------------------------------------------#
 
 # stop the CAN bus when done
 # bus.stop()
