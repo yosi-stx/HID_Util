@@ -3,6 +3,8 @@ import can
 import sys
 import time  # for use with : time.sleep(0.1) # 100ms sleep
 import threading  #2023_04_05__23_42
+import tkinter as tk
+from tkinter import simpledialog
 
 # create a CAN bus instance
 bus = can.interface.Bus(bustype='ixxat', channel=0, bitrate=1000000)
@@ -24,6 +26,42 @@ can_filter = [{"can_id": 0x103, "can_mask": 0x7FF}]
 # start the CAN bus
 # bus.start()
 
+def my_simple_cmd():
+    # create the root window
+    root = tk.Tk()
+    # hide the root window
+    root.withdraw()
+    while True:
+        # create a dialog box to prompt the user for input
+        cmd = simpledialog.askstring("Command", " Enter command\n \"exit\" or \"q\" to quit...\n i - for more commands")
+        print(cmd)
+        # print the user's cmd to the console
+        if cmd == None:
+            cmd = "esc"
+            print("Command: " + cmd + "!")
+            cmd = simpledialog.askstring("Command", "OK to continue, Cancel to exit")
+            if cmd == None:
+                sys.exit()
+            else:
+                cmd = "OK"
+        print("Command: " + cmd + "!")
+        if cmd == "exit" or cmd == "q" :
+            print("Exit the cmd window")
+            sys.exit()
+            
+        data = [ord(c) for c in cmd]
+        if cmd=="Start" or cmd=="1":
+            print("you entered Start:  ", data)
+            message = can.Message(arbitration_id=0x104, data=[0x01] + data, is_extended_id=False)
+            Prefix_data = data=[0x01] + data
+        else:    
+            print("you entered:", data)
+            message = can.Message(arbitration_id=0x104, data=[0x00] + data, is_extended_id=False)
+            Prefix_data = data=[0x00] + data
+        print("message= ",  Prefix_data)
+        bus = can.interface.Bus(bustype='ixxat', channel='0', bitrate=1000000)
+        bus.send(message)
+
 def Read_Messages():
     # read messages from the bus
     skips = 0 
@@ -42,17 +80,26 @@ def my_function():
     a = 0
     while True:
         # a = input("press Enter")
+        # print(a,end=" ")
         print(a)
-        time.sleep(0.5)
+        time.sleep(1)
         a += 1
         # print(a)
         # break
         pass
 
-threading.Thread(target=my_function, daemon=True).start()
+# threading.Thread(target=my_function, daemon=True).start()
 
 # Read_Messages()
 threading.Thread(target=Read_Messages, daemon=True).start()
+
+
+threading.Thread(target=my_simple_cmd, daemon=True).start()
+# # show the root window again (optional)
+# root.deiconify()
+# # run the event loop
+# root.mainloop()
+
 input()
     
 print("Exit from CAN_receive")
