@@ -1,0 +1,83 @@
+the general structure of HID_UTILL
+----------------------------------
+
+# create a global empty list for progressbars that will be added later in: my_widgets()
+progressbars = list()
+# create a global empty variable root to hold the class that represents the main window or the root 
+#  window of your application.
+root = None 
+special_cmd = 0
+
+def streaming_button_CallBack():
+    global special_cmd
+    special_cmd = 'I'
+
+# gui_loop() - this is the gui funtion that is running endlessly as a thread
+# functions: 
+#            1) write to device acording to global indication: special_cmd
+#            2) read from the device each time. 
+#               the main delay between device reads is due to the update of the gui by handler 
+def gui_loop(device):
+    do_print = True
+    while True:
+        # Write to the device (request data; keep alive)
+        if special_cmd == 'I':
+            WRITE_DATA = WRITE_DATA_CMD_START_0x304
+            device.write(WRITE_DATA)
+            print("special_cmd Start")
+            special_cmd = 0
+
+        # Read the packet from the device
+        value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
+
+        # Update the GUI
+        if len(value) >= READ_SIZE:
+            handler(value, do_print=do_print)
+
+
+# gui_updater_handler: 
+#   input: value - packet from the device that was read in the gui_loop()
+#   called by:  gui_loop() each time a full packet of 64 bytes was read by device.read()
+#   function:   update auxiliary varibles and then the relevant gui elements. // example: tool_size
+def handler(value, do_print=False):
+    tool_size = (int(value[CMOS_INDEX + 1]) << 8) + int(value[CMOS_INDEX])
+    int_hid_stream_channel2 = tool_size
+    # scaling to progressbar range 0..100 
+    precentage_hid_stream_channel2 = int((int_hid_stream_channel2 / 4096) * 100)
+
+    # allocation of variables (on the left side) to ProgressBars
+    # that were created in my_widgets() function, were progressbars[] is global list of widgets.
+    progressbar_hid_stream_channel2 = progressbars[1]
+
+    # the actual update of the "value" in the gui progressbar element asosiated variable
+    progressbar_hid_stream_channel2["value"] = precentage_hid_stream_channel2
+
+    # the actual updating of all the gui elements acording the above asosiated variables 
+    root.update()
+
+# my_widgets(): is the place were all the widgets are created 
+#               (aka: size, orientation, style, position etc.)
+# argument: frame - in this argument we pass the global class "root"
+def my_widgets(frame):
+    ...
+    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN,style="batteryLevel")
+    # adding the actual widget to the progressbars global list 
+    progressbars.append(w)
+    w.grid(row=row,column=1,columnspan=2)
+    row += 1
+    # Seperator
+    row = my_seperator(frame, row)
+    
+    
+def main():
+    ...
+    # Initialize the main window
+    global root
+    root = tk.Tk()
+    root.title(util_title)
+    # Initialize the GUI widgets
+    my_widgets(root)
+    # Create thread that calls gui_loop()
+    threading.Thread(target=gui_loop, args=(device,), daemon=True).start()
+    # Run the GUI main loop
+    root.mainloop()

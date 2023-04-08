@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_04_02.a"
+util_verstion = "2023_04_09.a"
 DEBUG_SLIPPAGE = 1
 
 from binascii import hexlify
@@ -426,7 +426,9 @@ def handler(value, do_print=False):
 # -62847372 = FC41 0674
 #   torque from Avago: bytes 6..9
     torque = (int(value[TORQUE_INDEX + 2]) << 24) + (int(value[TORQUE_INDEX+3]) <<16) + (int(value[TORQUE_INDEX]) <<8) + int(value[TORQUE_INDEX+1])  
+    torque_hex = torque
     insertion = (int(value[INSERTION_INDEX + 2]) << 24) + (int(value[INSERTION_INDEX+3]) <<16) + (int(value[INSERTION_INDEX]) <<8) + int(value[INSERTION_INDEX+1])  
+    insertion_hex = insertion
     image_quality = (int(value[IMAGE_QUALITY_INDEX]) )
     station_current = (int(value[STATION_CURRENT_INDEX + 1]) << 8) + int(value[STATION_CURRENT_INDEX]) #station Report.current
     if DEBUG_SLIPPAGE == 1:   # Delta insertion
@@ -438,7 +440,10 @@ def handler(value, do_print=False):
     if do_print:
         print("Received data: %s" % hexlify(value))
         if PRODUCT_ID == PRODUCT_ID_STATION:
-            print("insertion[last byte]: %02x  || image_quality: %02x  %d" % (int(value[INSERTION_INDEX+3]),image_quality, image_quality))
+            print("insertion[4bytes]: %08x  " % (int(insertion_hex)))
+            print("torque[4bytes]: %08x  " % (int(torque_hex)))
+            print("insertion[byte-2-3-0-1]: %02x-%02x-%02x-%02x  || image_quality: %02x  %d" % (int(value[INSERTION_INDEX+2]),int(value[INSERTION_INDEX+3]),int(value[INSERTION_INDEX+0]),int(value[INSERTION_INDEX+1]),image_quality, image_quality))
+            print("torque[byte-2-3-0-1]: %02x-%02x-%02x-%02x  " % (int(value[TORQUE_INDEX+2]),int(value[TORQUE_INDEX+3]),int(value[TORQUE_INDEX]),int(value[TORQUE_INDEX+1])))
         if PRODUCT_ID == PRODUCT_ID_TOOLS:
             pass 
             # print(analog)
@@ -1227,4 +1232,6 @@ history changes
 2023_04_02
 - use the station_current to show the Delta insertion , scaled to 255
 - for negative direction show the bar in red color
+2023_04_09 
+- adding debug prints 
 '''    
