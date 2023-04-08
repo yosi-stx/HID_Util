@@ -4,6 +4,7 @@ import sys
 import time  # for use with : time.sleep(0.1) # 100ms sleep
 import threading  #2023_04_05__23_42
 import tkinter as tk
+from tkinter import ttk
 from tkinter import simpledialog
 
 # create a CAN bus instance
@@ -22,15 +23,29 @@ bus = can.interface.Bus(bustype='ixxat', channel=0, bitrate=1000000)
 # define a CAN message filter to receive messages with ID 0x103
 can_filter = [{"can_id": 0x103, "can_mask": 0x7FF}]
 
-
+# global variables:
+global keep_running
+keep_running = 1
+prg1 = None 
+my_scale1 = None
 # start the CAN bus
 # bus.start()
 
+def my_upd(value):
+    prg1['value'] =my_scale1.get()
+
 def my_simple_cmd():
+    global prg1
     # create the root window
     root = tk.Tk()
     # hide the root window
-    root.withdraw()
+    # root.withdraw()
+    # prg1 = ttk.Progressbar(root,orient = 'horizontal',length = 320, mode = 'determinate',maximum=100)        
+    # prg1.grid(row=0,column=0,padx=20,pady=45)        
+    # my_scale1 = tk.Scale(root, from_=0, to=100, orient='horizontal',command=my_upd,length=200)
+    # my_scale1.grid(row=1,column=0) 
+    
+    global keep_running
     while True:
         # create a dialog box to prompt the user for input
         cmd = simpledialog.askstring("Command", " Enter command\n \"exit\" or \"q\" to quit...\n i - for more commands")
@@ -41,13 +56,16 @@ def my_simple_cmd():
             print("Command: " + cmd + "!")
             cmd = simpledialog.askstring("Command", "OK to continue, Cancel to exit")
             if cmd == None:
+                keep_running = 0
                 sys.exit()
             else:
                 cmd = "OK"
         print("Command: " + cmd + "!")
         if cmd == "exit" or cmd == "q" :
             print("Exit the cmd window")
+            keep_running = 0
             sys.exit()
+            
             
         data = [ord(c) for c in cmd]
         if cmd=="Start" or cmd=="1":
@@ -69,7 +87,7 @@ def Read_Messages():
         msg = bus.recv()
         if msg is not None and msg.arbitration_id == 0x103:
             skips += 1 
-            if (skips%800) == 0:
+            if (skips%200) == 0:
                 print("Received message with data:", msg.data)
                 if msg.data == 'quit':
                     break
@@ -77,6 +95,15 @@ def Read_Messages():
                     break
         
 def my_function():
+    # import tkinter as tk
+    # from tkinter import *
+    # from tkinter import ttk
+    my_w = tk.Tk()
+    my_w.geometry("400x200") 
+    my_scale1 = tk.Scale(my_w, from_=0, to=100, orient='horizontal',length=200)
+    my_scale1.grid(row=1,column=0) 
+    my_w.mainloop()
+    
     a = 0
     while True:
         # a = input("press Enter")
@@ -100,7 +127,9 @@ threading.Thread(target=my_simple_cmd, daemon=True).start()
 # # run the event loop
 # root.mainloop()
 
-input()
+# input()
+while(keep_running):
+    pass
     
 print("Exit from CAN_receive")
 

@@ -163,3 +163,5 @@ src/local_backup.bat
 src/can_gui(temp_tries)
 src/figure.png
 src/try.bat
+src/CAN_receive2.py
+src/Progressbar_and_Scale__widgets.py
