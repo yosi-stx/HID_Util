@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_04_09.a"
+util_verstion = "2023_04_09.b"
 
 from binascii import hexlify
 import sys
