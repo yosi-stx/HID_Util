@@ -23,9 +23,48 @@ progressbars = list()
 root = None 
 special_cmd = 0
 
+MAX_LONG_POSITIVE = 2**31
+MAX_UNSIGNED_LONG = 2**32
+MAX_INT24_POSITIVE = 2**23
+MAX_U4_INT = 2**24
+MAX_INT16_POSITIVE = 2**15
+MAX_UNSIGNED_INT = 2**16
+def long_unsigned_to_long_signed( x ):
+    if x > MAX_LONG_POSITIVE:
+        x = x - MAX_UNSIGNED_LONG
+    return x
+
+# when we uses 3 bytes of communication to pass unsigned long.
+def U24_bits_to_signed( x ):
+    if x > MAX_INT24_POSITIVE:
+        x = x - MAX_U4_INT
+    return x
+
+def unsigned_to_signed( x ):
+    if x > MAX_INT16_POSITIVE:
+        x = x - MAX_UNSIGNED_INT
+    return x
+
+
+def my_seperator(frame, row):
+    ttk.Separator(frame, orient=tk.HORIZONTAL).grid(pady=10, row=row, columnspan=4, sticky=(tk.W + tk.E))
+    return row + 1
+
 def streaming_button_CallBack():
     global special_cmd
+    print("streaming_button pressed")
     special_cmd = 'I'
+
+def stop_streaming_CallBack():
+    global special_cmd
+    print("stop_button pressed")
+    special_cmd = 'S'
+
+    # cmd = "Start"
+    # data = [ord(c) for c in cmd]
+    # # "0x01 Start" = 01 53 74 61 72 74
+    # message = can.Message(arbitration_id=0x104, data=[0x01] + data, is_extended_id=False)
+    # device.send(message)
 
 # gui_loop() - this is the gui funtion that is running endlessly as a thread
 # functions: 
@@ -37,21 +76,30 @@ def gui_loop(device):  # the device is CAN device
     global special_cmd
     skips = 190
     while True:
+        if special_cmd:
+            print("special_cmd=",special_cmd)
         # Write to the device (request data; keep alive)
         if special_cmd == 'I':
-            # WRITE_DATA = WRITE_DATA_CMD_START_0x304
-            # WRITE_DATA
             cmd = "Start"
             data = [ord(c) for c in cmd]
             # "0x01 Start" = 01 53 74 61 72 74
             message = can.Message(arbitration_id=0x104, data=[0x01] + data, is_extended_id=False)
-            device.write(WRITE_DATA)
-            print("special_cmd Start")
+            device.send(message)
+            print("special_cmd Start", data )
+            special_cmd = 0
+
+        if special_cmd == 'S':
+            cmd = "Stop"
+            data = [ord(c) for c in cmd]
+            # "0x01 Start" = 00 53 74 61 72 74
+            message = can.Message(arbitration_id=0x104, data=[0x00] + data, is_extended_id=False)
+            device.send(message)
+            print("special_cmd Stop", data )
             special_cmd = 0
 
         # Read the packet from the device
         # value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
-        msg = device.recv()
+        msg = device.recv(timeout=1)
 
         # Update the GUI
         #if len(value) >= READ_SIZE:
@@ -83,16 +131,18 @@ def gui_updater_handler(value, do_print=False):
     # index:  0    1   2   3   4   5   6   7        
     if len(value) == 8:
         insertion = (int(value[2]) << 8) + int(value[3]) + (int(value[4]) << 16)
+        signed_insertion = U24_bits_to_signed(insertion)
         if do_print:
-            print("insertion[2bytes]: %06x    %d  " % (int(insertion), insertion))
+            print("insertion[2bytes]: %06x    %d  " % (int(insertion), signed_insertion))
         # scaling to progressbar range 0..100 
-        precentage_stream_channel2 = int((insertion / 10000) * 100)
+        precentage_stream_channel2 = abs(int((signed_insertion / 10000) * 100))
 
         torque = (int(value[5]) << 8) + int(value[6]) + (int(value[7]) << 16)
+        signed_torque = U24_bits_to_signed(torque)
         if do_print:
-            print("torque[2bytes]: %06x    %d  " % (int(torque), torque))
+            print("torque[2bytes]: %06x    %d  " % (int(torque), signed_torque))
         # scaling to progressbar range 0..100 
-        precentage_stream_channel3 = int((torque / 10000) * 100)
+        precentage_stream_channel3 = abs(int((signed_torque / 10000) * 100))
     else:
         precentage_stream_channel2 = 17 # default value for debug.
         precentage_stream_channel3 = 18 # default value for debug.
@@ -120,20 +170,26 @@ def my_widgets(frame):
     w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=CMOS_PROGRESS_BAR_LEN) #,style="batteryLevel")
     # adding the actual widget to the progressbars global list 
     progressbars.append(w)
-    w.grid(row=row,column=1,columnspan=2)
+    w.grid(row=row,column=0,columnspan=2)
     row += 1
     w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN) #,style="batteryLevel")
     # adding the actual widget to the progressbars global list 
     progressbars.append(w)
-    w.grid(row=row,column=1,columnspan=2)
+    w.grid(row=row,column=0,columnspan=2)
     row += 1
     w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN) #,style="batteryLevel")
     # adding the actual widget to the progressbars global list 
     progressbars.append(w)
-    w.grid(row=row,column=1,columnspan=2)
+    w.grid(row=row,column=0,columnspan=2)
     row += 1
     # Seperator
-    # row = my_seperator(frame, row)
+    row = my_seperator(frame, row)
+    # ------------------------------------------------------ 
+    temp_widget = tk.Button(frame,text ="Start streaming",command = streaming_button_CallBack, bg="#66FFFF")
+    temp_widget.grid(row=row,column=0, sticky=(tk.W))
+
+    temp_widget = tk.Button(frame,text ="Stop streaming",command = stop_streaming_CallBack)#, bg="#66FFFF")
+    temp_widget.grid(row=row,column=1, sticky=(tk.E))
     
     
 def main():
@@ -163,4 +219,6 @@ if __name__ == "__main__":
 history changes
 2023_04_09 
 - adding Progressbar for torque value 
+- use U24_bits_to_signed() when needed.
+- adding Start and Stop buttons.
 '''    
