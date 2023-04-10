@@ -173,6 +173,7 @@ root = None
 Fw_Version = "NA"
 Fw_Date = "NA"
 popup_message = 0
+stream_data = None
 
 def msg1():
     tkinter.messagebox.showinfo('information', 'Hi! You got a prompt.')
@@ -373,15 +374,30 @@ def gui_loop(device):
         time = timer()
 
         # Read the packet from the device
-        value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
+        # value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
+        global stream_data
+        if( stream_data != None ):
+            handler(stream_data, do_print=do_print)
 
-        # Update the GUI
-        if len(value) >= READ_SIZE:
-            handler(value, do_print=do_print)
-            # print("handler called")
+#        # Update the GUI
+#        if len(value) >= READ_SIZE:
+#            handler(value, do_print=do_print)
+#            # print("handler called")
+#        else:
+#            print("---------------------- len(value) < READ_SIZE  ------------------------------")
 
         # Update the do_print flag
         do_print = (timer() - print_time) >= PRINT_TIME
+
+def hid_read( device ):
+    global stream_data
+    while True:
+        # Read the packet from the device
+        value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
+        if len(value) >= READ_SIZE:
+            stream_data = value
+    
+    
 def long_unsigned_to_long_signed( x ):
     if x > MAX_LONG_POSITIVE:
         x = x - MAX_UNSIGNED_LONG
@@ -1201,6 +1217,8 @@ def main():
 
         # Create thread that calls
         threading.Thread(target=gui_loop, args=(device,), daemon=True).start()
+
+        threading.Thread(target=hid_read, args=(device,), daemon=True).start()
 
         # Run the GUI main loop
         root.mainloop()
