@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_04_11.a"
+util_verstion = "2023_04_11.b"
 DEBUG_SLIPPAGE = 1
 
 from binascii import hexlify
@@ -378,6 +378,7 @@ def gui_loop(device):
         global stream_data
         if( stream_data != None ):
             handler(stream_data, do_print=do_print)
+            stream_data = None
 
 #        # Update the GUI
 #        if len(value) >= READ_SIZE:
