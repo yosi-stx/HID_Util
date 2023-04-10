@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_04_09.b"
+util_verstion = "2023_04_10.a"
 
 from binascii import hexlify
 import sys
@@ -122,6 +122,7 @@ def gui_loop(device):  # the device is CAN device
 #   function:   update auxiliary varibles and then the relevant GUI elements. // example: tool_size
 def gui_updater_handler(value, do_print=False):
     CMOS_INDEX = 1
+    MAX_TOOL_SIZE = 2495
     # the value[] vector:
     #                |tool_siz|           |  torque
     #    bytearray(b'\x00\x00\x04\xd8\x00\x1d\xf0\x00')
@@ -130,6 +131,13 @@ def gui_updater_handler(value, do_print=False):
     # byte:           b1  b0  b2
     # index:  0    1   2   3   4   5   6   7        
     if len(value) == 8:
+        tool_size = (int(value[1]) << 8) + int(value[0])
+        signed_tool_size = U24_bits_to_signed(tool_size)
+        if do_print:
+            print("tool_size[2bytes]: %06x    %d  " % (int(tool_size), signed_tool_size))
+        # scaling to progressbar range 0..100 
+        precentage_stream_channel1 = abs(int((signed_tool_size / MAX_TOOL_SIZE) * 100))
+
         insertion = (int(value[2]) << 8) + int(value[3]) + (int(value[4]) << 16)
         signed_insertion = U24_bits_to_signed(insertion)
         if do_print:
@@ -144,15 +152,18 @@ def gui_updater_handler(value, do_print=False):
         # scaling to progressbar range 0..100 
         precentage_stream_channel3 = abs(int((signed_torque / 10000) * 100))
     else:
+        precentage_stream_channel1 = 11 # default value for debug.
         precentage_stream_channel2 = 17 # default value for debug.
         precentage_stream_channel3 = 18 # default value for debug.
         
     # allocation of variables (on the left side) to ProgressBars
     # that were created in my_widgets() function, were progressbars[] is global list of widgets.
+    progressbar_stream_channel1 = progressbars[0]
     progressbar_stream_channel2 = progressbars[1]
     progressbar_stream_channel3 = progressbars[2]
 
     # the actual update of the "value" in the GUI progressbar element associated variable
+    progressbar_stream_channel1["value"] = precentage_stream_channel1
     progressbar_stream_channel2["value"] = precentage_stream_channel2
     progressbar_stream_channel3["value"] = precentage_stream_channel3
 
@@ -221,4 +232,6 @@ history changes
 - adding Progressbar for torque value 
 - use U24_bits_to_signed() when needed.
 - adding Start and Stop buttons.
+2023_04_10
+- adding values to tool_size progressbar
 '''    
