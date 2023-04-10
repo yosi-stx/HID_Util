@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_04_09.a"
+util_verstion = "2023_04_11.a"
 DEBUG_SLIPPAGE = 1
 
 from binascii import hexlify
