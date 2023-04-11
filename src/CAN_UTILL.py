@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_04_10.a"
+util_verstion = "2023_04_11.a"
 
 from binascii import hexlify
 import sys
@@ -60,11 +60,13 @@ def stop_streaming_CallBack():
     print("stop_button pressed")
     special_cmd = 'S'
 
-    # cmd = "Start"
-    # data = [ord(c) for c in cmd]
-    # # "0x01 Start" = 01 53 74 61 72 74
-    # message = can.Message(arbitration_id=0x104, data=[0x01] + data, is_extended_id=False)
-    # device.send(message)
+prev_pwm = 0
+pwm_widget = 0
+def show_pwm_values():
+    global pwm_widget
+    if pwm_widget != None:  # wait for widget to be created first.
+        return pwm_widget.get()
+    return 0
 
 # gui_loop() - this is the gui funtion that is running endlessly as a thread
 # functions: 
@@ -75,6 +77,7 @@ def gui_loop(device):  # the device is CAN device
     do_print = True
     global special_cmd
     skips = 190
+    hex_pwm_val = 0
     while True:
         if special_cmd:
             print("special_cmd=",special_cmd)
@@ -97,16 +100,37 @@ def gui_loop(device):  # the device is CAN device
             print("special_cmd Stop", data )
             special_cmd = 0
 
+        if special_cmd == 'G':
+            data = hex_pwm_val
+            message = can.Message(arbitration_id=0x204, data=hex_pwm_val, is_extended_id=False)
+            device.send(message)
+            print("special_cmd pwm: ", data )
+            special_cmd = 0
+
+        # handle the PWM command to device
+        global prev_pwm
+        # WRITE_DATA_CMD___bytearray = bytearray(b'\x3f')  # initialization of the command
+        pwm_val = show_pwm_values()
+        if (prev_pwm) != (pwm_val):
+            byte_array = bytearray()  # create an empty bytearray
+            byte_array.append((pwm_val & 0xFF00) >> 8 )   # MSB
+            byte_array.append((pwm_val & 0x00FF))         # LSB
+            print("prev_pwm=  ",int(prev_pwm), "     pwm_val= ",int(pwm_val) )
+            hex_pwm_val = byte_array
+            print("hex_pwm_val =",hex_pwm_val)
+            special_cmd = 'G'
+        prev_pwm = pwm_val
+
         # Read the packet from the device
         # value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
-        msg = device.recv(timeout=1)
+        msg = device.recv(timeout=0.1)
 
         # Update the GUI
         #if len(value) >= READ_SIZE:
         #    handler(value, do_print=do_print)
         if msg is not None and msg.arbitration_id == 0x103:
             skips += 1 
-            if (skips%200) == 0:
+            if (skips%400) == 0:
                 print("Received message with data:", msg.data)
                 do_print = 1
             # pass the binary data to the handler
@@ -201,6 +225,13 @@ def my_widgets(frame):
 
     temp_widget = tk.Button(frame,text ="Stop streaming",command = stop_streaming_CallBack)#, bg="#66FFFF")
     temp_widget.grid(row=row,column=1, sticky=(tk.E))
+    row += 1
+    # Seperator
+    row = my_seperator(frame, row)
+    # ------------------------------------------------------
+    global pwm_widget
+    pwm_widget = tk.Scale(frame, from_=0, to=2**12, orient='horizontal',length=LONG_PROGRESS_BAR_LEN)
+    pwm_widget.grid(row=row,column=0,columnspan=2)
     
     
 def main():
@@ -234,4 +265,6 @@ history changes
 - adding Start and Stop buttons.
 2023_04_10
 - adding values to tool_size progressbar
+2023_04_11 
+- adding the PWM scale pwm_widget.
 '''    
