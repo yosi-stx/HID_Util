@@ -24,7 +24,9 @@ Your installtion folder should look like this:
 ## fixing issue with hid lib:
 2023_04_26 found out issue: 
 import hid
+```
 AttributeError: function 'hid_get_input_report' not found
+```
 solution:
 ```
 pip uninstall hid
