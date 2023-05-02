@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_04_11.b"
+util_verstion = "2023_05_02.b"
 DEBUG_SLIPPAGE = 1
 
 from binascii import hexlify
@@ -16,6 +16,20 @@ from tkinter import ttk
 import tkinter.messagebox
 
 import include_dll_path
+# work around to solve issue with importing the hidapi.dll
+# workaround using "ctypes.CDLL" taken from:
+# https://stackoverflow.com/questions/70894915/cant-load-hidapi-with-python-library-hid-on-windows
+py_version = sys.version_info[:3]  # get major, minor, and micro version as a tuple
+print(py_version)
+if py_version < (3, 7, 4):
+    print("Python version is less than 3.7.4")
+elif py_version > (3, 7, 4):
+    print("Python version is greater than 3.7.4")
+    import ctypes
+    ctypes.CDLL('..\\x64\\hidapi.dll')
+else:
+    print("Python version is 3.7.4")    
+
 import hid
 
 # BOARD_TYPE_MAIN = 0,
