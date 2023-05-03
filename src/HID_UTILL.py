@@ -30,7 +30,7 @@ elif py_version > (3, 7, 4):
 else:
     print("Python version is 3.7.4")    
 
-import hid
+import hid  # after workaround
 
 # BOARD_TYPE_MAIN = 0,
 # BOARD_TYPE_JOYSTICKS = 1,

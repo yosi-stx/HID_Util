@@ -11,7 +11,22 @@ from time import perf_counter as timer
 # NOTE:             about include_dll_path for  __init__.py error.
 # You MUST include the next line when working with full project path structure
 import include_dll_path
-import hid
+# work around to solve issue with importing the hidapi.dll
+# workaround using "ctypes.CDLL" taken from:
+# https://stackoverflow.com/questions/70894915/cant-load-hidapi-with-python-library-hid-on-windows
+py_version = sys.version_info[:3]  # get major, minor, and micro version as a tuple
+print(py_version)
+if py_version < (3, 7, 4):
+    print("Python version is less than 3.7.4")
+elif py_version > (3, 7, 4):
+    print("Python version is greater than 3.7.4")
+    import ctypes
+    ctypes.CDLL('..\\x64\\hidapi.dll')
+else:
+    print("Python version is 3.7.4")    
+
+import hid  # after workaround
+
 import os
 
 # VENDOR_ID = 0x24b3 # Simb
