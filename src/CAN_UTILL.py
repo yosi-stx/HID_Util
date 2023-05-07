@@ -86,7 +86,7 @@ def gui_loop(device):  # the device is CAN device
             cmd = "Start"
             data = [ord(c) for c in cmd]
             # "0x01 Start" = 01 53 74 61 72 74
-            message = can.Message(arbitration_id=0x104, data=[0x01] + data, is_extended_id=False)
+            message = can.Message(arbitration_id=0x044, data=[0x01] + data, is_extended_id=False)
             device.send(message)
             print("special_cmd Start", data )
             special_cmd = 0
@@ -95,16 +95,24 @@ def gui_loop(device):  # the device is CAN device
             cmd = "Stop"
             data = [ord(c) for c in cmd]
             # "0x01 Start" = 00 53 74 61 72 74
-            message = can.Message(arbitration_id=0x104, data=[0x00] + data, is_extended_id=False)
+            message = can.Message(arbitration_id=0x044, data=[0x00] + data, is_extended_id=False)
             device.send(message)
             print("special_cmd Stop", data )
             special_cmd = 0
 
+#        if special_cmd == 'G':
+#            data = hex_pwm_val
+#            message = can.Message(arbitration_id=0x354, data=hex_pwm_val, is_extended_id=False)
+#            device.send(message)
+#            print("special_cmd pwm: ", data )
+#            special_cmd = 0
+
         if special_cmd == 'G':
-            data = hex_pwm_val
-            message = can.Message(arbitration_id=0x204, data=hex_pwm_val, is_extended_id=False)
+            art_data = bytearray([0x08,0,0,0]) + hex_pwm_val + bytearray([0x20,0,0,0])
+            out_data = hex_pwm_val
+            message = can.Message(arbitration_id=0x354, data=art_data, is_extended_id=False)
             device.send(message)
-            print("special_cmd pwm: ", data )
+            print("special_cmd pwm: ", art_data )
             special_cmd = 0
 
         # handle the PWM command to device
@@ -113,7 +121,7 @@ def gui_loop(device):  # the device is CAN device
         pwm_val = show_pwm_values()
         if (prev_pwm) != (pwm_val):
             byte_array = bytearray()  # create an empty bytearray
-            byte_array.append((pwm_val & 0xFF00) >> 8 )   # MSB
+            # byte_array.append((pwm_val & 0xFF00) >> 8 )   # MSB
             byte_array.append((pwm_val & 0x00FF))         # LSB
             print("prev_pwm=  ",int(prev_pwm), "     pwm_val= ",int(pwm_val) )
             hex_pwm_val = byte_array
@@ -230,7 +238,8 @@ def my_widgets(frame):
     row = my_seperator(frame, row)
     # ------------------------------------------------------
     global pwm_widget
-    pwm_widget = tk.Scale(frame, from_=0, to=2**12, orient='horizontal',length=LONG_PROGRESS_BAR_LEN)
+    # pwm_widget = tk.Scale(frame, from_=0, to=2**12, orient='horizontal',length=LONG_PROGRESS_BAR_LEN)
+    pwm_widget = tk.Scale(frame, from_=0, to=2**8, orient='horizontal',length=LONG_PROGRESS_BAR_LEN)
     pwm_widget.grid(row=row,column=0,columnspan=2)
     
     
