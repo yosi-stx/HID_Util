@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_04_11.a"
+util_verstion = "2023_05_07.a"
 
 from binascii import hexlify
 import sys
@@ -99,13 +99,6 @@ def gui_loop(device):  # the device is CAN device
             device.send(message)
             print("special_cmd Stop", data )
             special_cmd = 0
-
-#        if special_cmd == 'G':
-#            data = hex_pwm_val
-#            message = can.Message(arbitration_id=0x354, data=hex_pwm_val, is_extended_id=False)
-#            device.send(message)
-#            print("special_cmd pwm: ", data )
-#            special_cmd = 0
 
         if special_cmd == 'G':
             art_data = bytearray([0x08,0,0,0]) + hex_pwm_val + bytearray([0x20,0,0,0])
