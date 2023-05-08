@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_05_07.a"
+util_verstion = "2023_05_08.a"
 
 from binascii import hexlify
 import sys
@@ -23,10 +23,30 @@ progressbars = list()
 root = None 
 special_cmd = 0
 
+# defines from C FW project
+    #define MAX_SLOT_NUMBER 7
+    #define SLOT_NUMBER     4    
+    #define MY_RX_ID        SLOT_NUMBER
+    #define ID_MASK         0x00F
+    #define DIR_MASK        0x400
+    #define BROADCAST_ID        0
+    #define STREAMING_DATA_TYPE_1 0x080
+MAX_SLOT_NUMBER        = 7
+SLOT_NUMBER            = 4    
+MY_RX_ID               = SLOT_NUMBER
+ID_MASK                = 0x00F
+DIR_MASK               = 0x400
+BROADCAST_ID           = 0
+STREAMING_DATA_TYPE_1  = 0x080
+STREAMING_DATA_TYPE_2  = 0x090
+
+
 MAX_LONG_POSITIVE = 2**31
 MAX_UNSIGNED_LONG = 2**32
 MAX_INT24_POSITIVE = 2**23
 MAX_U4_INT = 2**24
+MAX_INT20_POSITIVE = 2**19
+MAX_U20_INT = 2**20
 MAX_INT16_POSITIVE = 2**15
 MAX_UNSIGNED_INT = 2**16
 def long_unsigned_to_long_signed( x ):
@@ -38,6 +58,11 @@ def long_unsigned_to_long_signed( x ):
 def U24_bits_to_signed( x ):
     if x > MAX_INT24_POSITIVE:
         x = x - MAX_U4_INT
+    return x
+
+def U20_bits_to_signed( x ):
+    if x > MAX_INT20_POSITIVE:
+        x = x - MAX_U20_INT
     return x
 
 def unsigned_to_signed( x ):
@@ -125,18 +150,30 @@ def gui_loop(device):  # the device is CAN device
         # Read the packet from the device
         # value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
         msg = device.recv(timeout=0.1)
+        # the msg.data is of type bytearray()
 
         # Update the GUI
         #if len(value) >= READ_SIZE:
         #    handler(value, do_print=do_print)
-        if msg is not None and msg.arbitration_id == 0x103:
+        if msg is not None and msg.arbitration_id == (STREAMING_DATA_TYPE_1 + SLOT_NUMBER):
             skips += 1 
             if (skips%400) == 0:
                 print("Received message with data:", msg.data)
                 do_print = 1
             # pass the binary data to the handler
             value = msg.data
-            gui_updater_handler(value,do_print)
+            msg_type = 1
+            gui_updater_handler(value,msg_type,do_print)
+            do_print = 0
+        if msg is not None and msg.arbitration_id == (STREAMING_DATA_TYPE_2 + SLOT_NUMBER):
+            skips += 1 
+            if (skips%400) == 0:
+                print("Received message with data:", msg.data)
+                do_print = 1
+            # pass the binary data to the handler
+            value = msg.data
+            msg_type = 1
+            gui_updater_handler(value,msg_type,do_print)
             do_print = 0
             
 
@@ -145,37 +182,80 @@ def gui_loop(device):  # the device is CAN device
 #   input: value - packet from the device that was read in the gui_loop()
 #   called by:  gui_loop() each time a full packet of 64 bytes was read by device.read()
 #   function:   update auxiliary varibles and then the relevant GUI elements. // example: tool_size
-def gui_updater_handler(value, do_print=False):
+def gui_updater_handler(value,msg_type, do_print=False):
     CMOS_INDEX = 1
     MAX_TOOL_SIZE = 2495
-    # the value[] vector:
-    #                |tool_siz|           |  torque
-    #    bytearray(b'\x00\x00\x04\xd8\x00\x1d\xf0\x00')
-    #                         | insertion|    
-    #    (b'\x00\x00\x04\xd8\x00\x1d\xf0\x00')
-    # byte:           b1  b0  b2
-    # index:  0    1   2   3   4   5   6   7        
+    # for 12 bits we use tool_size: 0..1247 (aka original/2)
+
+    
+#+---+---+---+---+-- +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+#|             byte-0            |            byte-1             |             byte-2            |            byte-3             |            byte-4             |             byte-5            |             byte-6            |             byte-7            |
+#+---+---+---+---+-- +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+#| 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+#+---+---+---+---+-- +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+#|    TBD        |                   tool_size                   |       image quality           |                            insertion                                          |                        roll                                                   |
+#+---+---+---+---+-- +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
     if len(value) == 8:
-        tool_size = (int(value[1]) << 8) + int(value[0])
-        signed_tool_size = U24_bits_to_signed(tool_size)
-        if do_print:
-            print("tool_size[2bytes]: %06x    %d  " % (int(tool_size), signed_tool_size))
-        # scaling to progressbar range 0..100 
-        precentage_stream_channel1 = abs(int((signed_tool_size / MAX_TOOL_SIZE) * 100))
+        if msg_type == 1:
+            #### here is the new format of:      | TBD | tool_size| quality | insertion | torque |  ####
+            # tool_size = (int(value[1]) << 8) + int(value[0])
+            # we swaped the MSB LSB of byte-0 and byte-1 in the FW (aka: big endian)
+            tool_size = ((int(value[0])&0xF) << 8) + int(value[1])
+            signed_tool_size = U24_bits_to_signed(tool_size)
+            if do_print:
+                print("tool_size[2bytes]: %06x    %d  " % (int(tool_size), signed_tool_size))
+            # scaling to progressbar range 0..100 
+            precentage_stream_channel1 = abs(int((signed_tool_size / MAX_TOOL_SIZE) * 100))
+            
+            image_quality  = int(value[2])
 
-        insertion = (int(value[2]) << 8) + int(value[3]) + (int(value[4]) << 16)
-        signed_insertion = U24_bits_to_signed(insertion)
-        if do_print:
-            print("insertion[2bytes]: %06x    %d  " % (int(insertion), signed_insertion))
-        # scaling to progressbar range 0..100 
-        precentage_stream_channel2 = abs(int((signed_insertion / 10000) * 100))
+            # insertion = (int(value[2]) << 8) + int(value[3]) + (int(value[4]) << 16)
+            # bytes  2,3,4 --now-->> 3 4 (5/2) 
+            insertion = (int(value[3]) << 8) + int(value[4]) + ((int(value[5]) & 0xF0) << 12)
+            signed_insertion = U20_bits_to_signed(insertion)
+            if do_print:
+                print("insertion[2bytes]: %06x    %d  " % (int(insertion), signed_insertion))
+            # scaling to progressbar range 0..100 
+            precentage_stream_channel2 = abs(int((signed_insertion / 10000) * 100))
 
-        torque = (int(value[5]) << 8) + int(value[6]) + (int(value[7]) << 16)
-        signed_torque = U24_bits_to_signed(torque)
-        if do_print:
-            print("torque[2bytes]: %06x    %d  " % (int(torque), signed_torque))
-        # scaling to progressbar range 0..100 
-        precentage_stream_channel3 = abs(int((signed_torque / 10000) * 100))
+            # torque = (int(value[5]) << 8) + int(value[6]) + (int(value[7]) << 16)
+            # bytes  5,6,7 --now-->> (5/2),6,7 
+            torque = ((int(value[5])&0x0f) << 8) + int(value[6]) + (int(value[7]) << 12)
+            signed_torque = U20_bits_to_signed(torque)
+            if do_print:
+                print("torque[2bytes]: %06x    %d  " % (int(torque), signed_torque))
+            # scaling to progressbar range 0..100 
+            precentage_stream_channel3 = abs(int((signed_torque / 10000) * 100))
+        elif msg_type == 2:
+            #### here is the old format of:      |tool_size| insertion | torque |  ####
+            # the value[] vector:
+            #                |tool_siz|           |  torque
+            #    bytearray(b'\x00\x00\x04\xd8\x00\x1d\xf0\x00')
+            #                         | insertion|    
+            #
+            #    (b'\x00\x00\x04\xd8\x00\x1d\xf0\x00')
+            # byte:           b1  b0  b2
+            # index:  0    1   2   3   4   5   6   7        
+            tool_size = (int(value[1]) << 8) + int(value[0])
+            signed_tool_size = U24_bits_to_signed(tool_size)
+            if do_print:
+                print("tool_size[2bytes]: %06x    %d  " % (int(tool_size), signed_tool_size))
+            # scaling to progressbar range 0..100 
+            precentage_stream_channel1 = abs(int((signed_tool_size / MAX_TOOL_SIZE) * 100))
+
+            insertion = (int(value[2]) << 8) + int(value[3]) + (int(value[4]) << 16)
+            signed_insertion = U24_bits_to_signed(insertion)
+            if do_print:
+                print("insertion[2bytes]: %06x    %d  " % (int(insertion), signed_insertion))
+            # scaling to progressbar range 0..100 
+            precentage_stream_channel2 = abs(int((signed_insertion / 10000) * 100))
+
+            torque = (int(value[5]) << 8) + int(value[6]) + (int(value[7]) << 16)
+            signed_torque = U24_bits_to_signed(torque)
+            if do_print:
+                print("torque[2bytes]: %06x    %d  " % (int(torque), signed_torque))
+            # scaling to progressbar range 0..100 
+            precentage_stream_channel3 = abs(int((signed_torque / 10000) * 100))
     else:
         precentage_stream_channel1 = 11 # default value for debug.
         precentage_stream_channel2 = 17 # default value for debug.
