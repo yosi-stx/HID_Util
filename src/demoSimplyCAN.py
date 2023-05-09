@@ -45,7 +45,8 @@ def receive_messages(simply):
         msg_ident = msg.ident
         msg_flags = msg.flags
     if res == 1:
-        if ( msg.ident == 0x103):
+        # if ( msg.ident == 0x103):
+        if ( msg.ident == 0x84):
             if( receive_messages.count % 250 == 0):
                 print("id = 0x%03x   Streaming Payload: %s " % (msg_ident,msg_payload))
             receive_messages.count +=1
