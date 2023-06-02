@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_06_01.a"
+util_verstion = "2023_06_02.a"
 
 from binascii import hexlify
 import sys
@@ -138,30 +138,19 @@ def show_pwm_values():
     return 0
 
 slot_entry = 0
-def print_entry_value(event):
-    print("inside the print_entry_value")
-    print(event)
-    global slot_entry
-    if slot_entry != None:  # wait for widget to be created first.
-        new_value = slot_entry.get()
-        print("New entry value:", new_value)
-
-# set_entry_value is called when pressing Enter key
-def set_entry_value():
-    print("inside the set_entry_value")
-    global slot_entry
-    if slot_entry != None:  # wait for widget to be created first.
-        new_value = slot_entry.get()
-        print("New entry value:", new_value)
-
 # from chatGpt:
-def entry_changed(event):
+def slot_entry_changed(event):
+    global SLOT_NUMBER
     new_value = slot_entry.get()  # Get the new value from the entry field
     print("New value:", new_value)
     try:
         numeric_value = int(new_value)  # Convert the new value to an integer
         # Use the numeric_value in the rest of your code
         print("Numeric value:", numeric_value)
+        if numeric_value <= MAX_SLOT_NUMBER:
+            SLOT_NUMBER = numeric_value
+        else:
+            print("Invalid value entered: SLOT_NUMBER must be less or equal 7 !!!")
     except ValueError:
         print("Invalid value entered")
         
@@ -202,15 +191,22 @@ def gui_loop(device):  # the device is CAN device
             print("special_cmd Stop", data )
             special_cmd = 0
 
-        if special_cmd == 'G':
-            art_data = bytearray([0x08,0,0,0]) + hex_pwm_val + bytearray([0x20,0,0,0])
+        if special_cmd == 'special_cmd_pwm':
+            send_list = [0x08,0,0,0,0,0,0,0]
+            send_list[0] = 1<<(SLOT_NUMBER-1)
+            send_list[SLOT_NUMBER] = hex_pwm_val
+            print(send_list)
+            # art_data = bytearray([0x08,0,0,0]) + hex_pwm_val + bytearray([0x20,0,0,0])
+            art_data = bytearray(send_list)
             out_data = hex_pwm_val
             # message = can.Message(arbitration_id=0x354, data=art_data, is_extended_id=False)
             # out_opcode_id = (OPCODE_PWM_BYTE_COMMAND*16+SLOT_NUMBER)
             out_opcode_id = ((OPCODE_PWM_BYTE_COMMAND<<4)+SLOT_NUMBER)
             message = can.Message(arbitration_id=out_opcode_id, data=art_data, is_extended_id=False)
             device.send(message)
-            print("special_cmd pwm: ", art_data )
+            # print all as hex values instead of a printable char 
+            hex_values = ' '.join(format(byte, '02X') for byte in art_data)
+            print("special_cmd pwm: ", hex_values,"  in list:", send_list )
             special_cmd = 0
 
         if special_cmd == 'reset_ins_and_torque':
@@ -232,9 +228,10 @@ def gui_loop(device):  # the device is CAN device
             # byte_array.append((pwm_val & 0xFF00) >> 8 )   # MSB
             byte_array.append((pwm_val & 0x00FF))         # LSB
             print("prev_pwm=  ",int(prev_pwm), "     pwm_val= ",int(pwm_val) )
-            hex_pwm_val = byte_array
+            # hex_pwm_val = byte_array
+            hex_pwm_val = pwm_val & 0x00FF
             print("hex_pwm_val =",hex_pwm_val)
-            special_cmd = 'G'
+            special_cmd = 'special_cmd_pwm'
         prev_pwm = pwm_val
 
         # Read the packet from the device
@@ -388,15 +385,14 @@ def my_widgets(frame):
     global slot_entry
     slot_entry = w
     slot_entry.insert(0, "4")  # Set the default value
-    slot_entry.bind("<<Modified>>", print_entry_value)
+    # slot_entry.bind("<<Modified>>", print_entry_value)
     # w.grid(padx=10,pady=5,row=row,column=1,columnspan=1)#,sticky=tk.E,)
     w.grid(padx=10,pady=5,row=row,column=0,columnspan=1,sticky=tk.E,)
     row += 1
-    frame.bind("<Control-s>", lambda event: set_entry_value())
-    # frame.bind("<Enter>", lambda event: set_entry_value()) 
+    # frame.bind("<Control-s>", lambda event: set_entry_value())
     # // the usage of <Enter> caused every mouse move to call the lambda function.
     # Bind the event to the entry widget
-    slot_entry.bind("<Return>", entry_changed)  # Call entry_changed when Enter key is pressed
+    slot_entry.bind("<Return>", slot_entry_changed)  # Call slot_entry_changed when Enter key is pressed
     
     w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=CMOS_PROGRESS_BAR_LEN) #,style="batteryLevel")
     # adding the actual widget to the progressbars global list 
@@ -445,11 +441,11 @@ def main():
     screen_width = root.winfo_screenwidth()  # Width of the screen
     screen_height = root.winfo_screenheight() # Height of the screen
     # Calculate Starting X and Y coordinates for Window
-    w = 436 #from AHK CAN_UTILL
+    w = 436 #from AHK CAN_UTILL - modified.
     h = 255
     # x = (screen_width*2/3) - (w*3/4)
     x = (screen_width*1/3) - (w*3/4)
-    y = (screen_height*0.1) 
+    y = (screen_height*0.08) 
     root.geometry('%dx%d+%d+%d' % (w, h, x, y))
     #root.geometry('+%d+%d' % (x, y))
     util_title = "SIMBionix CAN_UTILL"+" (version:"+util_verstion+")"
@@ -485,4 +481,7 @@ history changes
 - add reset insertion and torque button
 - adding out_opcode_id for using list of opcodes (from C code defines)
 - Entry for slot_entry, to change the slot of the node to talk to.
+2023_06_02
+- clean all the redundant code for slot_entry from previous tries.
+- making the "special_cmd_pwm" adjustable according to SLOT_NUMBER.
 '''    
