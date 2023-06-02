@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_05_09.a"
+util_verstion = "2023_06_01.a"
 
 from binascii import hexlify
 import sys
@@ -21,7 +21,7 @@ progressbars = list()
 # create a global empty variable root to hold the class that represents the main window or the root 
 #  window of your application.
 root = None 
-special_cmd = 0
+special_cmd = None
 
 # defines from C FW project
     #define MAX_SLOT_NUMBER 7
@@ -39,6 +39,45 @@ DIR_MASK               = 0x400
 BROADCAST_ID           = 0
 STREAMING_DATA_TYPE_1  = 0x080
 STREAMING_DATA_TYPE_2  = 0x090
+
+OPCODE_GENERAL_PURPOSE              =  0x00
+OPCODE_GET_BOARD_TYPE               =  0x01
+OPCODE_GET_GPIO                     =  0x02
+OPCODE_SET_GPIO                     =  0x03
+OPCODE_START_STOP_STREAMING         =  0x04
+OPCODE_GET_FW_VERSION               =  0x05
+OPCODE_GET_FW_READABLE_VERSION      =  0x06
+OPCODE_RESET_COMMAND                =  0x07
+
+OPCODE_GET_PARAM_8                  = 0x20
+OPCODE_GET_PARAM_16                 = 0x21
+OPCODE_GET_PARAM_32                 = 0x22
+OPCODE_GET_PARAM_168                = 0x23
+OPCODE_SET_PARAM_8                  = 0x24
+OPCODE_SET_PARAM_16                 = 0x25
+OPCODE_SET_PARAM_32                 = 0x26
+OPCODE_SET_PARAM_168                = 0x27
+OPCODE_GET_PIXART_REGISTER          = 0x28
+OPCODE_SET_PIXART_REGISTER          = 0x29
+OPCODE_RESET_CMOS_POSITION          = 0x2A
+OPCODE_GET_STATION_PRESSURE         = 0x2B
+OPCODE_GET_STATION_MOT_CURRENT      = 0x2C
+# OPCODE_START_STREAMING              = 0x2D  legacy opcode.
+OPCODE_SET_MOTOR_STATE              = 0x2E
+OPCODE_GET_MOTOR_STATE              = 0x2F
+OPCODE_GET_MOTION_BURST             = 0x30
+OPCODE_GET_ENCODER_COUNT            = 0x31
+OPCODE_RESET_INS_AND_TRQ            = 0x32
+OPCODE_N_A                          = 0x33
+OPCODE_GO_TO_POSITION_NON_BLOCKING  = 0x34
+OPCODE_PWM_BYTE_COMMAND             = 0x35
+OPCODE_RESET_ENCODER                = 0x36
+OPCODE_JOG_CAN_TBD                  = 0x37
+OPCODE_GO_TO_HOME_POS_NON_BLOCKING  = 0x38
+OPCODE_SET_MOTOR_CURRENT_LIMIT      = 0x39
+OPCODE_GET_STATION_LEDS_STATE       = 0x3A
+OPCODE_GET_STATION_PIXART_ID        = 0x3B
+OPCODE_SET_STATION_PIXART_INIT_SET  = 0x3C
 
 
 MAX_LONG_POSITIVE = 2**31
@@ -85,6 +124,11 @@ def stop_streaming_CallBack():
     print("stop_button pressed")
     special_cmd = 'S'
 
+def reset_ins_and_torque_CallBack():
+    global special_cmd
+    special_cmd = 'reset_ins_and_torque'
+
+
 prev_pwm = 0
 pwm_widget = 0
 def show_pwm_values():
@@ -93,6 +137,34 @@ def show_pwm_values():
         return pwm_widget.get()
     return 0
 
+slot_entry = 0
+def print_entry_value(event):
+    print("inside the print_entry_value")
+    print(event)
+    global slot_entry
+    if slot_entry != None:  # wait for widget to be created first.
+        new_value = slot_entry.get()
+        print("New entry value:", new_value)
+
+# set_entry_value is called when pressing Enter key
+def set_entry_value():
+    print("inside the set_entry_value")
+    global slot_entry
+    if slot_entry != None:  # wait for widget to be created first.
+        new_value = slot_entry.get()
+        print("New entry value:", new_value)
+
+# from chatGpt:
+def entry_changed(event):
+    new_value = slot_entry.get()  # Get the new value from the entry field
+    print("New value:", new_value)
+    try:
+        numeric_value = int(new_value)  # Convert the new value to an integer
+        # Use the numeric_value in the rest of your code
+        print("Numeric value:", numeric_value)
+    except ValueError:
+        print("Invalid value entered")
+        
 # gui_loop() - this is the gui funtion that is running endlessly as a thread
 # functions: 
 #            1) write to device according to global indication: special_cmd
@@ -111,7 +183,10 @@ def gui_loop(device):  # the device is CAN device
             cmd = "Start"
             data = [ord(c) for c in cmd]
             # "0x01 Start" = 01 53 74 61 72 74
-            message = can.Message(arbitration_id=0x044, data=[0x01] + data, is_extended_id=False)
+            # message = can.Message(arbitration_id=0x044, data=[0x01] + data, is_extended_id=False)
+            out_opcode_id = ((OPCODE_START_STOP_STREAMING<<4)+SLOT_NUMBER)
+            message = can.Message(arbitration_id=out_opcode_id, data=[0x01] + data, is_extended_id=False)
+            
             device.send(message)
             print("special_cmd Start", data )
             special_cmd = 0
@@ -120,7 +195,9 @@ def gui_loop(device):  # the device is CAN device
             cmd = "Stop"
             data = [ord(c) for c in cmd]
             # "0x01 Start" = 00 53 74 61 72 74
-            message = can.Message(arbitration_id=0x044, data=[0x00] + data, is_extended_id=False)
+            # message = can.Message(arbitration_id=0x044, data=[0x00] + data, is_extended_id=False)
+            out_opcode_id = ((OPCODE_START_STOP_STREAMING<<4)+SLOT_NUMBER)
+            message = can.Message(arbitration_id=out_opcode_id, data=[0x00] + data, is_extended_id=False)
             device.send(message)
             print("special_cmd Stop", data )
             special_cmd = 0
@@ -128,9 +205,22 @@ def gui_loop(device):  # the device is CAN device
         if special_cmd == 'G':
             art_data = bytearray([0x08,0,0,0]) + hex_pwm_val + bytearray([0x20,0,0,0])
             out_data = hex_pwm_val
-            message = can.Message(arbitration_id=0x354, data=art_data, is_extended_id=False)
+            # message = can.Message(arbitration_id=0x354, data=art_data, is_extended_id=False)
+            # out_opcode_id = (OPCODE_PWM_BYTE_COMMAND*16+SLOT_NUMBER)
+            out_opcode_id = ((OPCODE_PWM_BYTE_COMMAND<<4)+SLOT_NUMBER)
+            message = can.Message(arbitration_id=out_opcode_id, data=art_data, is_extended_id=False)
             device.send(message)
             print("special_cmd pwm: ", art_data )
+            special_cmd = 0
+
+        if special_cmd == 'reset_ins_and_torque':
+            # Reset Ins & Torque 
+            # need to be empty command with no data 
+            # message = can.Message(arbitration_id=0x324, data=[] , is_extended_id=False)
+            out_opcode_id = ((OPCODE_RESET_INS_AND_TRQ<<4)+SLOT_NUMBER)
+            message = can.Message(arbitration_id=out_opcode_id, data=[] , is_extended_id=False)
+            device.send(message)
+            print("special_cmd Reset Ins & Torque")
             special_cmd = 0
 
         # handle the PWM command to device
@@ -291,6 +381,23 @@ def my_widgets(frame):
     row = 0
     CMOS_PROGRESS_BAR_LEN = 250 
     LONG_PROGRESS_BAR_LEN = 300 
+
+    # Label + Entry for slot_entry
+    ttk.Label(frame,text="Enter slot number:").grid(row=row,column=0,sticky=tk.W,)
+    w = ttk.Entry(frame,width=5,)
+    global slot_entry
+    slot_entry = w
+    slot_entry.insert(0, "4")  # Set the default value
+    slot_entry.bind("<<Modified>>", print_entry_value)
+    # w.grid(padx=10,pady=5,row=row,column=1,columnspan=1)#,sticky=tk.E,)
+    w.grid(padx=10,pady=5,row=row,column=0,columnspan=1,sticky=tk.E,)
+    row += 1
+    frame.bind("<Control-s>", lambda event: set_entry_value())
+    # frame.bind("<Enter>", lambda event: set_entry_value()) 
+    # // the usage of <Enter> caused every mouse move to call the lambda function.
+    # Bind the event to the entry widget
+    slot_entry.bind("<Return>", entry_changed)  # Call entry_changed when Enter key is pressed
+    
     w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=CMOS_PROGRESS_BAR_LEN) #,style="batteryLevel")
     # adding the actual widget to the progressbars global list 
     progressbars.append(w)
@@ -322,6 +429,12 @@ def my_widgets(frame):
     # pwm_widget = tk.Scale(frame, from_=0, to=2**12, orient='horizontal',length=LONG_PROGRESS_BAR_LEN)
     pwm_widget = tk.Scale(frame, from_=0, to=2**8, orient='horizontal',length=LONG_PROGRESS_BAR_LEN)
     pwm_widget.grid(row=row,column=0,columnspan=2)
+    row += 1
+    # Seperator
+    row = my_seperator(frame, row)
+    # ------------------------------------------------------
+    temp_widget = tk.Button(frame,text ="Reset Ins & Torque",command = reset_ins_and_torque_CallBack, bg="#00FF00")
+    temp_widget.grid(row=row,column=0, sticky=(tk.W))
     
     
 def main():
@@ -329,6 +442,16 @@ def main():
     # Initialize the main window
     global root
     root = tk.Tk()
+    screen_width = root.winfo_screenwidth()  # Width of the screen
+    screen_height = root.winfo_screenheight() # Height of the screen
+    # Calculate Starting X and Y coordinates for Window
+    w = 436 #from AHK CAN_UTILL
+    h = 255
+    # x = (screen_width*2/3) - (w*3/4)
+    x = (screen_width*1/3) - (w*3/4)
+    y = (screen_height*0.1) 
+    root.geometry('%dx%d+%d+%d' % (w, h, x, y))
+    #root.geometry('+%d+%d' % (x, y))
     util_title = "SIMBionix CAN_UTILL"+" (version:"+util_verstion+")"
     root.title(util_title)
     # Initialize the GUI widgets
@@ -357,4 +480,9 @@ history changes
 - adding values to tool_size progressbar
 2023_04_11 
 - adding the PWM scale pwm_widget.
+2023_06_01
+- change the geometry of the frame window
+- add reset insertion and torque button
+- adding out_opcode_id for using list of opcodes (from C code defines)
+- Entry for slot_entry, to change the slot of the node to talk to.
 '''    
