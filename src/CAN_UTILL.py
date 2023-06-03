@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_06_02.a"
+util_verstion = "2023_06_03.a"
 
 from binascii import hexlify
 import sys
@@ -153,6 +153,16 @@ def slot_entry_changed(event):
             print("Invalid value entered: SLOT_NUMBER must be less or equal 7 !!!")
     except ValueError:
         print("Invalid value entered")
+
+tool_size_label = None 
+# def tool_size_changed(value):
+    # global tool_size_label
+    # if tool_size_label != None:
+        # tool_size_label.config(text = str(value))
+        # if( abs(tool_size_changed.prev_val - value) > 16):
+            # print("New tool_size_label:", value)
+        # tool_size_changed.prev_val = value
+# tool_size_changed.prev_val = 0
         
 # gui_loop() - this is the gui funtion that is running endlessly as a thread
 # functions: 
@@ -288,6 +298,12 @@ def gui_updater_handler(value,msg_type, do_print=False):
             # we swaped the MSB LSB of byte-0 and byte-1 in the FW (aka: big endian)
             tool_size = ((int(value[0])&0xF) << 8) + int(value[1])
             signed_tool_size = U24_bits_to_signed(tool_size)
+            global tool_size_label
+            tool_size_label.config(text = str(signed_tool_size))
+            # if gui_updater_handler.prev_signed_tool_size != signed_tool_size:
+                # tool_size_changed(signed_tool_size)
+            # gui_updater_handler.prev_signed_tool_size = signed_tool_size
+            
             if do_print:
                 print("tool_size[2bytes]: %06x    %d  " % (int(tool_size), signed_tool_size))
             # scaling to progressbar range 0..100 
@@ -308,6 +324,7 @@ def gui_updater_handler(value,msg_type, do_print=False):
             # bytes  2,3,4 --now-->> 3 4 (5/2) 
             insertion = (int(value[3]) << 12) + (int(value[4]) << 4) + ((int(value[5]) & 0xF0) >> 4)
             signed_insertion = U20_bits_to_signed(insertion)
+            insertion_label.config(text = str(signed_insertion))
             if do_print:
                 print("insertion[2bytes]: %06x    %d  " % (int(insertion), signed_insertion))
             # scaling to progressbar range 0..100 
@@ -317,6 +334,7 @@ def gui_updater_handler(value,msg_type, do_print=False):
             # bytes  5,6,7 --now-->> (5/2),6,7 
             torque = ((int(value[5])&0x0f) << 16) + (int(value[6])<<8) + (int(value[7]))
             signed_torque = U20_bits_to_signed(torque)
+            torque_label.config(text = str(signed_torque))
             if do_print:
                 print("torque[2bytes]: %06x    %d  " % (int(torque), signed_torque))
             # scaling to progressbar range 0..100 
@@ -369,6 +387,7 @@ def gui_updater_handler(value,msg_type, do_print=False):
 
     # the actual updating of all the gui elements acording the above asosiated variables 
     root.update()
+gui_updater_handler.prev_signed_tool_size = 0
 
 # my_widgets(): is the place were all the widgets are created 
 #               (aka: size, orientation, style, position etc.)
@@ -398,16 +417,32 @@ def my_widgets(frame):
     # adding the actual widget to the progressbars global list 
     progressbars.append(w)
     w.grid(row=row,column=0,columnspan=2)
+    
+    #numeric indication label:
+    global tool_size_label
+    tool_size_label = ttk.Label(frame,text="tool_size", foreground="#0000FF")
+    tool_size_label.grid(row=row,column=3,sticky=tk.W,)
+
     row += 1
     w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN) #,style="batteryLevel")
     # adding the actual widget to the progressbars global list 
     progressbars.append(w)
     w.grid(row=row,column=0,columnspan=2)
+    #numeric indication label:
+    global insertion_label
+    insertion_label = ttk.Label(frame,text="insertion", foreground="#0000FF")
+    insertion_label.grid(row=row,column=3,sticky=tk.W,)
+
     row += 1
     w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN) #,style="batteryLevel")
     # adding the actual widget to the progressbars global list 
     progressbars.append(w)
     w.grid(row=row,column=0,columnspan=2)
+    #numeric indication label:
+    global torque_label
+    torque_label = ttk.Label(frame,text="torque", foreground="#0000FF")
+    torque_label.grid(row=row,column=3,sticky=tk.W,)
+    
     row += 1
     # Seperator
     row = my_seperator(frame, row)
@@ -484,4 +519,6 @@ history changes
 2023_06_02
 - clean all the redundant code for slot_entry from previous tries.
 - making the "special_cmd_pwm" adjustable according to SLOT_NUMBER.
+2023_06_03
+- adding insertion_label,torque_label and tool_size_label 
 '''    
