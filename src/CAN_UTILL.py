@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_06_03.a"
+util_verstion = "2023_06_04.a"
 
 from binascii import hexlify
 import sys
@@ -128,6 +128,10 @@ def reset_ins_and_torque_CallBack():
     global special_cmd
     special_cmd = 'reset_ins_and_torque'
 
+def expert_send_callback():
+    global special_cmd
+    special_cmd = 'expert_send'
+
 
 prev_pwm = 0
 pwm_widget = 0
@@ -155,6 +159,11 @@ def slot_entry_changed(event):
         print("Invalid value entered")
 
 tool_size_label = None 
+g_id_entry     = []  # Empty list
+g_data_entry   = []  
+g_count_entry  = [] 
+g_time_entry   = []  
+g_send_button  = []  
 # def tool_size_changed(value):
     # global tool_size_label
     # if tool_size_label != None:
@@ -394,10 +403,19 @@ gui_updater_handler.prev_signed_tool_size = 0
 # argument: frame - in this argument we pass the global class "root"
 def my_widgets(frame):
     # ...
-    row = 0
+    # Create a notebook widget
+    notebook = ttk.Notebook(frame)
+    notebook.grid(row=0, column=0, padx=10, pady=10)
+
+    row = 1
     CMOS_PROGRESS_BAR_LEN = 250 
     LONG_PROGRESS_BAR_LEN = 300 
 
+    # Create the first tab with Progressbar widgets
+    tab1 = ttk.Frame(notebook)
+    notebook.add(tab1, text="User / Basic")
+
+    frame = tab1
     # Label + Entry for slot_entry
     ttk.Label(frame,text="Enter slot number:").grid(row=row,column=0,sticky=tk.W,)
     w = ttk.Entry(frame,width=5,)
@@ -466,7 +484,68 @@ def my_widgets(frame):
     # ------------------------------------------------------
     temp_widget = tk.Button(frame,text ="Reset Ins & Torque",command = reset_ins_and_torque_CallBack, bg="#00FF00")
     temp_widget.grid(row=row,column=0, sticky=(tk.W))
+
+    # ------------------------------------------------------
+    ###################### second tab ######################
+    # ------------------------------------------------------
+    # Create the second tab with Entry widgets
+    tab2 = ttk.Frame(notebook)
+    notebook.add(tab2, text="Expert")
+    frame = tab2
+
+    row = 0
+    ttk.Label(frame,text="ID").grid(row=row,column=0,sticky=tk.W,)
+    ttk.Label(frame,text="Data").grid(row=row,column=1,sticky=tk.W,)
+    ttk.Label(frame,text="Count").grid(row=row,column=2,sticky=tk.W,)
+    ttk.Label(frame,text="Time (ms)").grid(row=row,column=3,sticky=tk.W,)
+    ttk.Label(frame,text="Tx").grid(row=row,column=4)#,sticky=tk.WE,)
     
+    global g_id_entry
+    global g_data_entry
+    global g_count_entry
+    global g_time_entry
+
+    for i in range(10):
+        row += 1
+        w = ttk.Entry(frame,width=5,)
+        # g_id_entry = w 
+        g_id_entry.append(w)
+        w.insert(0, "ID")  # Set the default value
+        # w.grid(padx=10,pady=5,row=row,column=0,columnspan=1,sticky=tk.W,)
+        w.grid(padx=2,pady=2,row=row,column=0,columnspan=1,sticky=tk.W,)
+
+        w = ttk.Entry(frame,width=21,)
+        g_data_entry.append(w)
+        w.insert(0, "Data")  # Set the default value
+        w.grid(padx=2,pady=2,row=row,column=1,columnspan=1,sticky=tk.W,)
+
+        w = ttk.Entry(frame,width=7,)
+        g_count_entry.append(w)
+        w.insert(0, "Count")  # Set the default value
+        w.grid(padx=2,pady=2,row=row,column=2,columnspan=1,sticky=tk.W,)
+
+        w = ttk.Entry(frame,width=7,)
+        g_time_entry.append(w)
+        w.insert(0, "Time")  # Set the default value
+        w.grid(padx=2,pady=2,row=row,column=3,columnspan=1,sticky=tk.W,)
+
+        w = tk.Button(frame,text ="Send",command = expert_send_callback)
+        g_send_button.append(w)
+        # w.insert(0, "Time")  # Set the default value
+        w.grid(padx=2,pady=2,row=row,column=4,columnspan=1,sticky=tk.W,)
+
+
+def init_widgets():
+    global g_id_entry
+    for i in range(1,10):
+        g_id_entry[i].delete(0, tk.END)
+        g_id_entry[i].insert(0,"354")
+        g_data_entry[i].delete(0, tk.END) 
+        g_data_entry[i].insert(0,"18 01 00 90 80 00 00 00") 
+        g_count_entry[i].delete(0, tk.END)
+        g_count_entry[i].insert(0,"0")
+        g_time_entry[i].delete(0, tk.END) 
+        g_time_entry [i].insert(0,"10")
     
 def main():
     # ...
@@ -477,16 +556,19 @@ def main():
     screen_height = root.winfo_screenheight() # Height of the screen
     # Calculate Starting X and Y coordinates for Window
     w = 436 #from AHK CAN_UTILL - modified.
-    h = 255
+    h = 300
     # x = (screen_width*2/3) - (w*3/4)
     x = (screen_width*1/3) - (w*3/4)
     y = (screen_height*0.08) 
+    # to enforce the size and location on the screen uncomment the next line:
     root.geometry('%dx%d+%d+%d' % (w, h, x, y))
-    #root.geometry('+%d+%d' % (x, y))
     util_title = "SIMBionix CAN_UTILL"+" (version:"+util_verstion+")"
     root.title(util_title)
     # Initialize the GUI widgets
     my_widgets(root)
+    init_widgets()
+
+
     
     # create a CAN bus instance
     device = can.interface.Bus(bustype='ixxat', channel=0, bitrate=1000000)
@@ -521,4 +603,8 @@ history changes
 - making the "special_cmd_pwm" adjustable according to SLOT_NUMBER.
 2023_06_03
 - adding insertion_label,torque_label and tool_size_label 
+2023_06_04
+- adding "tabs" to the frame
+- adding second tab with 10 lines of flexible commands to be sent (TBD)
+- adding init_widgets() function. 
 '''    
