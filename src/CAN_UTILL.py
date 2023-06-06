@@ -13,7 +13,8 @@ import can
 import tkinter as tk
 from tkinter import ttk
 import tkinter.messagebox
-
+import pickle
+import os
 
 
 # create a global empty list for progressbars that will be added later in: my_widgets()
@@ -128,9 +129,18 @@ def reset_ins_and_torque_CallBack():
     global special_cmd
     special_cmd = 'reset_ins_and_torque'
 
-def expert_send_callback():
+def expert_send_callback(button_index):
     global special_cmd
     special_cmd = 'expert_send'
+    print("Button", button_index, "clicked!")
+    # Saving the values
+    values = []
+    for entry in g_id_entry + g_data_entry + g_count_entry + g_time_entry:
+        values.append(entry.get())
+
+    with open('parameters.pkl', 'wb') as f:
+        pickle.dump(values, f)
+
 
 
 prev_pwm = 0
@@ -236,6 +246,10 @@ def gui_loop(device):  # the device is CAN device
             message = can.Message(arbitration_id=out_opcode_id, data=[] , is_extended_id=False)
             device.send(message)
             print("special_cmd Reset Ins & Torque")
+            special_cmd = 0
+
+        if special_cmd == 'expert_send':
+            print("special_cmd expert_send")
             special_cmd = 0
 
         # handle the PWM command to device
@@ -505,7 +519,7 @@ def my_widgets(frame):
     global g_count_entry
     global g_time_entry
 
-    for i in range(10):
+    for i in range(15):
         row += 1
         w = ttk.Entry(frame,width=5,)
         # g_id_entry = w 
@@ -529,24 +543,41 @@ def my_widgets(frame):
         w.insert(0, "Time")  # Set the default value
         w.grid(padx=2,pady=2,row=row,column=3,columnspan=1,sticky=tk.W,)
 
-        w = tk.Button(frame,text ="Send",command = expert_send_callback)
+        w = tk.Button(frame,text ="Send", command=lambda idx=i: expert_send_callback(idx)) #command = expert_send_callback)
         g_send_button.append(w)
         # w.insert(0, "Time")  # Set the default value
-        w.grid(padx=2,pady=2,row=row,column=4,columnspan=1,sticky=tk.W,)
+        w.grid(padx=2,pady=0,row=row,column=4,columnspan=1,sticky=tk.W,)
 
 
 def init_widgets():
+    values = []
+    # Loading the values
     global g_id_entry
-    for i in range(1,10):
-        g_id_entry[i].delete(0, tk.END)
-        g_id_entry[i].insert(0,"354")
-        g_data_entry[i].delete(0, tk.END) 
-        g_data_entry[i].insert(0,"18 01 00 90 80 00 00 00") 
-        g_count_entry[i].delete(0, tk.END)
-        g_count_entry[i].insert(0,"0")
-        g_time_entry[i].delete(0, tk.END) 
-        g_time_entry [i].insert(0,"10")
-    
+    global g_data_entry
+    global g_count_entry
+    global g_time_entry
+
+    if os.path.exists('parameters.pkl'):
+        try:
+            with open('parameters.pkl', 'rb') as f:
+                values = pickle.load(f)
+                for i, entry in enumerate(g_id_entry + g_data_entry + g_count_entry + g_time_entry):
+                    entry.delete(0, tk.END)  # Clear the existing value
+                    entry.insert(0, values[i])
+        except FileNotFoundError:
+            print("No parameter file found.")
+    else:
+        print("No parameter file found, set default values...")
+        for i in range(1,10):
+            g_id_entry[i].delete(0, tk.END)
+            g_id_entry[i].insert(0,"354")
+            g_data_entry[i].delete(0, tk.END) 
+            g_data_entry[i].insert(0,"18 01 00 90 80 00 00 00") 
+            g_count_entry[i].delete(0, tk.END)
+            g_count_entry[i].insert(0,"0")
+            g_time_entry[i].delete(0, tk.END) 
+            g_time_entry [i].insert(0,"10")
+
 def main():
     # ...
     # Initialize the main window
