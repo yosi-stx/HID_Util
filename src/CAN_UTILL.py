@@ -129,10 +129,13 @@ def reset_ins_and_torque_CallBack():
     global special_cmd
     special_cmd = 'reset_ins_and_torque'
 
+expert_send_index = 0
 def expert_send_callback(button_index):
     global special_cmd
+    global expert_send_index
     special_cmd = 'expert_send'
     print("Button", button_index, "clicked!")
+    expert_send_index = button_index
     # Saving the values
     values = []
     for entry in g_id_entry + g_data_entry + g_count_entry + g_time_entry:
@@ -249,7 +252,21 @@ def gui_loop(device):  # the device is CAN device
             special_cmd = 0
 
         if special_cmd == 'expert_send':
-            print("special_cmd expert_send")
+            # print("special_cmd expert_send")
+            global expert_send_index
+            out_opcode_id = g_id_entry[expert_send_index].get()
+            print("out_opcode_id= %03x in hex in string %s" % (int(out_opcode_id,16),out_opcode_id) )
+            a_send_list = g_data_entry[expert_send_index].get()
+            print("a_send_list= %03x data string %s" % (int(out_opcode_id,16),a_send_list) )
+            send_list = [int(pair, 16) for pair in a_send_list.split()]
+            print("send_list=",send_list)
+            art_data = bytearray(send_list)
+            message = can.Message(arbitration_id=int(out_opcode_id,16), data=art_data, is_extended_id=False)
+            device.send(message)
+            # print all as hex values instead of a printable char 
+            hex_values = ' '.join(format(byte, '02X') for byte in art_data)
+            print("special_cmd expert_send: ", hex_values,"  in list:", send_list )
+
             special_cmd = 0
 
         # handle the PWM command to device
