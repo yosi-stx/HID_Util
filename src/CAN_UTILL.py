@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_06_04.a"
+util_verstion = "2023_06_09.a"
 
 from binascii import hexlify
 import sys
@@ -8,6 +8,7 @@ import argparse
 import threading
 from time import sleep
 from time import process_time as timer
+import time
 import can
 
 import tkinter as tk
@@ -15,6 +16,7 @@ from tkinter import ttk
 import tkinter.messagebox
 import pickle
 import os
+from colorama import Fore, Style
 
 
 # create a global empty list for progressbars that will be added later in: my_widgets()
@@ -40,6 +42,7 @@ DIR_MASK               = 0x400
 BROADCAST_ID           = 0
 STREAMING_DATA_TYPE_1  = 0x080
 STREAMING_DATA_TYPE_2  = 0x090
+MAX_EXPERT_LINES       = 15
 
 OPCODE_GENERAL_PURPOSE              =  0x00
 OPCODE_GET_BOARD_TYPE               =  0x01
@@ -136,7 +139,7 @@ def expert_send_callback(button_index):
     special_cmd = 'expert_send'
     print("Button", button_index, "clicked!")
     expert_send_index = button_index
-    # Saving the values
+    # Saving the values // save
     values = []
     for entry in g_id_entry + g_data_entry + g_count_entry + g_time_entry:
         values.append(entry.get())
@@ -171,6 +174,21 @@ def slot_entry_changed(event):
     except ValueError:
         print("Invalid value entered")
 
+stream_data = None
+def can_read( device ):
+    global stream_data
+    msg = None 
+    prev_timestamp = 0
+    while True:
+        # Read the packet from the device
+        msg = device.recv(timeout=0.001)
+        # value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
+        if msg != None:
+            if msg.timestamp > prev_timestamp:
+                stream_data = msg 
+            prev_timestamp = msg.timestamp
+            
+
 tool_size_label = None 
 g_id_entry     = []  # Empty list
 g_data_entry   = []  
@@ -196,7 +214,11 @@ def gui_loop(device):  # the device is CAN device
     global special_cmd
     skips = 190
     hex_pwm_val = 0
+    do_once = 1
+    start_time1 = time.time() * 1000  # Convert current time to milliseconds
+    msg = None
     while True:
+            
         if special_cmd:
             print("special_cmd=",special_cmd)
         # Write to the device (request data; keep alive)
@@ -220,7 +242,8 @@ def gui_loop(device):  # the device is CAN device
             out_opcode_id = ((OPCODE_START_STOP_STREAMING<<4)+SLOT_NUMBER)
             message = can.Message(arbitration_id=out_opcode_id, data=[0x00] + data, is_extended_id=False)
             device.send(message)
-            print("special_cmd Stop", data )
+            # print("special_cmd Stop", data )
+            print("special_cmd stop ", "  data: ", Fore.YELLOW + str(data) + Style.RESET_ALL)
             special_cmd = 0
 
         if special_cmd == 'special_cmd_pwm':
@@ -283,11 +306,26 @@ def gui_loop(device):  # the device is CAN device
             print("hex_pwm_val =",hex_pwm_val)
             special_cmd = 'special_cmd_pwm'
         prev_pwm = pwm_val
+        
+#        # Measure time based on delay_time1
+#        delay_time1 = 1000  # Time in milliseconds
+#        # Check if delay_time1 has passed
+#        current_time = time.time() * 1000
+#        # print("Time for current_time:", current_time)
+#        if current_time - start_time1 >= delay_time1:
+#            # print("Time for         delay_time1:", current_time)
+#            start_time1 = time.time() * 1000  # Convert current time to milliseconds
 
         # Read the packet from the device
         # value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
-        msg = device.recv(timeout=0.1)
+        
+        # use the msg from the real-time thread can_read()
+        # msg = device.recv(timeout=0.001)
         # the msg.data is of type bytearray()
+
+        global stream_data
+        if( stream_data != None ):
+            msg = stream_data
 
         # Update the GUI
         #if len(value) >= READ_SIZE:
@@ -312,6 +350,10 @@ def gui_loop(device):  # the device is CAN device
             msg_type = 1
             gui_updater_handler(value,msg_type,do_print)
             do_print = 0
+
+        # reset the global and local indication of incoming streaming
+        stream_data = None
+        msg = None
             
 
 
@@ -536,7 +578,7 @@ def my_widgets(frame):
     global g_count_entry
     global g_time_entry
 
-    for i in range(15):
+    for i in range(MAX_EXPERT_LINES):
         row += 1
         w = ttk.Entry(frame,width=5,)
         # g_id_entry = w 
@@ -585,7 +627,7 @@ def init_widgets():
             print("No parameter file found.")
     else:
         print("No parameter file found, set default values...")
-        for i in range(1,10):
+        for i in range(1,MAX_EXPERT_LINES):
             g_id_entry[i].delete(0, tk.END)
             g_id_entry[i].insert(0,"354")
             g_data_entry[i].delete(0, tk.END) 
@@ -593,7 +635,7 @@ def init_widgets():
             g_count_entry[i].delete(0, tk.END)
             g_count_entry[i].insert(0,"0")
             g_time_entry[i].delete(0, tk.END) 
-            g_time_entry [i].insert(0,"10")
+            g_time_entry [i].insert(0,"50")
 
 def main():
     # ...
@@ -623,6 +665,10 @@ def main():
 
     # Create thread that calls gui_loop()
     threading.Thread(target=gui_loop, args=(device,), daemon=True).start()
+
+    # Create thread that calls can_read()
+    threading.Thread(target=can_read, args=(device,), daemon=True).start()
+    
     # Run the GUI main loop
     root.mainloop()
 
@@ -655,4 +701,11 @@ history changes
 - adding "tabs" to the frame
 - adding second tab with 10 lines of flexible commands to be sent (TBD)
 - adding init_widgets() function. 
+2023_06_06
+- adding an argument to expert_send_callback()
+- saving the user values of expert_send in file: parameters.pkl
+- reloading the user last entered parameters of expert_send
+- implementing and testing the special_cmd expert_send 
+2023_06_09
+- creating new demon thread to handle the can_read() and hence avoiding delay in GUI response.
 '''    

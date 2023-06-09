@@ -29,6 +29,7 @@ else:
 
 import hid  # after workaround
 
+util_verstion = "2023_06_08.a"
 
 # USB\VID_24B3&PID_1005\887D1B510A000A00 - USB Input Device
 # VENDOR_ID = 0x24b3 # Simbionix
@@ -1082,6 +1083,16 @@ def main():
                     # print("success vid=0x24B3, pid=0x2005 !!")
                 except:
                     print("wrong 0x1007")
+            if device is None:
+                try:
+                    # print("try with other device")
+                    VENDOR_ID = 0x24b3 # Simbionix
+                    PRODUCT_ID = 0x1005 # Trauma ID  is 0x1005
+                    print("try with PID = %X " % PRODUCT_ID)
+                    # print("PRODUCT_ID = %X" % PRODUCT_ID)
+                    device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+                except:
+                    print("wrong 0x1005")
             ###############    on the end of tries #######################
             if device is None:
                 print("no device attached")
@@ -1099,9 +1110,15 @@ def main():
             raise NotImplementedError
 
         # Initialize the main window
+        global util_verstion
         global root
         root = tk.Tk()
-        root.title("Arthro HID_Util")
+        if PRODUCT_ID == 0x1005:
+            util_title = "SIMBionix Trauma_Util"+" (version:"+util_verstion+")"
+        else:
+            util_title = "SIMBionix Arthro_Util"+" (version:"+util_verstion+")"
+        # root.title("Arthro HID_Util")
+        root.title(util_title)
 
         # Initialize the GUI widgets
         my_widgets(root)
