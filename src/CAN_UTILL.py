@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_06_09.a"
+util_verstion = "2023_06_10.a"
 
 from binascii import hexlify
 import sys
@@ -25,6 +25,7 @@ progressbars = list()
 #  window of your application.
 root = None 
 special_cmd = None
+special_multi_cmd = None
 
 # defines from C FW project
     #define MAX_SLOT_NUMBER 7
@@ -44,44 +45,44 @@ STREAMING_DATA_TYPE_1  = 0x080
 STREAMING_DATA_TYPE_2  = 0x090
 MAX_EXPERT_LINES       = 15
 
-OPCODE_GENERAL_PURPOSE              =  0x00
-OPCODE_GET_BOARD_TYPE               =  0x01
-OPCODE_GET_GPIO                     =  0x02
-OPCODE_SET_GPIO                     =  0x03
+# OPCODE_GENERAL_PURPOSE              =  0x00
+# OPCODE_GET_BOARD_TYPE               =  0x01
+# OPCODE_GET_GPIO                     =  0x02
+# OPCODE_SET_GPIO                     =  0x03
 OPCODE_START_STOP_STREAMING         =  0x04
-OPCODE_GET_FW_VERSION               =  0x05
-OPCODE_GET_FW_READABLE_VERSION      =  0x06
-OPCODE_RESET_COMMAND                =  0x07
+# OPCODE_GET_FW_VERSION               =  0x05
+# OPCODE_GET_FW_READABLE_VERSION      =  0x06
+# OPCODE_RESET_COMMAND                =  0x07
 
-OPCODE_GET_PARAM_8                  = 0x20
-OPCODE_GET_PARAM_16                 = 0x21
-OPCODE_GET_PARAM_32                 = 0x22
-OPCODE_GET_PARAM_168                = 0x23
-OPCODE_SET_PARAM_8                  = 0x24
-OPCODE_SET_PARAM_16                 = 0x25
-OPCODE_SET_PARAM_32                 = 0x26
-OPCODE_SET_PARAM_168                = 0x27
-OPCODE_GET_PIXART_REGISTER          = 0x28
-OPCODE_SET_PIXART_REGISTER          = 0x29
-OPCODE_RESET_CMOS_POSITION          = 0x2A
-OPCODE_GET_STATION_PRESSURE         = 0x2B
-OPCODE_GET_STATION_MOT_CURRENT      = 0x2C
+# OPCODE_GET_PARAM_8                  = 0x20
+# OPCODE_GET_PARAM_16                 = 0x21
+# OPCODE_GET_PARAM_32                 = 0x22
+# OPCODE_GET_PARAM_168                = 0x23
+# OPCODE_SET_PARAM_8                  = 0x24
+# OPCODE_SET_PARAM_16                 = 0x25
+# OPCODE_SET_PARAM_32                 = 0x26
+# OPCODE_SET_PARAM_168                = 0x27
+# OPCODE_GET_PIXART_REGISTER          = 0x28
+# OPCODE_SET_PIXART_REGISTER          = 0x29
+# OPCODE_RESET_CMOS_POSITION          = 0x2A
+# OPCODE_GET_STATION_PRESSURE         = 0x2B
+# OPCODE_GET_STATION_MOT_CURRENT      = 0x2C
 # OPCODE_START_STREAMING              = 0x2D  legacy opcode.
-OPCODE_SET_MOTOR_STATE              = 0x2E
-OPCODE_GET_MOTOR_STATE              = 0x2F
-OPCODE_GET_MOTION_BURST             = 0x30
-OPCODE_GET_ENCODER_COUNT            = 0x31
+# OPCODE_SET_MOTOR_STATE              = 0x2E
+# OPCODE_GET_MOTOR_STATE              = 0x2F
+# OPCODE_GET_MOTION_BURST             = 0x30
+# OPCODE_GET_ENCODER_COUNT            = 0x31
 OPCODE_RESET_INS_AND_TRQ            = 0x32
-OPCODE_N_A                          = 0x33
-OPCODE_GO_TO_POSITION_NON_BLOCKING  = 0x34
-OPCODE_PWM_BYTE_COMMAND             = 0x35
-OPCODE_RESET_ENCODER                = 0x36
-OPCODE_JOG_CAN_TBD                  = 0x37
-OPCODE_GO_TO_HOME_POS_NON_BLOCKING  = 0x38
-OPCODE_SET_MOTOR_CURRENT_LIMIT      = 0x39
-OPCODE_GET_STATION_LEDS_STATE       = 0x3A
-OPCODE_GET_STATION_PIXART_ID        = 0x3B
-OPCODE_SET_STATION_PIXART_INIT_SET  = 0x3C
+# OPCODE_N_A                          = 0x33
+# OPCODE_GO_TO_POSITION_NON_BLOCKING  = 0x34
+OPCODE_PWM_BYTE_COMMAND             = 0x35  ## used for exception
+# OPCODE_RESET_ENCODER                = 0x36
+# OPCODE_JOG_CAN_TBD                  = 0x37
+# OPCODE_GO_TO_HOME_POS_NON_BLOCKING  = 0x38
+# OPCODE_SET_MOTOR_CURRENT_LIMIT      = 0x39
+# OPCODE_GET_STATION_LEDS_STATE       = 0x3A
+# OPCODE_GET_STATION_PIXART_ID        = 0x3B
+# OPCODE_SET_STATION_PIXART_INIT_SET  = 0x3C
 
 
 MAX_LONG_POSITIVE = 2**31
@@ -147,6 +148,21 @@ def expert_send_callback(button_index):
     with open('parameters.pkl', 'wb') as f:
         pickle.dump(values, f)
 
+expert_multi_send_index = 0
+def expert_multi_send_callback(button_index):
+    global special_multi_cmd
+    global expert_multi_send_index
+    special_multi_cmd = 'expert_multi_send'
+    print("Button", button_index, "clicked!")
+    expert_multi_send_index = button_index
+    # # Saving the values // save
+    # values = []
+    # for entry in g_id_entry + g_data_entry + g_count_entry + g_time_entry:
+        # values.append(entry.get())
+
+    # with open('parameters.pkl', 'wb') as f:
+        # pickle.dump(values, f)
+
 
 
 prev_pwm = 0
@@ -175,7 +191,7 @@ def slot_entry_changed(event):
         print("Invalid value entered")
 
 stream_data = None
-def can_read( device ):
+def can_read(device):
     global stream_data
     msg = None 
     prev_timestamp = 0
@@ -188,6 +204,41 @@ def can_read( device ):
                 stream_data = msg 
             prev_timestamp = msg.timestamp
             
+def can_send(device):  # TBD... 2023_06_10__15_10
+    global special_multi_cmd
+    msg = None 
+    prev_timestamp = 0
+    thread_counter = 0
+    display_thread_counter = 0
+    while True:
+        # send a packet acording to combination of count/time(ms)
+        # value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
+        if special_multi_cmd == 'expert_multi_send':
+            print("special_multi_cmd -- expert_multi_send")
+            global expert_multi_send_index
+            out_opcode_id = g_id_entry[expert_multi_send_index].get()
+            print("out_opcode_id= %03x in hex in string %s" % (int(out_opcode_id,16),out_opcode_id) )
+            a_send_list = g_data_entry[expert_multi_send_index].get()
+            print("a_send_list= %03x data string %s" % (int(out_opcode_id,16),a_send_list) )
+            send_list = [int(pair, 16) for pair in a_send_list.split()]
+            print("send_list=",send_list)
+            art_data = bytearray(send_list)
+            message = can.Message(arbitration_id=int(out_opcode_id,16), data=art_data, is_extended_id=False)
+            device.send(message)
+            # print all as hex values instead of a printable char 
+            hex_values = ' '.join(format(byte, '02X') for byte in art_data)
+            print("special_multi_cmd expert_send: ", hex_values,"  in list:", send_list )
+
+            special_multi_cmd = 0
+        else:
+            # busy wait delay if thread is idle. 
+            time.sleep(1/1000)
+            if( (thread_counter % 10000000) == 0):
+                print("can_send-- display_thread_counter = ", display_thread_counter)
+                display_thread_counter +=1
+            thread_counter +=1
+            
+            
 
 tool_size_label = None 
 g_id_entry     = []  # Empty list
@@ -195,6 +246,8 @@ g_data_entry   = []
 g_count_entry  = [] 
 g_time_entry   = []  
 g_send_button  = []  
+g_multi_send_button  = [] 
+g_time_delay   = [] 
 # def tool_size_changed(value):
     # global tool_size_label
     # if tool_size_label != None:
@@ -219,8 +272,8 @@ def gui_loop(device):  # the device is CAN device
     msg = None
     while True:
             
-        if special_cmd:
-            print("special_cmd=",special_cmd)
+        # if special_cmd:
+            # print("special_cmd=",special_cmd)
         # Write to the device (request data; keep alive)
         if special_cmd == 'I':
             cmd = "Start"
@@ -572,6 +625,7 @@ def my_widgets(frame):
     ttk.Label(frame,text="Count").grid(row=row,column=2,sticky=tk.W,)
     ttk.Label(frame,text="Time (ms)").grid(row=row,column=3,sticky=tk.W,)
     ttk.Label(frame,text="Tx").grid(row=row,column=4)#,sticky=tk.WE,)
+    ttk.Label(frame,text="multiTx").grid(row=row,column=5)#,sticky=tk.WE,)
     
     global g_id_entry
     global g_data_entry
@@ -607,6 +661,12 @@ def my_widgets(frame):
         # w.insert(0, "Time")  # Set the default value
         w.grid(padx=2,pady=0,row=row,column=4,columnspan=1,sticky=tk.W,)
 
+        w = tk.Button(frame,text ="Multi Send", command=lambda idx=i: expert_multi_send_callback(idx)) #command = expert_multi_send_callback)  // g_multi_send_button
+        g_send_button.append(w)
+        # w.insert(0, "Time")  # Set the default value
+        w.grid(padx=2,pady=0,row=row,column=5,columnspan=1,sticky=tk.W,)
+
+
 
 def init_widgets():
     values = []
@@ -615,6 +675,7 @@ def init_widgets():
     global g_data_entry
     global g_count_entry
     global g_time_entry
+    global g_time_delay
 
     if os.path.exists('parameters.pkl'):
         try:
@@ -636,6 +697,19 @@ def init_widgets():
             g_count_entry[i].insert(0,"0")
             g_time_entry[i].delete(0, tk.END) 
             g_time_entry [i].insert(0,"50")
+
+    for i in range(len(g_time_entry)):
+        new_value = g_time_entry[i].get()  # Get the new value from the entry field
+        print("New value:", new_value)
+        try:
+            numeric_value = int(new_value)  # Convert the new value to an integer
+            # Use the numeric_value in the rest of your code
+            print("Numeric value:", numeric_value)
+            g_time_delay.append(int(new_value))
+        except ValueError:
+            print("Invalid value entered")
+            g_time_delay.append(11)
+
 
 def main():
     # ...
@@ -668,6 +742,9 @@ def main():
 
     # Create thread that calls can_read()
     threading.Thread(target=can_read, args=(device,), daemon=True).start()
+
+    # Create thread that calls can_send()
+    threading.Thread(target=can_send, args=(device,), daemon=True).start()
     
     # Run the GUI main loop
     root.mainloop()
@@ -708,4 +785,8 @@ history changes
 - implementing and testing the special_cmd expert_send 
 2023_06_09
 - creating new demon thread to handle the can_read() and hence avoiding delay in GUI response.
+2023_06_10 
+- creating new demon thread to handle the can_send() for sending the multiTx buttons.
+- remove unused defines that are as globel variables (for easy code debug handling in VS code)
+- adding a global list g_time_delay[] to pass the values for time delay to can_send
 '''    

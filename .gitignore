@@ -166,3 +166,6 @@ src/try.bat
 src/CAN_receive2.py
 src/Progressbar_and_Scale__widgets.py
 parameters - Copy.pkl
+src/parameters.pkl
+parameters.pkl
+*.pkl
