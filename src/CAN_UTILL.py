@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_06_10.a"
+util_verstion = "2023_06_11.a"
 
 from binascii import hexlify
 import sys
@@ -150,11 +150,18 @@ def expert_send_callback(button_index):
 
 expert_multi_send_index = 0
 def expert_multi_send_callback(button_index):
+    return
+    
+    
     global special_multi_cmd
     global expert_multi_send_index
     special_multi_cmd = 'expert_multi_send'
     print("Button", button_index, "clicked!")
     expert_multi_send_index = button_index
+    g_count_value[button_index] = int(g_count_entry[button_index].get())
+    g_time_delay[button_index] = int(g_time_entry[button_index].get())
+    g_start_time[button_index] = time.time() * 1000
+    
     # # Saving the values // save
     # values = []
     # for entry in g_id_entry + g_data_entry + g_count_entry + g_time_entry:
@@ -203,6 +210,8 @@ def can_read(device):
             if msg.timestamp > prev_timestamp:
                 stream_data = msg 
             prev_timestamp = msg.timestamp
+        else:
+            time.sleep(10/1000)
             
 def can_send(device):  # TBD... 2023_06_10__15_10
     global special_multi_cmd
@@ -210,30 +219,70 @@ def can_send(device):  # TBD... 2023_06_10__15_10
     prev_timestamp = 0
     thread_counter = 0
     display_thread_counter = 0
+    # delay_time = []
+    current_time = []
+    for i in range(len(g_time_entry)):
+        current_time.append(0)
+        pass
     while True:
         # send a packet acording to combination of count/time(ms)
         # value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
         if special_multi_cmd == 'expert_multi_send':
-            print("special_multi_cmd -- expert_multi_send")
-            global expert_multi_send_index
-            out_opcode_id = g_id_entry[expert_multi_send_index].get()
-            print("out_opcode_id= %03x in hex in string %s" % (int(out_opcode_id,16),out_opcode_id) )
-            a_send_list = g_data_entry[expert_multi_send_index].get()
-            print("a_send_list= %03x data string %s" % (int(out_opcode_id,16),a_send_list) )
-            send_list = [int(pair, 16) for pair in a_send_list.split()]
-            print("send_list=",send_list)
-            art_data = bytearray(send_list)
-            message = can.Message(arbitration_id=int(out_opcode_id,16), data=art_data, is_extended_id=False)
-            device.send(message)
-            # print all as hex values instead of a printable char 
-            hex_values = ' '.join(format(byte, '02X') for byte in art_data)
-            print("special_multi_cmd expert_send: ", hex_values,"  in list:", send_list )
+            for indx in range( len(g_count_value)):
+                if g_count_value[indx] > 0 :
+                    current_time[indx] = time.time() * 1000
+                    if current_time[indx] - g_start_time[indx] > g_time_delay[indx] :
+                        print("special_multi_cmd -- expert_multi_send")
+                        global expert_multi_send_index
+                        out_opcode_id = g_id_entry[indx].get()
+                        print("out_opcode_id= %03x in hex in string %s" % (int(out_opcode_id,16),out_opcode_id) )
+                        a_send_list = g_data_entry[indx].get()
+                        print("a_send_list= %03x data string %s" % (int(out_opcode_id,16),a_send_list) )
+                        send_list = [int(pair, 16) for pair in a_send_list.split()]
+                        print("send_list=",send_list)
+                        art_data = bytearray(send_list)
+                        message = can.Message(arbitration_id=int(out_opcode_id,16), data=art_data, is_extended_id=False)
+                        device.send(message)
+                        # print all as hex values instead of a printable char 
+                        hex_values = ' '.join(format(byte, '02X') for byte in art_data)
+                        print("special_multi_cmd expert_send: ", hex_values,"  in list:", send_list )
+                        # decrement the count value to step down...
+                        g_count_value[indx] -= 1
+                        if g_count_value[indx] == 0:
+                            special_multi_cmd = 0
+                        g_start_time[indx] = time.time() * 1000
 
-            special_multi_cmd = 0
+#        # Measure time based on delay_time1
+#        delay_time1 = 1000  # Time in milliseconds
+#        # Check if delay_time1 has passed
+#        current_time = time.time() * 1000
+#        # print("Time for current_time:", current_time)
+#        if current_time - start_time1 >= delay_time1:
+#            # print("Time for         delay_time1:", current_time)
+#            start_time1 = time.time() * 1000  # Convert current time to milliseconds
+
+        # if special_multi_cmd == 'expert_multi_send':
+        # if( False):
+        #     print("special_multi_cmd -- expert_multi_send")
+        #     global expert_multi_send_index
+        #     out_opcode_id = g_id_entry[expert_multi_send_index].get()
+        #     print("out_opcode_id= %03x in hex in string %s" % (int(out_opcode_id,16),out_opcode_id) )
+        #     a_send_list = g_data_entry[expert_multi_send_index].get()
+        #     print("a_send_list= %03x data string %s" % (int(out_opcode_id,16),a_send_list) )
+        #     send_list = [int(pair, 16) for pair in a_send_list.split()]
+        #     print("send_list=",send_list)
+        #     art_data = bytearray(send_list)
+        #     message = can.Message(arbitration_id=int(out_opcode_id,16), data=art_data, is_extended_id=False)
+        #     device.send(message)
+        #     # print all as hex values instead of a printable char 
+        #     hex_values = ' '.join(format(byte, '02X') for byte in art_data)
+        #     print("special_multi_cmd expert_send: ", hex_values,"  in list:", send_list )
+
+        #     special_multi_cmd = 0
         else:
             # busy wait delay if thread is idle. 
             time.sleep(1/1000)
-            if( (thread_counter % 10000000) == 0):
+            if( (thread_counter % 1000) == 0):
                 print("can_send-- display_thread_counter = ", display_thread_counter)
                 display_thread_counter +=1
             thread_counter +=1
@@ -248,6 +297,8 @@ g_time_entry   = []
 g_send_button  = []  
 g_multi_send_button  = [] 
 g_time_delay   = [] 
+g_count_value  = [] 
+g_start_time   = []
 # def tool_size_changed(value):
     # global tool_size_label
     # if tool_size_label != None:
@@ -360,14 +411,6 @@ def gui_loop(device):  # the device is CAN device
             special_cmd = 'special_cmd_pwm'
         prev_pwm = pwm_val
         
-#        # Measure time based on delay_time1
-#        delay_time1 = 1000  # Time in milliseconds
-#        # Check if delay_time1 has passed
-#        current_time = time.time() * 1000
-#        # print("Time for current_time:", current_time)
-#        if current_time - start_time1 >= delay_time1:
-#            # print("Time for         delay_time1:", current_time)
-#            start_time1 = time.time() * 1000  # Convert current time to milliseconds
 
         # Read the packet from the device
         # value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
@@ -676,6 +719,8 @@ def init_widgets():
     global g_count_entry
     global g_time_entry
     global g_time_delay
+    global g_count_value
+    global g_start_time
 
     if os.path.exists('parameters.pkl'):
         try:
@@ -700,6 +745,7 @@ def init_widgets():
 
     for i in range(len(g_time_entry)):
         new_value = g_time_entry[i].get()  # Get the new value from the entry field
+        g_start_time.append(0)
         print("New value:", new_value)
         try:
             numeric_value = int(new_value)  # Convert the new value to an integer
@@ -709,6 +755,9 @@ def init_widgets():
         except ValueError:
             print("Invalid value entered")
             g_time_delay.append(11)
+
+    for i in range(len(g_count_entry)):
+        g_count_value.append(0)
 
 
 def main():
@@ -744,7 +793,7 @@ def main():
     threading.Thread(target=can_read, args=(device,), daemon=True).start()
 
     # Create thread that calls can_send()
-    threading.Thread(target=can_send, args=(device,), daemon=True).start()
+    # threading.Thread(target=can_send, args=(device,), daemon=True).start()
     
     # Run the GUI main loop
     root.mainloop()
@@ -789,4 +838,7 @@ history changes
 - creating new demon thread to handle the can_send() for sending the multiTx buttons.
 - remove unused defines that are as globel variables (for easy code debug handling in VS code)
 - adding a global list g_time_delay[] to pass the values for time delay to can_send
+2023_06_11
+- adding time delay between multi send, use: g_start_time,current_time,current_time
+- commeting the multi thread process. 
 '''    
