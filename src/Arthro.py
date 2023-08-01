@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\Arthro.py
+# connect to specific serial number
 
 from binascii import hexlify
 import sys
@@ -11,6 +12,7 @@ from time import process_time as timer
 import tkinter as tk
 from tkinter import ttk
 import tkinter.messagebox
+import pywinusb.hid as win_hid
 
 import include_dll_path
 # work around to solve issue with importing the hidapi.dll
@@ -29,7 +31,7 @@ else:
 
 import hid  # after workaround
 
-util_verstion = "2023_06_08.a"
+util_verstion = "2023_08_01.a"
 
 # USB\VID_24B3&PID_1005\887D1B510A000A00 - USB Input Device
 # VENDOR_ID = 0x24b3 # Simbionix
@@ -65,8 +67,8 @@ PRODUCT_ID_types =  {
   0x1007: "BOARD_TYPE: Arthro Master",
   0x1965: "yosi"
 }
-
-
+SERIAL_NUM_LIST =[]
+SERIAL_NUMBER = "_"
 # file1 = None
 # open recording log file:
 # file1 = open("C:\Work\Python\HID_Util\src\log\log.csv","w") 
@@ -185,6 +187,24 @@ Fw_Date = "NA"
 popup_message = 0
 global Skip_Reading_From_Device
 Skip_Reading_From_Device = False
+
+def list_hid_devices():
+    all_devices = win_hid.HidDeviceFilter().get_devices()
+    i = 0
+
+    for device in all_devices:
+        # or the VID of TI: 0x2047
+        if device.vendor_id == 0x24B3 or device.vendor_id == 0x2047:
+            i += 1
+            # usage = device.usage
+            vendor_id = device.vendor_id
+            product_id = device.product_id
+            serial_number = device.serial_number
+            global SERIAL_NUM_LIST
+            SERIAL_NUM_LIST.append(serial_number)
+
+            print(f"({i:d}) VID: {vendor_id:04X}, PID: {product_id:04X}, Serial Number: {serial_number}")
+    # print(SERIAL_NUM_LIST)
 
 def msg1():
     tkinter.messagebox.showinfo('information', 'Hi! You got a prompt.')
@@ -436,6 +456,7 @@ def handler(value, do_print=False):
     Fw_Version = "FW version: "+str(value[2])+"." +str(value[3])+"." +str(value[4])
     global Fw_Date
     Fw_Date = "FW date   : "+chr(value[43])+chr(value[44])+chr(value[45])+chr(value[46])+"."+chr(value[48])+chr(value[49])+"."+chr(value[51])+chr(value[52])
+    fw_version_label.config(text = Fw_Version)
 
     
     if do_print:
@@ -717,6 +738,17 @@ def my_widgets(frame):
 
     # Outer Handle
     ttk.Label(frame,text="HID Streaming Values").grid(row=row,sticky=tk.W)
+
+    global fw_version_label
+    fw_version_label = ttk.Label(frame,text="FW version: ", foreground="#0000FF")
+    fw_version_label.grid(row=row,column=1,sticky=tk.W,)
+
+    global device_SN_label
+    global SERIAL_NUMBER
+    serial_number_text = "Serial Number: " + SERIAL_NUMBER
+    # device_SN_label = ttk.Label(frame,text="Serial Number: ", foreground="#0000FF")
+    device_SN_label = ttk.Label(frame,text = serial_number_text, foreground="#0000FF")
+    device_SN_label.grid(row=row,column=2,sticky=tk.W,)
 
     row += 1
     ttk.Label(frame,text="----------------------").grid(row=row,sticky=tk.NW)
@@ -1015,15 +1047,34 @@ def init_parser():
         required=False,
         help="connects to the device with the given path"
     )
+    parser.add_argument(
+        "-s", "--serial",
+        dest="serial_num",
+        metavar="SERIAL_NUM",
+        type=str,
+        nargs='*',
+        required=False,
+        # help="connects to the device with that serial number/n example: Arthro -s 123456"
+        help="""connects to the device with that serial number
+        examples:   \n                                               
+        Arthro -s 2426114711002400        or         Arthro -s       
+        ;with the second method you can choose from list of devices...
+        """
+        
+    )
     return parser
 
 def main():
     global VENDOR_ID
     global PRODUCT_ID
+    global SERIAL_NUMBER
     PATH = None
     
     # open recording log file:
     # file1 = open("C:\Work\Python\HID_Util\src\log\log2.txt","w") 
+    
+    # list the relevant hid devices and their SN
+    list_hid_devices()
 
     # Parse the command line arguments
     parser = init_parser()
@@ -1044,9 +1095,9 @@ def main():
         return
 
     if (default_mode):
-        print("No arguments were given, defaulting to:")
-        print("VENDOR_ID = %X" % VENDOR_ID)
-        print("PRODUCT_ID = %X" % PRODUCT_ID)
+        print("No VID/PID arguments were given!")
+        # print("VENDOR_ID = %X" % VENDOR_ID)
+        # print("PRODUCT_ID = %X" % PRODUCT_ID)
         id_mode = True
     elif (id_mode):
         VENDOR_ID = args.vendor_id[0]
@@ -1060,14 +1111,6 @@ def main():
 
     try:
         if (id_mode):
-            try:
-                print("try with default device:")
-                print("VENDOR_ID = %X" % VENDOR_ID)
-                print("PRODUCT_ID = %X" % PRODUCT_ID)
-                device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
-            except:
-                print("wrong ID")
-                print(" ")
             # idVendor:                        0x24B3 = Simbionix Ltd.
             # idProduct:                       0x1007
             if device is None:
@@ -1075,30 +1118,51 @@ def main():
                     # print("try with other device")
                     VENDOR_ID = 0x24b3 # Simbionix
                     PRODUCT_ID = 0x1007 # Arthro Master. is 0x1007
-                    # print("VID = %X PID = %X " % VENDOR_ID, PRODUCT_ID)
                     print("try with PID = %X " % PRODUCT_ID)
-                    # print("PRODUCT_ID = %X" % PRODUCT_ID)
-                    device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
-                    # device = hid.Device(vid=0x24B3, pid=0x2005)
-                    # print("success vid=0x24B3, pid=0x2005 !!")
+                    if args.serial_num != None :
+                        if len(args.serial_num) == 0:
+                            print("\nSelect which device to connect to (0 to exit):")
+                            user_in = input()
+                            if int(user_in) == 0:
+                                return
+                            device_number = int(user_in)-1
+                            if device_number < len(SERIAL_NUM_LIST):
+                                # print(SERIAL_NUM_LIST[device_number])
+                                print("You have selected device SN:",SERIAL_NUM_LIST[device_number])
+                                SERIAL_NUMBER = SERIAL_NUM_LIST[device_number]
+                                device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID, serial=SERIAL_NUMBER)
+                            else:
+                                print("Must be betwenn 1 to ",len(SERIAL_NUM_LIST))
+                                return
+                        else:
+                            SERIAL_NUMBER = args.serial_num[0]
+                            print("SERIAL_NUMBER = ",SERIAL_NUMBER)
+                            # return
+                            device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID, serial=SERIAL_NUMBER)
+                    else:
+                        device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+                        SERIAL_NUMBER = device.serial
+                        # print(f'-------------->Serial Number: {device.serial}')
                 except:
                     print("wrong 0x1007")
-            if device is None:
-                try:
-                    # print("try with other device")
-                    VENDOR_ID = 0x24b3 # Simbionix
-                    PRODUCT_ID = 0x1005 # Trauma ID  is 0x1005
-                    print("try with PID = %X " % PRODUCT_ID)
-                    # print("PRODUCT_ID = %X" % PRODUCT_ID)
-                    device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
-                except:
-                    print("wrong 0x1005")
+            # if device is None:
+                # try:
+                    # # print("try with other device")
+                    # VENDOR_ID = 0x24b3 # Simbionix
+                    # PRODUCT_ID = 0x1005 # Trauma ID  is 0x1005
+                    # print("try with PID = %X " % PRODUCT_ID)
+                    # # print("PRODUCT_ID = %X" % PRODUCT_ID)
+                    # device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+                # except:
+                    # print("wrong 0x1005")
             ###############    on the end of tries #######################
             if device is None:
                 print("no device attached")
+                return  # new: to avoid the GUI display.
             else:
                 print("VENDOR_ID = %X" % VENDOR_ID)
                 print("PRODUCT_ID = %X" % PRODUCT_ID)
+                print(f'Serial Number: {device.serial}')
                 if PRODUCT_ID in PRODUCT_ID_types:
                     print(PRODUCT_ID_types[PRODUCT_ID])
 
@@ -1144,5 +1208,9 @@ history changes
     red_handle reset_check ignore_red_handle_checkbutton
   with:
   Port_8_pin_2, Port_8_pin_1 and Port_8_pin_0
+2023_08_01
+- connect to specific serial number
+- list all HID devices with vid 0x24B3 or 0x2047
+- add two new labels: FW version,  serial number
 
 '''    

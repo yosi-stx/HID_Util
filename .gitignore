@@ -169,3 +169,5 @@ parameters - Copy.pkl
 src/parameters.pkl
 parameters.pkl
 *.pkl
+src/ArthroGal.py
+src/ArthroSN.py
