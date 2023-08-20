@@ -746,6 +746,11 @@ def gui_handler(value, do_print=False):
         abs_jump = abs(insertion - gui_handler.last_insertion)
         text_3_entry.insert(tk.END, "abs insertion jump: %d (0x%08X)" % (abs_jump,abs_jump))
         
+        #update the Big_jump_Time_Text
+        # Last_Stream_Packet_Time.config(text = last_date_time_text) # for reference
+        Big_jump_Time_Text = "Big jump time:  " + formatted_time  
+        Big_jump_Time.config(text = Big_jump_Time_Text) # for update the string field.
+        
     
     gui_handler.last_insertion = insertion
     gui_handler.insertion_hex = insertion_hex
@@ -1034,6 +1039,12 @@ NOTE: \tZero value in Tool_size \
     global text_3_entry
     text_3_entry = ttk.Entry(frame,width=55,)
     text_3_entry.grid(padx=10,pady=5,row=row,column=2,columnspan=1,sticky=tk.E,)
+
+    row += 1
+    global Big_jump_Time
+    Big_jump_Time_Text = "Big jump time:  "
+    Big_jump_Time = ttk.Label(frame,text = Big_jump_Time_Text,foreground="#000077") #,font=bold_font, foreground="#000077")
+    Big_jump_Time.grid(row=row,column=2,sticky=tk.W,)
 
     row += 1
     row += 1
@@ -1481,6 +1492,7 @@ history changes
 -- Big jumps: // shows the previous and current insertion when big jumps occur
 -- ABS jump:  // shows the absolute value of big jumps of insertion.
 - adding sound indication on big jumps of insertion.
+- adding Label widget: Big_jump_Time // PC time of the big jump
 comment:
 - by experiment: the default font size are 8
 
