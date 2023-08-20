@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_05_02.b"
+util_verstion = "2023_08_20.a"
 DEBUG_SLIPPAGE = 1
 
 from binascii import hexlify
@@ -14,6 +14,10 @@ from time import process_time as timer
 import tkinter as tk
 from tkinter import ttk
 import tkinter.messagebox
+import pywinusb.hid as win_hid
+from datetime import datetime
+import winsound
+import os
 
 import include_dll_path
 # work around to solve issue with importing the hidapi.dll
@@ -31,6 +35,9 @@ else:
     print("Python version is 3.7.4")    
 
 import hid  # after workaround
+
+# Define the path to the low battery alarm sound file
+sound_file_path = os.path.join(os.path.expandvars("%SystemRoot%"), "media", "Windows Battery Low.wav")
 
 # BOARD_TYPE_MAIN = 0,
 # BOARD_TYPE_JOYSTICKS = 1,
@@ -73,8 +80,9 @@ PRODUCT_ID_types =  {
   0x2005: "BOARD_TYPE: PRODUCT_ID_LAP_NEW_CAMERA",  #board type is enforced in FW (descriptors.h)
   0x1965: "yosi"
 }
-
-
+SERIAL_NUM_LIST =[]
+PRODUCT_ID_LIST =[]
+SERIAL_NUMBER = "_"
 # file1 = None
 # open recording log file:
 # file1 = open("C:\Work\Python\HID_Util\src\log\log.csv","w") 
@@ -175,12 +183,14 @@ red_handle = list()
 reset_check = list()
 counter_entry = list()
 clicker_counter_entry = list()
-fault_entry = list()
+text_1_entry = list()
+text_2_entry = list()
+text_3_entry = list()
 special_cmd = 0
 ignore_red_handle_button = None
 ignore_red_handle_checkbutton = None
 ignore_red_handle_state = False
-handler_counter = 0
+gui_handler_counter = 0
 debug_pwm_print = True
 cb = None
 root = None
@@ -188,6 +198,27 @@ Fw_Version = "NA"
 Fw_Date = "NA"
 popup_message = 0
 stream_data = None
+date_time_text = "NA"
+
+def list_hid_devices():
+    all_devices = win_hid.HidDeviceFilter().get_devices()
+    i = 0
+
+    for device in all_devices:
+        # or the VID of TI: 0x2047
+        if device.vendor_id == 0x24B3 or device.vendor_id == 0x2047:
+            i += 1
+            # usage = device.usage
+            vendor_id = device.vendor_id
+            product_id = device.product_id
+            serial_number = device.serial_number
+            global SERIAL_NUM_LIST
+            global PRODUCT_ID_LIST
+            SERIAL_NUM_LIST.append(serial_number)
+            PRODUCT_ID_LIST.append(product_id)
+
+            print(f"({i:d}) VID: {vendor_id:04X}, PID: {product_id:04X}, Serial Number: {serial_number}")
+    # print(SERIAL_NUM_LIST)
 
 def msg1():
     tkinter.messagebox.showinfo('information', 'Hi! You got a prompt.')
@@ -391,7 +422,7 @@ def gui_loop(device):
         # value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
         global stream_data
         if( stream_data != None ):
-            handler(stream_data, do_print=do_print)
+            gui_handler(stream_data, do_print=do_print)
             stream_data = None
 
 #        # Update the GUI
@@ -427,8 +458,8 @@ def date2dec(x):
     s = "%02x" % x
     return s
 
-
-def handler(value, do_print=False):
+# this handler is called only upon a new packet from device
+def gui_handler(value, do_print=False):
     # global print_flag
 
         
@@ -438,10 +469,35 @@ def handler(value, do_print=False):
 
 #   tool_size from CMOS: bytes 5..6
 #   3f260000370b
-    global handler_counter
+    global gui_handler_counter
     global PRODUCT_ID
+    global Last_Stream_Packet_Time
+    global date_time_text
+    global Total_Stream_Time
 
-    handler_counter = handler_counter + 1
+    gui_handler_counter = gui_handler_counter + 1  # displayed as: PacketsCounter: 2023_08_09 
+    current_time = datetime.now()
+    if gui_handler.once == 0:
+        gui_handler.once = 1
+        gui_handler.start_streaming_time = current_time
+    formatted_time = current_time.strftime("%Y_%m_%d__%H:%M:%S")    # Format the date and time in the desired format
+    last_date_time_text = date_time_text + formatted_time
+    Last_Stream_Packet_Time.config(text = last_date_time_text) # for update the string field.
+    total_streaming_time = current_time - gui_handler.start_streaming_time
+    
+    # Extract hours, minutes, and seconds
+    hours = total_streaming_time.seconds // 3600
+    minutes = (total_streaming_time.seconds // 60) % 60
+    seconds = total_streaming_time.seconds % 60
+
+    # Format the total streaming time in HH:MM:SS format
+    formatted_streaming_time = f"{hours:02}:{minutes:02}:{seconds:02}"    
+    
+    # formatted_time = total_streaming_time.strftime("%Y_%m_%d__%H:%M:%S")    # Format the date and time in the desired format
+    # formatted_time = gui_handler.start_streaming_time.strftime("%Y_%m_%d__%H:%M:%S")    # Format the date and time in the desired format
+    Total_Stream_Time.config(text = formatted_streaming_time) # for update the string field.
+    # print( 
+
     global hid_util_fault
     hid_util_fault = (int(value[START_INDEX+1]) & 0xF )
     digital = (int(value[START_INDEX + 1]) << 8) + int(value[START_INDEX + 0])
@@ -560,7 +616,7 @@ def handler(value, do_print=False):
     int_batteryLevel = batteryLevel
     int_MotorCur = MotorCur
     if PRODUCT_ID == PRODUCT_ID_STATION:
-        counter = handler_counter
+        counter = gui_handler_counter
     int_counter = counter
     int_hid_util_fault = hid_util_fault
     int_clicker_counter = clicker_counter
@@ -617,7 +673,7 @@ def handler(value, do_print=False):
     checkbox_ignore_red_handle = ignore_red_handle_checkbutton
     entry_counter = counter_entry
     entry_clicker_counter = clicker_counter_entry
-    entry_fault = fault_entry
+    # entry_fault = text_1_entry
     
     progressbar_style_hid_stream_channel1.configure(HID_STREAM_CHANNEL1_STYLE,text=("%d"%int_hid_stream_channel1))
     progressbar_style_hid_stream_channel2.configure(HID_STREAM_CHANNEL2_STYLE,text=("%d"%int_hid_stream_channel2))
@@ -665,10 +721,41 @@ def handler(value, do_print=False):
     entry_clicker_counter.delete(0, tk.END)
     entry_clicker_counter.insert(tk.END, "%d" % int_clicker_counter)
 
-    entry_fault.delete(0, tk.END)
-    entry_fault.insert(tk.END, "%d" % int_hid_util_fault)
+    # entry_fault.delete(0, tk.END)
+    # entry_fault.insert(tk.END, "%d" % int_hid_util_fault)
+    text_1_entry.delete(0, tk.END)
+    text_1_entry.insert(tk.END, "%08X" % (int(insertion_hex)))
+    
+    if abs(insertion - gui_handler.last_insertion) > 1000:
+        # Play the sound
+        # winsound.PlaySound(sound_file_path, winsound.SND_FILENAME)
+        winsound.PlaySound("SystemDefault", winsound.SND_ALIAS)
+        #global text_2_entry
+        text_2_entry.delete(0, tk.END)
+        # text_color = "red"
+        text_2_entry.insert(tk.END, "last: %d (0x%08X)   insertion: %d (0x%08X)" % (gui_handler.last_insertion,gui_handler.insertion_hex,insertion,insertion_hex,))
+        if gui_handler.toggle == 1:
+            gui_handler.toggle = 0
+            text_2_entry.configure(bd=1,fg="#ff0055" ) 
+        else:
+            text_2_entry.configure(bd=1,fg="black") # the "fg" argumetn is relevant for tk widgets (not for ttk)
+            gui_handler.toggle = 1
 
-    root.update()
+        # text_2_entry.configure(bg="black", fg="blue")
+        text_3_entry.delete(0, tk.END)
+        abs_jump = abs(insertion - gui_handler.last_insertion)
+        text_3_entry.insert(tk.END, "abs insertion jump: %d (0x%08X)" % (abs_jump,abs_jump))
+        
+    
+    gui_handler.last_insertion = insertion
+    gui_handler.insertion_hex = insertion_hex
+    
+    root.update()  #end of gui_handler()
+gui_handler.once = 0    
+gui_handler.start_streaming_time = 0
+gui_handler.last_insertion = 0
+gui_handler.insertion_hex = 0
+gui_handler.toggle = 1
 
 PROGRESS_BAR_LEN = 300
 LONG_PROGRESS_BAR_LEN = 590
@@ -716,6 +803,9 @@ def my_seperator(frame, row):
 def my_widgets(frame):
     global pwm_widget
     global pwm_16_widget
+    bold_font = ("TkDefaultFont", 9, "bold")
+    # bold_font = ("TkDefaultFont", 9, "normal")
+
     # Add style for labeled progress bar
     for name in style_names:
         style = ttk.Style(frame)
@@ -753,15 +843,39 @@ def my_widgets(frame):
     # Outer Handle
     ttk.Label(frame,text="HID Streaming Values").grid(row=row,sticky=tk.W)
 
+    global Last_Stream_Packet_Time
+    global date_time_text
+    date_time_text = "Last stream packet time:  "
+    Last_Stream_Packet_Time = ttk.Label(frame,text = date_time_text,font=bold_font, foreground="#000077")
+    Last_Stream_Packet_Time.grid(row=row,column=1,sticky=tk.W,)
+    # last_date_time_text = date_time_text + "2023_08_10__18_00"
+    # Last_Stream_Packet_Time.config(text = last_date_time_text) # for update the string field.
+
+
     # ttk.Label(frame,text="Tool Version:  2023_02_05.a").grid(row=row,column=1)
+    global device_SN_label
+    global SERIAL_NUMBER
+    serial_number_text = "Serial Number: " + SERIAL_NUMBER
+    # device_SN_label = ttk.Label(frame,text="Serial Number: ", foreground="#0000FF")
+    device_SN_label = ttk.Label(frame,text = serial_number_text, foreground="#0000FF")
+    device_SN_label.grid(row=row,column=2,sticky=tk.W,)
 
     row += 1
     ttk.Label(frame,text="----------------------").grid(row=row,sticky=tk.NW)
+    
+    global Total_Stream_Time
+    Total_Stream_Time_Text = "Total stream time:  "
+    Total_Stream_Time = ttk.Label(frame,text = Total_Stream_Time_Text,font=bold_font, foreground="#000077")
+    Total_Stream_Time.grid(row=row,column=1,sticky=tk.W,)
+
     row += 1
     if PRODUCT_ID == PRODUCT_ID_STATION:
         text_name =\
-"ADCs...  \t\t\t\t\t\
-NOTE: Zero value in Tool_size reset the Insertion value"
+"ADCs...  \
+\t\t\t\t\t\
+NOTE: \tZero value in Tool_size \
+\n\t\t\t\t\t\
+\t resets the Insertion value"
         ttk.Label(frame,text=text_name).grid(row=row,sticky=tk.NW)
     else:
         ttk.Label(frame,text="ADCs...").grid(row=row,sticky=tk.NW)
@@ -899,12 +1013,27 @@ NOTE: Zero value in Tool_size reset the Insertion value"
     # columnspan − How many columns widget occupies; default 1
 
     #                       |||||                       #
-    # HID_Util Fault indication
-    ttk.Label(frame,text="Faultindication:").grid(row=row,column=1,sticky=tk.W,)
-    w = ttk.Entry(frame,width=20,)
-    global fault_entry
-    fault_entry = w
+    # HID_Util insertion[4bytes]
+    bold_font2 = ("TkDefaultFont", 8, "bold")
+    ttk.Label(frame,text="Hex(insertion):").grid(row=row,column=1,sticky=tk.W,)
+    w = tk.Entry(frame,width=20,fg="blue",font=bold_font2)
+    global text_1_entry
+    text_1_entry = w
     w.grid(padx=10,pady=5,row=row,column=1,columnspan=1)#,sticky=tk.E,)
+
+    # HID_Util big jump of insertion[4bytes]
+    ttk.Label(frame,text="Big jumps:").grid(row=row,column=2,sticky=tk.W,)
+    global text_2_entry
+    # text_2_entry = ttk.Entry(frame,width=55,)
+    text_2_entry = tk.Entry(frame,width=55,fg="blue",font=bold_font2)
+    text_2_entry.grid(padx=10,pady=5,row=row,column=2,columnspan=1,sticky=tk.E,)
+
+    row += 1
+    #  big jumps abs value[4bytes]
+    ttk.Label(frame,text="ABS jump:").grid(row=row,column=2,sticky=tk.W,)
+    global text_3_entry
+    text_3_entry = ttk.Entry(frame,width=55,)
+    text_3_entry.grid(padx=10,pady=5,row=row,column=2,columnspan=1,sticky=tk.E,)
 
     row += 1
     row += 1
@@ -1104,15 +1233,34 @@ def init_parser():
         required=False,
         help="connects to the device with the given path"
     )
+    parser.add_argument(
+        "-s", "--serial",
+        dest="serial_num",
+        metavar="SERIAL_NUM",
+        type=str,
+        nargs='*',
+        required=False,
+        # help="connects to the device with that serial number/n example: Arthro -s 123456"
+        help="""connects to the device with that serial number
+        examples:   \n                                               
+        Arthro -s 2426114711002400        or         Arthro -s       
+        ;with the second method you can choose from list of devices...
+        """
+        
+    )
     return parser
 
 def main():
     global VENDOR_ID
     global PRODUCT_ID
+    global SERIAL_NUMBER
     PATH = None
     
     # open recording log file:
     # file1 = open("C:\Work\Python\HID_Util\src\log\log2.txt","w") 
+    
+    # list the relevant hid devices and their SN
+    list_hid_devices()
 
     # Parse the command line arguments
     parser = init_parser()
@@ -1166,10 +1314,36 @@ def main():
                         # print("try with other device")
                         VENDOR_ID = 0x24b3 # Simbionix
                         PRODUCT_ID = 0x2000 + n # LAP_NEW_CAMERA. is 0x2005
+                        if PRODUCT_ID not in PRODUCT_ID_LIST:
+                            continue
                         # print("VID = %X PID = %X " % VENDOR_ID, PRODUCT_ID)
                         print("try with PID = %X " % PRODUCT_ID)
+                        if args.serial_num != None :
+                            if len(args.serial_num) == 0:
+                                print("\nSelect which device to connect to (0 to exit):")
+                                user_in = input()
+                                if int(user_in) == 0:
+                                    return
+                                device_number = int(user_in)-1
+                                if device_number < len(SERIAL_NUM_LIST):
+                                    # print(SERIAL_NUM_LIST[device_number])
+                                    print("You have selected device SN:",SERIAL_NUM_LIST[device_number])
+                                    SERIAL_NUMBER = SERIAL_NUM_LIST[device_number]
+                                    device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID, serial=SERIAL_NUMBER)
+                                else:
+                                    print("Must be betwenn 1 to ",len(SERIAL_NUM_LIST))
+                                    return
+                            else:
+                                SERIAL_NUMBER = args.serial_num[0]
+                                print("SERIAL_NUMBER = ",SERIAL_NUMBER)
+                                # return
+                                device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID, serial=SERIAL_NUMBER)
+                        else:
+                            device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+                            SERIAL_NUMBER = device.serial
+                        # print(f'-------------->Serial Number: {device.serial}')
                         # print("PRODUCT_ID = %X" % PRODUCT_ID)
-                        device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+                        #device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
                         # device = hid.Device(vid=0x24B3, pid=0x2005)
                         # print("success vid=0x24B3, pid=0x2005 !!")
                     except:
@@ -1195,10 +1369,37 @@ def main():
                         # print("try with other device")
                         VENDOR_ID = 0x2047 # Texas Instrument
                         PRODUCT_ID = 0x301 + n # BOARD_TYPE_MAIN is 0x301
+                        if PRODUCT_ID not in PRODUCT_ID_LIST:
+                            continue
+                        else:
+                            print( "---------- PRODUCT_ID  in PRODUCT_ID_LIST")
                         # print("VID = %X PID = %X " % VENDOR_ID, PRODUCT_ID)
                         print("try with PID = %X " % PRODUCT_ID)
+                        if args.serial_num != None :
+                            if len(args.serial_num) == 0:
+                                print("\nSelect which device to connect to (0 to exit):")
+                                user_in = input()
+                                if int(user_in) == 0:
+                                    return
+                                device_number = int(user_in)-1
+                                if device_number < len(SERIAL_NUM_LIST):
+                                    # print(SERIAL_NUM_LIST[device_number])
+                                    print("You have selected device SN:",SERIAL_NUM_LIST[device_number])
+                                    SERIAL_NUMBER = SERIAL_NUM_LIST[device_number]
+                                    device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID, serial=SERIAL_NUMBER)
+                                else:
+                                    print("Must be betwenn 1 to ",len(SERIAL_NUM_LIST))
+                                    return
+                            else:
+                                SERIAL_NUMBER = args.serial_num[0]
+                                print("SERIAL_NUMBER = ",SERIAL_NUMBER)
+                                # return
+                                device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID, serial=SERIAL_NUMBER)
+                        else:
+                            device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+                            SERIAL_NUMBER = device.serial
                         # print("PRODUCT_ID = %X" % PRODUCT_ID)
-                        device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
+                        #device = hid.Device(vid=VENDOR_ID, pid=PRODUCT_ID)
                         # device = hid.Device(vid=0x24B3, pid=0x2005)
                         # print("success vid=0x24B3, pid=0x2005 !!")
                     except:
@@ -1267,4 +1468,20 @@ history changes
 - for negative direction show the bar in red color
 2023_04_09 
 - adding debug prints 
+2023_08_15
+- instead of "Faultindication:" to put the insertion value in Hex (clue about big negative value)
+2023_08_20
+- adding serial number support by adding the '-s' command argument.
+- display the serial number on the main gui. example: Serial Number: 2044365D3452
+- adding two informative labels:
+-- Last stream packet time:  // this show the last packet time (PC clock)
+-- Total stream time:        // this show the time from start sreaming to last packet time
+- modifying the Entry widget "Faultindication:" to "Hex(insertion):" for showing the current Insertion in HEX
+- adding new Entry widgets:
+-- Big jumps: // shows the previous and current insertion when big jumps occur
+-- ABS jump:  // shows the absolute value of big jumps of insertion.
+- adding sound indication on big jumps of insertion.
+comment:
+- by experiment: the default font size are 8
+
 '''    

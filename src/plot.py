@@ -16,7 +16,7 @@ from tkinter import *
 from tkinter.filedialog import askopenfilename
 import os
 
-plot_version = "2023_03_13.a"
+plot_version = "2023_08_16.a"
 print("This Recorder Version: ",plot_version)
 
 # from ctag_hid_log_files_path import *
@@ -40,12 +40,20 @@ def openFile():
 def main():
     global filepath
     use_tKinter = 0
+    use_legend  = 1
 
     if len(sys.argv) != 2:
         print("Usage: %s \"path/to/log_file.csv\"" % (sys.argv[0],))
+        print("      or")
+        print("      plot.py -0        // to select input file")
+        print("      or")
+        print("      plot.py -g        // plot without legends")
         return
 
-    if sys.argv[1] == "-o" :
+    if sys.argv[1] == "-g" :
+        use_legend  = 0
+
+    if sys.argv[1] == "-o" or sys.argv[1] == "-g" :
         my_Path = "C:\\Work\\Python\\HID_Util\\src\\log"
         print("Use tKinter")
         use_tKinter = 1
@@ -72,12 +80,12 @@ def main():
             print("we have a path from gui %s" % filepath)
             file1 = open(filepath,"r+")
             # csv_size( file1, filepath )
-            plot_file( file1, filepath )
+            plot_file( file1, filepath, use_legend )
             
         else:
             file1 = open(cap_file,"r+")
             # csv_size( file1, cap_file )
-            plot_file( file1, cap_file )
+            plot_file( file1, cap_file, use_legend )
     except FileNotFoundError:
         print("Bad file path in user input argument: %s  !!!" % cap_file)
         return
@@ -98,7 +106,7 @@ def csv_size( file1, file_name ):
     print("Number of columns:", columns)
     return(rows,columns)
         
-def plot_file( file1, file_name ):
+def plot_file( file1, file_name, use_legend):
     # return
     plots = csv.reader(file1, delimiter=',')
     print("csv size:")
@@ -158,10 +166,11 @@ def plot_file( file1, file_name ):
     # text = 'tool_size, insertion, torque and image_quality' + "\n" + file_name
     # plt.title('tool_size, insertion, torque and image_quality "', fontweight="bold")
     # plt.suptitle('tool_size, insertion, torque and image_quality', fontsize=16, fontweight="bold")
-    plt.suptitle('Delta_Y, insertion, torque and image_quality', fontsize=16, fontweight="bold")
+    if use_legend:
+        plt.suptitle('Delta_Y, insertion, torque and image_quality', fontsize=16, fontweight="bold")
     
     # plt.title(text)
-    plt.legend()
+        plt.legend()
     plt.grid() # 2023_02_20 added.
     plt.show() 
     file1.close()    

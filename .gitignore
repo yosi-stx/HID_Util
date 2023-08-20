@@ -171,3 +171,6 @@ parameters.pkl
 *.pkl
 src/ArthroGal.py
 src/ArthroSN.py
+src/HID_UTILL_2.py
+src/Jupyter_notebook/Try_the_Jupyter_iPython.ipynb
+src/Jupyter_notebook/Try_the_Jupyter_iPython.html
