@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_08_20.a"
+util_verstion = "2023_09_01.a"
 DEBUG_SLIPPAGE = 1
 
 from binascii import hexlify
@@ -199,6 +199,11 @@ Fw_Date = "NA"
 popup_message = 0
 stream_data = None
 date_time_text = "NA"
+big_jump_rt_flag = 0
+BJ_rt_insertion = 0        # BJ = big_jump
+BJ_rt_prev_insertion = 0
+BJ_rt_insertion_hex = 0 
+BJ_rt_prev_insertion_hex = 0
 
 def list_hid_devices():
     all_devices = win_hid.HidDeviceFilter().get_devices()
@@ -437,11 +442,43 @@ def gui_loop(device):
 
 def hid_read( device ):
     global stream_data
+    global big_jump_rt_flag
+    global BJ_rt_insertion
+    global BJ_rt_prev_insertion
+    global BJ_rt_insertion_hex
+    global BJ_rt_prev_insertion_hex
+    read_thread_counter = 0
+    hid_read.prev_time = datetime.now()
     while True:
         # Read the packet from the device
         value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
         if len(value) >= READ_SIZE:
             stream_data = value
+            insertion = stream2insertion(value)
+            BJ_rt_insertion_hex = insertion
+            rt_insertion = long_unsigned_to_long_signed(insertion)
+            if abs(rt_insertion - hid_read.prev_insertion) > 1000:
+                big_jump_rt_flag = 1
+                BJ_rt_insertion = rt_insertion
+                BJ_rt_prev_insertion = hid_read.prev_insertion
+                BJ_rt_prev_insertion_hex = hid_read.prev_insertion_hex
+                print(" rt_insertion: %d   (big jump now)" %(rt_insertion))
+            hid_read.prev_insertion = rt_insertion
+            hid_read.prev_insertion_hex = BJ_rt_insertion_hex
+            
+            
+            read_thread_counter += 1
+            if read_thread_counter > 1000:
+                read_thread_counter = 0 
+                current_time = datetime.now()
+                delta_1000 = current_time - hid_read.prev_time
+                delta_micro = delta_1000.microseconds
+                # print(" insertion: %d    delta: %f " %(insertion,delta_micro))
+                hid_read.prev_time = current_time
+hid_read.prev_time = 0                
+hid_read.prev_insertion = 0                
+hid_read.prev_insertion_hex = 0                
+            
     
     
 def long_unsigned_to_long_signed( x ):
@@ -457,6 +494,10 @@ def unsigned_to_signed( x ):
 def date2dec(x):
     s = "%02x" % x
     return s
+
+def stream2insertion(value):
+    insertion = (int(value[INSERTION_INDEX + 2]) << 24) + (int(value[INSERTION_INDEX+3]) <<16) + (int(value[INSERTION_INDEX]) <<8) + int(value[INSERTION_INDEX+1])  
+    return insertion
 
 # this handler is called only upon a new packet from device
 def gui_handler(value, do_print=False):
@@ -474,6 +515,11 @@ def gui_handler(value, do_print=False):
     global Last_Stream_Packet_Time
     global date_time_text
     global Total_Stream_Time
+    global big_jump_rt_flag
+    global BJ_rt_insertion
+    global BJ_rt_prev_insertion
+    global BJ_rt_insertion_hex
+    global BJ_rt_prev_insertion_hex
 
     gui_handler_counter = gui_handler_counter + 1  # displayed as: PacketsCounter: 2023_08_09 
     current_time = datetime.now()
@@ -514,7 +560,8 @@ def gui_handler(value, do_print=False):
 #   torque from Avago: bytes 6..9
     torque = (int(value[TORQUE_INDEX + 2]) << 24) + (int(value[TORQUE_INDEX+3]) <<16) + (int(value[TORQUE_INDEX]) <<8) + int(value[TORQUE_INDEX+1])  
     torque_hex = torque
-    insertion = (int(value[INSERTION_INDEX + 2]) << 24) + (int(value[INSERTION_INDEX+3]) <<16) + (int(value[INSERTION_INDEX]) <<8) + int(value[INSERTION_INDEX+1])  
+    # insertion = (int(value[INSERTION_INDEX + 2]) << 24) + (int(value[INSERTION_INDEX+3]) <<16) + (int(value[INSERTION_INDEX]) <<8) + int(value[INSERTION_INDEX+1])  
+    insertion = stream2insertion(value)
     insertion_hex = insertion
     image_quality = (int(value[IMAGE_QUALITY_INDEX]) )
     station_current = (int(value[STATION_CURRENT_INDEX + 1]) << 8) + int(value[STATION_CURRENT_INDEX]) #station Report.current
@@ -725,15 +772,13 @@ def gui_handler(value, do_print=False):
     # entry_fault.insert(tk.END, "%d" % int_hid_util_fault)
     text_1_entry.delete(0, tk.END)
     text_1_entry.insert(tk.END, "%08X" % (int(insertion_hex)))
-    
-    if abs(insertion - gui_handler.last_insertion) > 1000:
+
+    if big_jump_rt_flag:
+        big_jump_rt_flag = 0
         # Play the sound
-        # winsound.PlaySound(sound_file_path, winsound.SND_FILENAME)
         winsound.PlaySound("SystemDefault", winsound.SND_ALIAS)
-        #global text_2_entry
         text_2_entry.delete(0, tk.END)
-        # text_color = "red"
-        text_2_entry.insert(tk.END, "last: %d (0x%08X)   insertion: %d (0x%08X)" % (gui_handler.last_insertion,gui_handler.insertion_hex,insertion,insertion_hex,))
+        text_2_entry.insert(tk.END, "last: %d (0x%08X)   insertion: %d (0x%08X)" % (BJ_rt_prev_insertion, BJ_rt_prev_insertion_hex, BJ_rt_insertion, BJ_rt_insertion_hex,))
         if gui_handler.toggle == 1:
             gui_handler.toggle = 0
             text_2_entry.configure(bd=1,fg="#ff0055" ) 
@@ -741,15 +786,40 @@ def gui_handler(value, do_print=False):
             text_2_entry.configure(bd=1,fg="black") # the "fg" argumetn is relevant for tk widgets (not for ttk)
             gui_handler.toggle = 1
 
-        # text_2_entry.configure(bg="black", fg="blue")
-        text_3_entry.delete(0, tk.END)
-        abs_jump = abs(insertion - gui_handler.last_insertion)
-        text_3_entry.insert(tk.END, "abs insertion jump: %d (0x%08X)" % (abs_jump,abs_jump))
-        
         #update the Big_jump_Time_Text
-        # Last_Stream_Packet_Time.config(text = last_date_time_text) # for reference
         Big_jump_Time_Text = "Big jump time:  " + formatted_time  
         Big_jump_Time.config(text = Big_jump_Time_Text) # for update the string field.
+
+        # text_2_entry.configure(bg="black", fg="blue")
+        text_3_entry.delete(0, tk.END)
+        abs_jump = abs(BJ_rt_insertion - BJ_rt_prev_insertion)
+        text_3_entry.insert(tk.END, "abs insertion jump: %d (0x%08X)" % (abs_jump,abs_jump))
+
+#   if abs(insertion - gui_handler.last_insertion) > 1000:
+#       # Play the sound
+#       # winsound.PlaySound(sound_file_path, winsound.SND_FILENAME)
+#       winsound.PlaySound("SystemDefault", winsound.SND_ALIAS)
+#       #global text_2_entry
+#       text_2_entry.delete(0, tk.END)
+#       # text_color = "red"
+#       text_2_entry.insert(tk.END, "last: %d (0x%08X)   insertion: %d (0x%08X)" % (gui_handler.last_insertion,gui_handler.insertion_hex,insertion,insertion_hex,))
+#       if gui_handler.toggle == 1:
+#           gui_handler.toggle = 0
+#           text_2_entry.configure(bd=1,fg="#ff0055" ) 
+#       else:
+#           text_2_entry.configure(bd=1,fg="black") # the "fg" argumetn is relevant for tk widgets (not for ttk)
+#           gui_handler.toggle = 1
+#
+#       # text_2_entry.configure(bg="black", fg="blue")
+#       text_3_entry.delete(0, tk.END)
+#       abs_jump = abs(insertion - gui_handler.last_insertion)
+#       text_3_entry.insert(tk.END, "abs insertion jump: %d (0x%08X)" % (abs_jump,abs_jump))
+#       
+#       #update the Big_jump_Time_Text
+#       # Last_Stream_Packet_Time.config(text = last_date_time_text) # for reference
+#       Big_jump_Time_Text = "Big jump time:  " + formatted_time  
+#       Big_jump_Time.config(text = Big_jump_Time_Text) # for update the string field.
+    
         
     
     gui_handler.last_insertion = insertion
@@ -1495,5 +1565,7 @@ history changes
 - adding Label widget: Big_jump_Time // PC time of the big jump
 comment:
 - by experiment: the default font size are 8
-
+2023_09_01
+- add real time handing of the big_jump: instead of gui_loop thread it is handled in hid_read
+- add stream2insertion() function.
 '''    
