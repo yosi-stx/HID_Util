@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_09_01.a"
+util_verstion = "2023_09_10.a"
 DEBUG_SLIPPAGE = 1
 
 from binascii import hexlify
@@ -204,6 +204,7 @@ BJ_rt_insertion = 0        # BJ = big_jump
 BJ_rt_prev_insertion = 0
 BJ_rt_insertion_hex = 0 
 BJ_rt_prev_insertion_hex = 0
+Do_Play_Sound_Var = 0
 
 def list_hid_devices():
     all_devices = win_hid.HidDeviceFilter().get_devices()
@@ -520,6 +521,7 @@ def gui_handler(value, do_print=False):
     global BJ_rt_prev_insertion
     global BJ_rt_insertion_hex
     global BJ_rt_prev_insertion_hex
+    global Do_Play_Sound_Var 
 
     gui_handler_counter = gui_handler_counter + 1  # displayed as: PacketsCounter: 2023_08_09 
     current_time = datetime.now()
@@ -776,7 +778,8 @@ def gui_handler(value, do_print=False):
     if big_jump_rt_flag:
         big_jump_rt_flag = 0
         # Play the sound
-        winsound.PlaySound("SystemDefault", winsound.SND_ALIAS)
+        if Do_Play_Sound_Var.get():
+            winsound.PlaySound("SystemDefault", winsound.SND_ALIAS)
         text_2_entry.delete(0, tk.END)
         text_2_entry.insert(tk.END, "last: %d (0x%08X)   insertion: %d (0x%08X)" % (BJ_rt_prev_insertion, BJ_rt_prev_insertion_hex, BJ_rt_insertion, BJ_rt_insertion_hex,))
         if gui_handler.toggle == 1:
@@ -1104,6 +1107,16 @@ NOTE: \tZero value in Tool_size \
     text_2_entry.grid(padx=10,pady=5,row=row,column=2,columnspan=1,sticky=tk.E,)
 
     row += 1
+    # play sound checkbox:
+    # ttk.Label(frame,text="Play sound:").grid(row=row,column=1,sticky=tk.W,)
+
+    # Create the "play sound" checkbox
+    global Do_Play_Sound_Var 
+    Do_Play_Sound_Var = tk.BooleanVar()
+    Do_Play_Sound_checkbox = tk.Checkbutton(frame, text="Play sound (on big jump)", variable=Do_Play_Sound_Var)
+    Do_Play_Sound_checkbox.grid(row=row, column=1)
+
+
     #  big jumps abs value[4bytes]
     ttk.Label(frame,text="ABS jump:").grid(row=row,column=2,sticky=tk.W,)
     global text_3_entry
@@ -1246,8 +1259,13 @@ NOTE: \tZero value in Tool_size \
 
     row = my_seperator(frame, row)
     # ------------------------------------------------------ 
+    
     temp_widget = tk.Button(frame,text ="Start streaming",command = streaming_button_CallBack, bg="#66FFFF")
+    # button_text = tk.Label(frame, text="<u>S</u>tart streaming", justify=tk.CENTER, anchor=tk.W)
     temp_widget.grid(row=row,column=0)
+    
+    frame.bind('s', lambda event=None: streaming_button_CallBack())
+
 
     if PRODUCT_ID == PRODUCT_ID_STATION:
         temp_widget = tk.Button(frame,text ="Reset Ins & Torque",command = moderate_button_CallBack, bg="#00FF00") # green button.
@@ -1568,4 +1586,7 @@ comment:
 2023_09_01
 - add real time handing of the big_jump: instead of gui_loop thread it is handled in hid_read
 - add stream2insertion() function.
+2023_09_10
+- Create the "play sound" checkbox. using: Do_Play_Sound_Var
+- binding the 's' with "Start streaming
 '''    
