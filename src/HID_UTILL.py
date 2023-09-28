@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_09_28.a"
+util_verstion = "2023_09_28.b"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -207,7 +207,7 @@ ignore_red_handle_checkbutton = None
 ignore_red_handle_state = False
 gui_handler_counter = 0
 debug_pwm_print = True
-cb = None
+debug_check_box = None
 root = None
 Fw_Version = "NA"
 Fw_Date = "NA"
@@ -337,7 +337,8 @@ def show_pwm_16_values():
     global pwm_text_widget
     global pwm_text
     #pwm_percent = pwm_16/(2**16-1)*100
-    pwm_percent = pwm_16/(2**12-1)*100
+    # pwm_percent = pwm_16/(2**12-1)*100
+    pwm_percent = pwm_16/(2**8-1)*100
     temp_txt = ("{:.2f}".format(pwm_percent))
     # str(pwm_16/(2**16-1)*100)
     label_pwm16_text = "PWM: "+ temp_txt +"%"
@@ -803,7 +804,8 @@ def gui_handler(value, do_print=False):
     precentage_hid_stream_channel2 = int((int_hid_stream_channel2 / 4096) * 100)
     precentage_clicker = int((int_clicker / 4096) * 100)
     # precentage_sleepTimer = int((int_sleepTimer / 600) * 100)
-    precentage_sleepTimer = int((int_sleepTimer/255 )*100) # PWM_command_stream_back
+    PWM_command_stream_back = ((int_sleepTimer/255 )*100) # PWM_command_stream_back
+    precentage_sleepTimer = round(PWM_command_stream_back, 0)
     precentage_batteryLevel = int((int_batteryLevel / 4096) * 100)
     if PRODUCT_ID != PRODUCT_ID_STATION:
         precentage_MotorCur = int((int_MotorCur / 4096) * 100)
@@ -1327,23 +1329,28 @@ NOTE: \tZero value in Tool_size \
     # Seperator
     row = my_seperator(frame, row)
     # ------------------------------------------------------
+    text_name = "PWM command out:"
+    ttk.Label(frame,text=text_name).grid(row=row,column=0,sticky=tk.W,)
 
     pwm_widget = tk.Scale(frame, from_=0, to=99, orient='horizontal',length=200)#, orient=HORIZONTAL)
-    # tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
-    pwm_widget.grid(row=row,column=0)
+    # pwm_widget = tk.Scale(frame, from_=0, to=255, orient='horizontal',length=200)#, orient=HORIZONTAL)
+    pwm_widget.grid(row=row,column=0,sticky=tk.E,)
 
     # w = ttk.Label(frame,text="PWM debug print:").grid(row=row,column=1,sticky='W')
     
-    global cb
-    cb = tk.IntVar()
-    # cb.grid(row=row,column=1)#,tk.sticky='E')
-    w = tk.Checkbutton(frame,text="PWM debug print:",variable=cb,onvalue=1,offvalue=0,command=isChecked)
-    w.grid(row=row,column=1,sticky='W')
+    global debug_check_box
+    debug_check_box = tk.IntVar()
+    # debug_check_box.grid(row=row,column=1)#,tk.sticky='E')
+    w = tk.Checkbutton(frame,text="PWM debug print:",variable=debug_check_box,onvalue=1,offvalue=0,command=isChecked)
+    # w.grid(row=row,column=1,sticky='W')
+    w.grid(row=row,column=1)
     
    
     # temp_widget = tk.Button(frame, text='Print PWM', command=show_pwm_values).grid(row=row,column=1)
     # pwm_16_widget = tk.Scale(frame, from_=0, to=2**16-1, orient='horizontal',length=400)#, orient=HORIZONTAL)
-    pwm_16_widget = tk.Scale(frame, from_=0, to=2**12-1, orient='horizontal',length=400)#, orient=HORIZONTAL)
+    # pwm_16_widget = tk.Scale(frame, from_=0, to=2**12-1, orient='horizontal',length=300)#, orient=HORIZONTAL)
+    # change the scale to 0..255
+    pwm_16_widget = tk.Scale(frame, from_=0, to=2**8-1, orient='horizontal',length=400)#, orient=HORIZONTAL)
     # tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
     pwm_16_widget.grid(row=row,column=2,sticky='W')
 
@@ -1420,13 +1427,13 @@ NOTE: \tZero value in Tool_size \
     
 def isChecked():
     global debug_pwm_print
-    global cb
-    if cb.get() == 1:
+    global debug_check_box
+    if debug_check_box.get() == 1:
         debug_pwm_print = 1
         print("debug_pwm_print = 1")
         # btn['state'] = NORMAL
         # btn.configure(text='Awake!')
-    elif cb.get() == 0:
+    elif debug_check_box.get() == 0:
         debug_pwm_print = 0
         print("debug_pwm_print = 0")
         # btn['state'] = DISABLED
@@ -1753,5 +1760,8 @@ comment:
 - change the sleepTimer to "PWM command stream back"
 2023_09_28 
 - add user value g_big_jump_threshold for big jumps indication.
+2023_09_28.b
+- fix the scroll-bar units 
+- add indication in/out for scroll-bar 
 
 '''    
