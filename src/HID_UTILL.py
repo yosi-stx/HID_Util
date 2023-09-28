@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_09_10.a"
-DEBUG_SLIPPAGE = 1
+util_verstion = "2023_09_28.a"
+DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
 import sys
@@ -36,6 +36,8 @@ else:
 
 import hid  # after workaround
 
+from string_date_time import get_date_time
+from string_date_time import get_date_time_sec
 # Define the path to the low battery alarm sound file
 sound_file_path = os.path.join(os.path.expandvars("%SystemRoot%"), "media", "Windows Battery Low.wav")
 
@@ -80,6 +82,16 @@ PRODUCT_ID_types =  {
   0x2005: "BOARD_TYPE: PRODUCT_ID_LAP_NEW_CAMERA",  #board type is enforced in FW (descriptors.h)
   0x1965: "yosi"
 }
+
+# for recording feature
+# FILE1_PATH = "log\hid_" # log.csv"
+# start_date_time = get_date_time()
+# #FIGURE_FILE1_PATH = FILE1_PATH + start_date_time + ".png"
+# FILE1_PATH = FILE1_PATH + start_date_time + ".csv"
+
+if not os.path.exists('log'):
+    os.makedirs('log')
+
 SERIAL_NUM_LIST =[]
 PRODUCT_ID_LIST =[]
 SERIAL_NUMBER = "_"
@@ -150,6 +162,8 @@ TORQUE_INDEX = 2 + 8
 STATION_CURRENT_INDEX = 25
 MAX_LONG_POSITIVE = 2**31
 MAX_UNSIGNED_LONG = 2**32
+MAX_U16_POSITIVE = 2**15
+MAX_U16  = 2**16
 MAX_INT16_POSITIVE = 2**15
 MAX_UNSIGNED_INT = 2**16
 # IMAGE_QUALITY_INDEX = INSERTION_INDEX + 4
@@ -186,6 +200,7 @@ clicker_counter_entry = list()
 text_1_entry = list()
 text_2_entry = list()
 text_3_entry = list()
+user_value_entry =  list()
 special_cmd = 0
 ignore_red_handle_button = None
 ignore_red_handle_checkbutton = None
@@ -198,6 +213,7 @@ Fw_Version = "NA"
 Fw_Date = "NA"
 popup_message = 0
 stream_data = None
+last_stream_data = None
 date_time_text = "NA"
 big_jump_rt_flag = 0
 BJ_rt_insertion = 0        # BJ = big_jump
@@ -205,6 +221,9 @@ BJ_rt_prev_insertion = 0
 BJ_rt_insertion_hex = 0 
 BJ_rt_prev_insertion_hex = 0
 Do_Play_Sound_Var = 0
+g_recording_flag = 0
+file1 = None
+g_big_jump_threshold = 1000 
 
 def list_hid_devices():
     all_devices = win_hid.HidDeviceFilter().get_devices()
@@ -264,6 +283,43 @@ def PWM_value_button_CallBack():
     global WRITE_DATA_CMD___bytearray
     WRITE_DATA_CMD___bytearray.append(12)
     special_cmd = 'G'
+
+def display_last_stream_callback():
+    global last_stream_data
+    if last_stream_data != None:
+        gui_handler(last_stream_data, do_print=True)
+    else:
+        print("no streaming data yet!!!")
+
+def start_stop_recording_callback():
+    # toggle recording indication
+    global recording_label
+    global g_recording_flag
+    if start_stop_recording_callback.toggle == 1:
+        # create a recording file:
+        start_recordig()
+        # put the indication
+        start_stop_recording_callback.toggle = 0
+        recording_label.config(text = "Recording ON",foreground="#FF0000",font=("TkDefaultFont", 20, "bold"))
+        g_recording_flag = 1
+    else:
+        # close the recording file:
+        stop_recordig()
+        # remove the indication
+        start_stop_recording_callback.toggle = 1
+        recording_label.config(text = ".",foreground="#0000FF",font=("TkDefaultFont", 20))
+        g_recording_flag = 0
+start_stop_recording_callback.toggle = 1
+
+def on_enter_key(event):
+    global g_big_jump_threshold
+    g_big_jump_threshold = int(user_value_entry.get())
+    try:
+        user_numeric_value = float(g_big_jump_threshold)
+        print("User numeric value:", user_numeric_value)
+    except ValueError:
+        print("Invalid numeric value entered.")
+
 
 prev_pwm = 0
 pwm_widget = 0
@@ -441,24 +497,65 @@ def gui_loop(device):
         # Update the do_print flag
         do_print = (timer() - print_time) >= PRINT_TIME
 
+def start_recordig():
+    global file1
+    FILE1_PATH = "log\hid_" # log.csv"
+    start_date_time = get_date_time_sec()
+    print("start_date_time: ", start_date_time)
+    #FIGURE_FILE1_PATH = FILE1_PATH + start_date_time + ".png"
+    FILE1_PATH = FILE1_PATH + start_date_time + ".csv"
+    print("Recording result at: ", FILE1_PATH)
+    # open recording log file:
+    file1 = open(FILE1_PATH,"w") 
+    print("Recording started...")
+
+def stop_recordig():
+    global file1
+    if file1 != None:
+        file1.close()
+        print("Recording Stopped!")
+    else:
+        print("Recording file was not found")
+
+def recording_handler(value):
+    global file1
+    if len(value) >= READ_SIZE:
+        tool_size = (int(value[CMOS_INDEX + 1]) << 8) + int(value[CMOS_INDEX])
+        tool_size = uint_16_unsigned_to_int_signed(tool_size)
+        torque = (int(value[TORQUE_INDEX + 2]) << 24) + (int(value[TORQUE_INDEX+3]) <<16) + (int(value[TORQUE_INDEX]) <<8) + int(value[TORQUE_INDEX+1])  
+        insertion = (int(value[INSERTION_INDEX + 2]) << 24) + (int(value[INSERTION_INDEX+3]) <<16) + (int(value[INSERTION_INDEX]) <<8) + int(value[INSERTION_INDEX+1])  
+        torque = long_unsigned_to_long_signed(torque)
+        insertion = long_unsigned_to_long_signed(insertion)
+        image_quality = (int(value[IMAGE_QUALITY_INDEX]) )
+        ### recording ::  tool_size, insertion, torque and  image_quality ###
+        L = [ str(tool_size),",   ", str(insertion), ", " , str(torque), ", " , str(image_quality), "\n" ]  
+        file1.writelines(L) 
+    
+    
+
 def hid_read( device ):
     global stream_data
+    global last_stream_data
     global big_jump_rt_flag
     global BJ_rt_insertion
     global BJ_rt_prev_insertion
     global BJ_rt_insertion_hex
     global BJ_rt_prev_insertion_hex
+    global g_big_jump_threshold
+    
     read_thread_counter = 0
+    always_counter = 0
     hid_read.prev_time = datetime.now()
     while True:
         # Read the packet from the device
+        always_counter += 1
         value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
         if len(value) >= READ_SIZE:
             stream_data = value
             insertion = stream2insertion(value)
             BJ_rt_insertion_hex = insertion
             rt_insertion = long_unsigned_to_long_signed(insertion)
-            if abs(rt_insertion - hid_read.prev_insertion) > 1000:
+            if abs(rt_insertion - hid_read.prev_insertion) > g_big_jump_threshold:  #was: > 1000 
                 big_jump_rt_flag = 1
                 BJ_rt_insertion = rt_insertion
                 BJ_rt_prev_insertion = hid_read.prev_insertion
@@ -466,6 +563,8 @@ def hid_read( device ):
                 print(" rt_insertion: %d   (big jump now)" %(rt_insertion))
             hid_read.prev_insertion = rt_insertion
             hid_read.prev_insertion_hex = BJ_rt_insertion_hex
+            if value[1] == 38: # meaning: if "Station" streaming packet from device
+                last_stream_data = stream_data
             
             
             read_thread_counter += 1
@@ -476,6 +575,22 @@ def hid_read( device ):
                 delta_micro = delta_1000.microseconds
                 # print(" insertion: %d    delta: %f " %(insertion,delta_micro))
                 hid_read.prev_time = current_time
+                print(last_stream_data)
+
+        # toggle the recording indication
+        global recording_label
+        global g_recording_flag
+        if g_recording_flag == 1:
+            # do recording into the last file that was opened by the button press
+            recording_handler(value)
+            if (always_counter % 250)  < 175:
+                recording_label.config(text = "Recording ON",foreground="#FF0000",font=("TkDefaultFont", 20, "bold"))
+            else:
+                recording_label.config(text = " ",foreground="#FF0000",font=("TkDefaultFont", 20, "bold"))
+        else:
+                recording_label.config(text = " ",foreground="#FF0000",font=("TkDefaultFont", 20, "bold"))
+            
+                
 hid_read.prev_time = 0                
 hid_read.prev_insertion = 0                
 hid_read.prev_insertion_hex = 0                
@@ -485,6 +600,11 @@ hid_read.prev_insertion_hex = 0
 def long_unsigned_to_long_signed( x ):
     if x > MAX_LONG_POSITIVE:
         x = x - MAX_UNSIGNED_LONG
+    return x
+
+def uint_16_unsigned_to_int_signed( x ):
+    if x > MAX_U16_POSITIVE:
+        x = x - MAX_U16
     return x
 
 def unsigned_to_signed( x ):
@@ -627,7 +747,8 @@ def gui_handler(value, do_print=False):
         # print("value[2] == 6  : %s" % hexlify(value))
         
     clicker_counter = (int(value[COUNTER_INDEX+2 + 1]) << 8) + int(value[COUNTER_INDEX+2]) #clicker_counter --> numeric_box_view
-    sleepTimer = (int(value[COUNTER_INDEX+4 + 1]) << 8) + int(value[COUNTER_INDEX+4])
+    # sleepTimer = (int(value[COUNTER_INDEX+4 + 1]) << 8) + int(value[COUNTER_INDEX+4])
+    sleepTimer = (int(value[32 + 1]) << 8) + int(value[32]) # PWM_command_stream_back
 
     MotorCur = analog[4]
     clicker_analog = analog[5]
@@ -641,7 +762,7 @@ def gui_handler(value, do_print=False):
     
     # file1 = open("C:\Work\Python\HID_Util\src\log\log2.txt","w") 
     # global file1
-    L = [ str(clicker_analog), "," ,"\n" ]  
+    # L = [ str(clicker_analog), "," ,"\n" ]  
     # file1.writelines(L) 
 
 
@@ -682,7 +803,7 @@ def gui_handler(value, do_print=False):
     precentage_hid_stream_channel2 = int((int_hid_stream_channel2 / 4096) * 100)
     precentage_clicker = int((int_clicker / 4096) * 100)
     # precentage_sleepTimer = int((int_sleepTimer / 600) * 100)
-    precentage_sleepTimer = int(int_sleepTimer )
+    precentage_sleepTimer = int((int_sleepTimer/255 )*100) # PWM_command_stream_back
     precentage_batteryLevel = int((int_batteryLevel / 4096) * 100)
     if PRODUCT_ID != PRODUCT_ID_STATION:
         precentage_MotorCur = int((int_MotorCur / 4096) * 100)
@@ -729,7 +850,8 @@ def gui_handler(value, do_print=False):
     progressbar_style_inner_handle_channel1.configure(INNER_HANDLE_CHANNEL1_STYLE,text=("%d"%int_inner_handle_channel1))
     progressbar_style_inner_handle_channel2.configure(INNER_HANDLE_CHANNEL2_STYLE,text=("%d"%int_inner_handle_channel2))
     progressbar_style_clicker.configure(CLICKER_STYLE,text=("%d"%int_clicker))
-    progressbar_style_sleepTimer.configure(SLEEPTIMER_STYLE,text=("%d"%sleepTimer))
+    # progressbar_style_sleepTimer.configure(SLEEPTIMER_STYLE,text=("%d"%sleepTimer))
+    progressbar_style_sleepTimer.configure(SLEEPTIMER_STYLE,text=("%d"%precentage_sleepTimer)) # PWM_command_stream_back
     progressbar_style_batteryLevel.configure(BATTERY_LEVEL_STYLE,text=("%d"%batteryLevel))
     if PRODUCT_ID != PRODUCT_ID_STATION:
         progressbar_style_MotorCur.configure(MOTOR_CURRENT_STYLE,text=("%d"%MotorCur))
@@ -755,7 +877,8 @@ def gui_handler(value, do_print=False):
     progressbar_inner_handle_channel2["value"] = precentage_inner_handle_channel2
     progressbar_clicker["value"] = precentage_clicker
     progressbar_sleepTimer["value"] = precentage_sleepTimer
-    progressbar_sleepTimer["maximum"] = 600
+    # progressbar_sleepTimer["maximum"] = 600
+    progressbar_sleepTimer["maximum"] = 100 
     progressbar_batteryLevel["value"] = precentage_batteryLevel
     progressbar_MotorCur["value"] = precentage_MotorCur
 
@@ -797,33 +920,6 @@ def gui_handler(value, do_print=False):
         text_3_entry.delete(0, tk.END)
         abs_jump = abs(BJ_rt_insertion - BJ_rt_prev_insertion)
         text_3_entry.insert(tk.END, "abs insertion jump: %d (0x%08X)" % (abs_jump,abs_jump))
-
-#   if abs(insertion - gui_handler.last_insertion) > 1000:
-#       # Play the sound
-#       # winsound.PlaySound(sound_file_path, winsound.SND_FILENAME)
-#       winsound.PlaySound("SystemDefault", winsound.SND_ALIAS)
-#       #global text_2_entry
-#       text_2_entry.delete(0, tk.END)
-#       # text_color = "red"
-#       text_2_entry.insert(tk.END, "last: %d (0x%08X)   insertion: %d (0x%08X)" % (gui_handler.last_insertion,gui_handler.insertion_hex,insertion,insertion_hex,))
-#       if gui_handler.toggle == 1:
-#           gui_handler.toggle = 0
-#           text_2_entry.configure(bd=1,fg="#ff0055" ) 
-#       else:
-#           text_2_entry.configure(bd=1,fg="black") # the "fg" argumetn is relevant for tk widgets (not for ttk)
-#           gui_handler.toggle = 1
-#
-#       # text_2_entry.configure(bg="black", fg="blue")
-#       text_3_entry.delete(0, tk.END)
-#       abs_jump = abs(insertion - gui_handler.last_insertion)
-#       text_3_entry.insert(tk.END, "abs insertion jump: %d (0x%08X)" % (abs_jump,abs_jump))
-#       
-#       #update the Big_jump_Time_Text
-#       # Last_Stream_Packet_Time.config(text = last_date_time_text) # for reference
-#       Big_jump_Time_Text = "Big jump time:  " + formatted_time  
-#       Big_jump_Time.config(text = Big_jump_Time_Text) # for update the string field.
-    
-        
     
     gui_handler.last_insertion = insertion
     gui_handler.insertion_hex = insertion_hex
@@ -906,7 +1002,8 @@ def my_widgets(frame):
         )
         if name == SLEEPTIMER_STYLE:
             # style.configure(name, foreground="white", background="blue")
-            style.configure(name, foreground="white", background="#d9d9d9")
+            #style.configure(name, foreground="white", background="#d9d9d9")
+            style.configure(name, foreground="white", background="#007fff")  # PWM_command_stream_back (azure color)
         elif name == BATTERY_LEVEL_STYLE:
             # style.configure(name, foreground="white", background="blue")
             style.configure(name, foreground="white", background="#d92929")
@@ -1107,6 +1204,18 @@ NOTE: \tZero value in Tool_size \
     text_2_entry.grid(padx=10,pady=5,row=row,column=2,columnspan=1,sticky=tk.E,)
 
     row += 1
+    # user value for big jumps
+    w = ttk.Label(frame,text="big jumps threshold:")
+    w.grid(row=row,column=0,sticky=tk.W,)
+
+    w = ttk.Entry(frame,width=25)
+    global user_value_entry
+    user_value_entry = w
+    w.grid(padx=10,pady=5,row=row,column=0,columnspan=1)
+    # Bind the Enter key to the on_enter_key function
+    user_value_entry.bind('<Return>', on_enter_key)
+    user_value_entry.insert(tk.END, str(g_big_jump_threshold))
+    
     # play sound checkbox:
     # ttk.Label(frame,text="Play sound:").grid(row=row,column=1,sticky=tk.W,)
 
@@ -1137,7 +1246,9 @@ NOTE: \tZero value in Tool_size \
     # ------------------------------------------------------
 
     # sleepTimer    "#0000FF" 
-    ttk.Label(frame,text="Sleep Timer",foreground="#999999").grid(row=row,column=0,sticky=tk.E,)
+    # ttk.Label(frame,text="Sleep Timer",foreground="#999999").grid(row=row,column=0,sticky=tk.E,)
+    # PWM_command_stream_back
+    ttk.Label(frame,text="PWM command stream back").grid(row=row,column=0,sticky=tk.E,)
     # ttk.Label(frame,text="Sleep Timer").grid(row=row,column=0,sticky=tk.E,)
     # ttk.Label.tag_configure("blue", foreground="blue")
     # ttk.Label.tag_add("blue", "1.0", "1.4")
@@ -1280,9 +1391,32 @@ NOTE: \tZero value in Tool_size \
 
     row = my_seperator(frame, row)
     # ------------------------------------------------------ 
+    # Display last stream  display_last_stream_callback
+    temp_widget = tk.Button(frame,text ="Display last stream",command = display_last_stream_callback)
+    temp_widget.grid(row=row,column=0)
+    
     # temp_widget = tk.Button(frame,text ="BSL !!!(DONT PRESS)",command = BSL_mode_button_CallBack, bg="red")
     temp_widget = tk.Button(frame,text ="BSL !!!(DONT PRESS)",command = BSL_mode_button_CallBack, bg="#FFE0E0")
     temp_widget.grid(row=row,column=2)
+    
+    row += 1
+
+    row = my_seperator(frame, row)
+    # ------------------------------------------------------ 
+    # Start/Stop Recording start_stop_recording
+    temp_widget = tk.Button(frame,text ="Start/Stop Recording",command = start_stop_recording_callback)
+    temp_widget.grid(row=row,column=0)
+
+    recording_text = "Press the button to record"
+    global recording_label
+    recording_label = tk.Label(frame,text = recording_text, foreground="#777777")
+    recording_label.grid(row=row,column=1,sticky=tk.W,)
+
+    row += 1
+
+    row = my_seperator(frame, row)
+    # ------------------------------------------------------ 
+
     
 def isChecked():
     global debug_pwm_print
@@ -1332,6 +1466,15 @@ def init_parser():
         required=False,
         help="connects to the device with the given path"
     )
+#    parser.add_argument(
+#        "-l", "--label",
+#        dest="label",
+#        metavar="LABEL",
+#        type=int,
+#        nargs=1,
+#        required=False,
+#        help="add first line of Label in the CSV file"
+#    )
     parser.add_argument(
         "-s", "--serial",
         dest="serial_num",
@@ -1369,6 +1512,7 @@ def main():
     avail_vid = args.vendor_id != None
     avail_pid = args.product_id != None
     avail_path = args.path != None
+    # avail_label = args.label != None
     id_mode = avail_pid and avail_vid
     path_mode = avail_path
     default_mode = (not avail_vid) and (not avail_pid) and (not avail_path)
@@ -1378,6 +1522,14 @@ def main():
     if ((not avail_path) and ((avail_pid and (not avail_vid)) or ((not avail_pid) and avail_vid))):
         print("Both the product ID and the vendor ID must be given as arguments")
         return
+    #-----------  LABEL  -----------
+    #if ( avail_label ):
+    #    LABEL = args.label[0]
+    #    print("-----------  avail_label - ----------")
+    #    if LABEL > 0 :
+    #        L = [ "tool_size",",   ", "insertion", ", " , "torque", "\n" ]  
+    #        print(L)
+    #        file1.writelines(L) 
 
     if (default_mode):
         print("No arguments were given, defaulting to:")
@@ -1538,10 +1690,13 @@ def main():
         # Run the GUI main loop
         root.mainloop()
     finally:
-        # global file1
-        # file1.close() #to change file access modes 
+        # close recording file if was not closed by the user.
+        global file1
+        if file1 != None:
+            file1.close()
         if device != None:
             device.close()
+        
 
 if __name__ == "__main__":
     main()
@@ -1589,4 +1744,14 @@ comment:
 2023_09_10
 - Create the "play sound" checkbox. using: Do_Play_Sound_Var
 - binding the 's' with "Start streaming
+2023_09_12 
+- add button: "Display last stream" to the GUI. use: display_last_stream_callback()
+- add button: "Start/Stop Recording" to the GUI.
+2023_09_25
+- add recording handler in the hid_read() thread
+- fix the label in the GUI back to "Tool Size" by setting: DEBUG_SLIPPAGE = 0
+- change the sleepTimer to "PWM command stream back"
+2023_09_28 
+- add user value g_big_jump_threshold for big jumps indication.
+
 '''    

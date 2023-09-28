@@ -371,7 +371,7 @@ def main():
     args = parser.parse_args(sys.argv[1:])
 
     # Initialize the flags according from the command line arguments
-    avail_vid = args.vendor_id != None
+    avail_vid = args.vendor_id != None   # "avail" for "available" 
     avail_pid = args.product_id != None
     avail_path = args.path != None
     avail_label = args.label != None
