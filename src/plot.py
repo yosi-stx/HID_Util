@@ -16,7 +16,7 @@ from tkinter import *
 from tkinter.filedialog import askopenfilename
 import os
 
-plot_version = "2023_08_16.a"
+plot_version = "2023_10_03.a"
 print("This Recorder Version: ",plot_version)
 
 # from ctag_hid_log_files_path import *
@@ -248,6 +248,7 @@ history changes
 - be able to plot also 3 column csv files.
 2023_10_03
 - using csv.DictReader instead of csv.reader
+- add support of comments in the csv file.
 - adding support of sampling_gap in csv file.
 
 '''            
