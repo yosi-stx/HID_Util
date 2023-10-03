@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_09_28.b"
+util_verstion = "2023_10_03.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -200,7 +200,7 @@ clicker_counter_entry = list()
 text_1_entry = list()
 text_2_entry = list()
 text_3_entry = list()
-user_value_entry =  list()
+big_jump_value_entry =  list()
 special_cmd = 0
 ignore_red_handle_button = None
 ignore_red_handle_checkbutton = None
@@ -313,13 +313,34 @@ start_stop_recording_callback.toggle = 1
 
 def on_enter_key(event):
     global g_big_jump_threshold
-    g_big_jump_threshold = int(user_value_entry.get())
+    g_big_jump_threshold = int(big_jump_value_entry.get())
     try:
         user_numeric_value = float(g_big_jump_threshold)
         print("User numeric value:", user_numeric_value)
     except ValueError:
         print("Invalid numeric value entered.")
 
+def display_help(event):
+    # Create a Toplevel window for the popup
+    popup = tk.Toplevel()
+    popup.wm_title("Help")
+    
+    # Create and display the help message
+    help_message = "Threshold for big jumps:\n sets the value on which it sens BIG JUMP between two consecutive samples."
+    label = ttk.Label(popup, text=help_message, padding=20)
+    label.pack()
+
+    # Position the popup near the label
+    x, y, _, _ = event.widget.bbox("insert")
+    x += event.widget.winfo_rootx() + 25
+    y += event.widget.winfo_rooty() + 25
+    popup.wm_geometry(f"+{x}+{y}")
+
+    # Close the popup when the mouse moves away from the label
+    def close_popup(e):
+        popup.destroy()
+
+    event.widget.bind("<Leave>", close_popup)
 
 prev_pwm = 0
 pwm_widget = 0
@@ -1209,14 +1230,15 @@ NOTE: \tZero value in Tool_size \
     # user value for big jumps
     w = ttk.Label(frame,text="big jumps threshold:")
     w.grid(row=row,column=0,sticky=tk.W,)
+    w.bind("<Enter>", display_help)
 
     w = ttk.Entry(frame,width=25)
-    global user_value_entry
-    user_value_entry = w
+    global big_jump_value_entry
+    big_jump_value_entry = w
     w.grid(padx=10,pady=5,row=row,column=0,columnspan=1)
     # Bind the Enter key to the on_enter_key function
-    user_value_entry.bind('<Return>', on_enter_key)
-    user_value_entry.insert(tk.END, str(g_big_jump_threshold))
+    big_jump_value_entry.bind('<Return>', on_enter_key)
+    big_jump_value_entry.insert(tk.END, str(g_big_jump_threshold))
     
     # play sound checkbox:
     # ttk.Label(frame,text="Play sound:").grid(row=row,column=1,sticky=tk.W,)
@@ -1763,5 +1785,7 @@ comment:
 2023_09_28.b
 - fix the scroll-bar units 
 - add indication in/out for scroll-bar 
+2023_10_03
+- popup help for label: "big jumps threshold:" 
 
 '''    
