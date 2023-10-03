@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_10_03.a"
+util_verstion = "2023_10_03.b"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -536,6 +536,7 @@ def stop_recordig():
     if file1 != None:
         file1.close()
         print("Recording Stopped!")
+        file1 = None
     else:
         print("Recording file was not found")
 
@@ -551,9 +552,10 @@ def recording_handler(value):
         image_quality = (int(value[IMAGE_QUALITY_INDEX]) )
         ### recording ::  tool_size, insertion, torque and  image_quality ###
         L = [ str(tool_size),",   ", str(insertion), ", " , str(torque), ", " , str(image_quality), "\n" ]  
-        file1.writelines(L) 
-    
-    
+        if file1 != None:
+            file1.writelines(L) 
+        else:
+            print("try to write to closed file... file was not found !!!")
 
 def hid_read( device ):
     global stream_data
@@ -1787,5 +1789,7 @@ comment:
 - add indication in/out for scroll-bar 
 2023_10_03
 - popup help for label: "big jumps threshold:" 
+2023_10_03.b
+- fix bug when try to write to closed file1.
 
 '''    
