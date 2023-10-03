@@ -92,9 +92,16 @@ def main():
     exit()
     return
 
-def csv_size( file1, file_name ):
+def is_comment(line):
+    return line.startswith('#')
+
+def csv_size( file1, file_name ):   # not in use now 2023_10_03
     # return
-    plots = csv.reader(file1, delimiter=',')
+    # plots = csv.reader(file1, delimiter=',')
+    
+    # use filter to disregard recording lines with '#', according to :
+    # https://stackoverflow.com/questions/14158868/python-skip-comment-lines-marked-with-in-csv-dictreader
+    plots = csv.DictReader(filter(lambda row: row[0]!='#', file1))
     print("csv size:")
     rows = 0
     columns = 0
@@ -105,10 +112,37 @@ def csv_size( file1, file_name ):
     print("Number of rows:", rows)
     print("Number of columns:", columns)
     return(rows,columns)
-        
+
+def get_info( file1, field):
+    # search for gap indication in the file:
+    i = 0
+    gap = 1
+    for line in file1:
+        i += 1
+        if i>5:
+            break
+        print(line,end='')
+        # if "gap" in line:
+        if field in line:
+            line = line.rstrip()
+            L = line.split('=')
+            print(L)
+            gap= int(L[1])
+            # sampling_gap = gap
+            print("recording sampling gap: %d ..." %(gap))
+            return gap
+    # field was not found
+    print("field: '%s' was not found!!!" %(field))
+    return gap
+
+
 def plot_file( file1, file_name, use_legend):
     # return
-    plots = csv.reader(file1, delimiter=',')
+    sampling_gap = 1
+    sampling_gap = get_info(file1,"gap")
+    file1.seek(0) # to start from begining of the file.
+    # plots = csv.reader(file1, delimiter=',')
+    plots = csv.DictReader(filter(lambda row: row[0]!='#', file1))
     print("csv size:")
     rows = 0
     columns = 0
@@ -118,24 +152,43 @@ def plot_file( file1, file_name, use_legend):
             columns = len(temp)
     print("Number of rows:", rows)
     print("Number of columns:", columns)
-    plots = csv.reader(file1, delimiter=',')
+    # iterate over the columns for get the keys:
+    print(temp)
+    all_keys = list(temp.keys())
+    # print(all_keys[0],all_keys[1])
+    use_dictionary = 1
+    print("all_keys: ")
+    for i in range(columns):
+        print(all_keys[i],end='')
+    print('')
+       
+    # plots = csv.reader(file1, delimiter=',')
+    plots = csv.DictReader(filter(lambda row: row[0]!='#', file1))
     y0 = []
     y1 = []
     y2 = []
     y3 = []
     t  = []
-    # plots = csv.reader(file1, delimiter=',')
     file1.seek(0) # to start from begining of the file.
     for row in plots:
+        # print(row)
         # t.append(0.004)
-        y0.append(int(row[0]))
-        y1.append(int(row[1]))
-        if columns > 2:  #len(row) > 2:
-            y2.append(int(row[2]))
-        if columns > 3:  #len(row) > 3:
-            y3.append(int(row[3]))
+        if use_dictionary == 0:
+            y0.append(int(row[0]))
+            y1.append(int(row[1]))
+            if columns > 2:  #len(row) > 2:
+                y2.append(int(row[2]))
+            if columns > 3:  #len(row) > 3:
+                y3.append(int(row[3]))
+        else:
+            y0.append(int(row[all_keys[0]]))
+            y1.append(int(row[all_keys[1]]))
+            if columns > 2:  #len(row) > 2:
+                y2.append(int(row[all_keys[2]]))
+            if columns > 3:  #len(row) > 3:
+                y3.append(int(row[all_keys[3]]))
 
-    t = np.arange(0, len(y0)*0.004, 0.004)  # create t list with increments of 0.004
+    t = np.arange(0, len(y0)*0.004*sampling_gap, 0.004*sampling_gap)  # create t list with increments of 0.004
     # WinMove, ,,367,144,1358,598
     # resize the figure to w: 1358	h: 598
     my_dpi = 96 # by calculating width resolution / screen size = 2560/31.25' = 81.9
@@ -145,16 +198,21 @@ def plot_file( file1, file_name, use_legend):
 
     #print(y0[0:200])
     # plt.plot(y0,marker='o',label="tool_size")
-    plt.plot(t,y0,marker='o',label="Delta_Y")
-    # plt.plot(y0,label="Delta_insertion")
+    plt.plot(t,y0,marker='o',label="tool_size")
+    # plt.plot(t,y0,marker='o',label="Delta_Y")
     plt.plot(t,y1,marker='o',label="insertion")
-    plt.plot(t,y2,label="torque")
+    try:
+        plt.plot(t,y2,label="torque")
+    except:
+        print("Bad file: first line dont have descriptions !!!")
+        print("used only the remaining columns")
     if columns > 3:
         plt.plot(t,y3,label="image_quality")  # 2023_03_09 added.
     # plt.xlabel('Time')
     display_f_name = file_name.split('\\')
     display_f_n = display_f_name[len(display_f_name)-1]
-    text = 'Time...' + "\n" + display_f_n
+    # text = 'Time...' + "\n" + display_f_n
+    text = 'Time...' + "(sampling gap =" + str(sampling_gap) + ")" + "\n" + display_f_n
     plt.xlabel(text)
     plt.ylabel('Value')
     # plt.title('tool_size, insertion and  torque"')
@@ -165,9 +223,9 @@ def plot_file( file1, file_name, use_legend):
     plt.title(display_f_n,fontsize=10, fontweight="ultralight")    
     # text = 'tool_size, insertion, torque and image_quality' + "\n" + file_name
     # plt.title('tool_size, insertion, torque and image_quality "', fontweight="bold")
-    # plt.suptitle('tool_size, insertion, torque and image_quality', fontsize=16, fontweight="bold")
     if use_legend:
-        plt.suptitle('Delta_Y, insertion, torque and image_quality', fontsize=16, fontweight="bold")
+        plt.suptitle('tool_size, insertion, torque and image_quality', fontsize=16, fontweight="bold")
+        # plt.suptitle('Delta_Y, insertion, torque and image_quality', fontsize=16, fontweight="bold")
     
     # plt.title(text)
         plt.legend()
@@ -188,5 +246,8 @@ history changes
 - resize the figure to w: 1358	h: 598
 - adding csv file name to title 
 - be able to plot also 3 column csv files.
+2023_10_03
+- using csv.DictReader instead of csv.reader
+- adding support of sampling_gap in csv file.
 
 '''            
