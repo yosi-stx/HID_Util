@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_10_03.b"
+util_verstion = "2023_10_12.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -224,6 +224,7 @@ Do_Play_Sound_Var = 0
 g_recording_flag = 0
 file1 = None
 g_big_jump_threshold = 1000 
+Display_popup_help_Var = 1
 
 def list_hid_devices():
     all_devices = win_hid.HidDeviceFilter().get_devices()
@@ -320,7 +321,10 @@ def on_enter_key(event):
     except ValueError:
         print("Invalid numeric value entered.")
 
-def display_help(event):
+def display_help_big_jumps(event):
+    global Display_popup_help_Var
+    if Display_popup_help_Var.get() == 0:
+        return
     # Create a Toplevel window for the popup
     popup = tk.Toplevel()
     popup.wm_title("Help")
@@ -334,6 +338,56 @@ def display_help(event):
     x, y, _, _ = event.widget.bbox("insert")
     x += event.widget.winfo_rootx() + 25
     y += event.widget.winfo_rooty() + 25
+    popup.wm_geometry(f"+{x}+{y}")
+
+    # Close the popup when the mouse moves away from the label
+    def close_popup(e):
+        popup.destroy()
+
+    event.widget.bind("<Leave>", close_popup)
+
+def display_help_pwm_bcd(event):
+    global Display_popup_help_Var
+    if Display_popup_help_Var.get() == 0:
+        return
+    # Create a Toplevel window for the popup
+    popup = tk.Toplevel()
+    popup.wm_title("Help")
+    
+    # Create and display the help message
+    help_message = "A scrollbar command to CMD_0x95: PWM bcd command % \n sets the value on of PWM between 0..100%."
+    label = ttk.Label(popup, text=help_message, padding=20)
+    label.pack()
+
+    # Position the popup near the label
+    x, y, _, _ = event.widget.bbox("insert")
+    x += event.widget.winfo_rootx() + 25
+    y += event.widget.winfo_rooty() + 40
+    popup.wm_geometry(f"+{x}+{y}")
+
+    # Close the popup when the mouse moves away from the label
+    def close_popup(e):
+        popup.destroy()
+
+    event.widget.bind("<Leave>", close_popup)
+
+def display_help_pwm_cmd_0x97(event):
+    global Display_popup_help_Var
+    if Display_popup_help_Var.get() == 0:
+        return
+    # Create a Toplevel window for the popup
+    popup = tk.Toplevel()
+    popup.wm_title("Help")
+    
+    # Create and display the help message
+    help_message = "command CMD_0x97: PWM \n sets the value on of PWM between 0..255 (255=100%)"
+    label = ttk.Label(popup, text=help_message, padding=20)
+    label.pack()
+
+    # Position the popup near the label
+    x, y, _, _ = event.widget.bbox("insert")
+    x += event.widget.winfo_rootx() + 25
+    y += event.widget.winfo_rooty() + 40
     popup.wm_geometry(f"+{x}+{y}")
 
     # Close the popup when the mouse moves away from the label
@@ -1079,6 +1133,14 @@ NOTE: \tZero value in Tool_size \
         ttk.Label(frame,text=text_name).grid(row=row,sticky=tk.NW)
     else:
         ttk.Label(frame,text="ADCs...").grid(row=row,sticky=tk.NW)
+        
+    # Create the "popup_help" checkbox
+    global Display_popup_help_Var 
+    # Display_popup_help_Var = tk.BooleanVar()
+    Display_popup_help_Var = tk.BooleanVar(value=True)  # Set the default value to True (checked)
+    popup_help_checkbox = tk.Checkbutton(frame, text="popup help", variable=Display_popup_help_Var)
+    popup_help_checkbox.grid(row=row, column=2)
+        
     row += 1
 
     #
@@ -1232,7 +1294,7 @@ NOTE: \tZero value in Tool_size \
     # user value for big jumps
     w = ttk.Label(frame,text="big jumps threshold:")
     w.grid(row=row,column=0,sticky=tk.W,)
-    w.bind("<Enter>", display_help)
+    w.bind("<Enter>", display_help_big_jumps)
 
     w = ttk.Entry(frame,width=25)
     global big_jump_value_entry
@@ -1354,11 +1416,14 @@ NOTE: \tZero value in Tool_size \
     row = my_seperator(frame, row)
     # ------------------------------------------------------
     text_name = "PWM command out:"
-    ttk.Label(frame,text=text_name).grid(row=row,column=0,sticky=tk.W,)
+    w = ttk.Label(frame,text=text_name) #.grid(row=row,column=0,sticky=tk.W,)
+    w.grid(row=row,column=0,sticky=tk.W,)
+    w.bind("<Enter>", display_help_pwm_bcd)
 
     pwm_widget = tk.Scale(frame, from_=0, to=99, orient='horizontal',length=200)#, orient=HORIZONTAL)
     # pwm_widget = tk.Scale(frame, from_=0, to=255, orient='horizontal',length=200)#, orient=HORIZONTAL)
     pwm_widget.grid(row=row,column=0,sticky=tk.E,)
+    pwm_widget.bind("<Enter>", display_help_pwm_bcd)
 
     # w = ttk.Label(frame,text="PWM debug print:").grid(row=row,column=1,sticky='W')
     
@@ -1377,6 +1442,7 @@ NOTE: \tZero value in Tool_size \
     pwm_16_widget = tk.Scale(frame, from_=0, to=2**8-1, orient='horizontal',length=400)#, orient=HORIZONTAL)
     # tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
     pwm_16_widget.grid(row=row,column=2,sticky='W')
+    pwm_16_widget.bind("<Enter>", display_help_pwm_cmd_0x97)
 
     global pwm_text
     # pwm_text = "PWM: "+str(pwm_16)
@@ -1791,5 +1857,8 @@ comment:
 - popup help for label: "big jumps threshold:" 
 2023_10_03.b
 - fix bug when try to write to closed file1.
-
+2023_10_10.a
+- add a popup_help_checkbox to display or not display the popup_help.
+2023_10_12.a
+- adding functions: display_help_pwm_bcd() display_help_pwm_cmd_0x97()
 '''    
