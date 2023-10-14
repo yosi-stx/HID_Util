@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_10_12.a"
+util_verstion = "2023_10_12.b"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -201,6 +201,7 @@ text_1_entry = list()
 text_2_entry = list()
 text_3_entry = list()
 big_jump_value_entry =  list()
+Recording_gap_entry =  list()
 special_cmd = 0
 ignore_red_handle_button = None
 ignore_red_handle_checkbutton = None
@@ -225,6 +226,8 @@ g_recording_flag = 0
 file1 = None
 g_big_jump_threshold = 1000 
 Display_popup_help_Var = 1
+g_recording_gap = 1  # the default recording gap is every sample, aka: 1
+g_columns = []
 
 def list_hid_devices():
     all_devices = win_hid.HidDeviceFilter().get_devices()
@@ -314,10 +317,14 @@ start_stop_recording_callback.toggle = 1
 
 def on_enter_key(event):
     global g_big_jump_threshold
+    global g_recording_gap
     g_big_jump_threshold = int(big_jump_value_entry.get())
+    g_recording_gap = int(Recording_gap_entry.get())
     try:
         user_numeric_value = float(g_big_jump_threshold)
-        print("User numeric value:", user_numeric_value)
+        print("User g_big_jump_threshold numeric value:", user_numeric_value)
+        user_numeric_value = float(g_recording_gap)
+        print("User g_recording_gap numeric value:", user_numeric_value)
     except ValueError:
         print("Invalid numeric value entered.")
 
@@ -575,6 +582,8 @@ def gui_loop(device):
 
 def start_recordig():
     global file1
+    global g_recording_gap
+    global g_columns
     FILE1_PATH = "log\hid_" # log.csv"
     start_date_time = get_date_time_sec()
     print("start_date_time: ", start_date_time)
@@ -583,6 +592,11 @@ def start_recordig():
     print("Recording result at: ", FILE1_PATH)
     # open recording log file:
     file1 = open(FILE1_PATH,"w") 
+    L = [ "# gap=",str(g_recording_gap), "\n" ]  
+    file1.writelines(L) 
+    result = ', '.join(g_columns)
+    L = [ "# columns=", result, "\n" ]  
+    file1.writelines(L) 
     print("Recording started...")
 
 def stop_recordig():
@@ -596,6 +610,16 @@ def stop_recordig():
 
 def recording_handler(value):
     global file1
+    global g_columns
+    if recording_handler.once:
+        print("   >>> recording_handler.once")
+        recording_handler.once = 0
+        g_columns.append("tool_size")
+        g_columns.append("insertion")
+        g_columns.append("torque")
+        g_columns.append("image_quality")
+        result = ', '.join(g_columns)
+        print("# columns=",result)
     if len(value) >= READ_SIZE:
         tool_size = (int(value[CMOS_INDEX + 1]) << 8) + int(value[CMOS_INDEX])
         tool_size = uint_16_unsigned_to_int_signed(tool_size)
@@ -610,6 +634,7 @@ def recording_handler(value):
             file1.writelines(L) 
         else:
             print("try to write to closed file... file was not found !!!")
+recording_handler.once = 1
 
 def hid_read( device ):
     global stream_data
@@ -658,9 +683,11 @@ def hid_read( device ):
         # toggle the recording indication
         global recording_label
         global g_recording_flag
+        global g_recording_gap
         if g_recording_flag == 1:
             # do recording into the last file that was opened by the button press
-            recording_handler(value)
+            if (always_counter % g_recording_gap) == 0:
+                recording_handler(value)
             if (always_counter % 250)  < 175:
                 recording_label.config(text = "Recording ON",foreground="#FF0000",font=("TkDefaultFont", 20, "bold"))
             else:
@@ -1504,6 +1531,21 @@ NOTE: \tZero value in Tool_size \
     temp_widget = tk.Button(frame,text ="Start/Stop Recording",command = start_stop_recording_callback)
     temp_widget.grid(row=row,column=0)
 
+    # user value for Recording gap
+    w = ttk.Label(frame,text="Recording gap")
+    w.grid(row=row,column=1,sticky=tk.W,)
+    # w.bind("<Enter>", display_help_big_jumps)
+
+    w = ttk.Entry(frame,width=10)
+    global Recording_gap_entry
+    global g_recording_gap
+    Recording_gap_entry = w
+    w.grid(padx=10,pady=5,row=row,column=1,columnspan=1)
+    # Bind the Enter key to the on_enter_key function
+    Recording_gap_entry.bind('<Return>', on_enter_key)
+    Recording_gap_entry.insert(tk.END, str(g_recording_gap))
+
+
     recording_text = "Press the button to record"
     global recording_label
     recording_label = tk.Label(frame,text = recording_text, foreground="#777777")
@@ -1861,4 +1903,7 @@ comment:
 - add a popup_help_checkbox to display or not display the popup_help.
 2023_10_12.a
 - adding functions: display_help_pwm_bcd() display_help_pwm_cmd_0x97()
+2023_10_12.b
+- add user value g_recording_gap for big jumps indication.
+- adding columns as meta data to recording file.
 '''    

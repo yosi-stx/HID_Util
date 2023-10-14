@@ -16,7 +16,7 @@ from tkinter import *
 from tkinter.filedialog import askopenfilename
 import os
 
-plot_version = "2023_10_03.a"
+plot_version = "2023_10_13.a"
 print("This Recorder Version: ",plot_version)
 
 # from ctag_hid_log_files_path import *
@@ -189,6 +189,7 @@ def plot_file( file1, file_name, use_legend):
                 y3.append(int(row[all_keys[3]]))
 
     t = np.arange(0, len(y0)*0.004*sampling_gap, 0.004*sampling_gap)  # create t list with increments of 0.004
+    print("length of(t)= ",len(t))
     # WinMove, ,,367,144,1358,598
     # resize the figure to w: 1358	h: 598
     my_dpi = 96 # by calculating width resolution / screen size = 2560/31.25' = 81.9
@@ -198,6 +199,9 @@ def plot_file( file1, file_name, use_legend):
 
     #print(y0[0:200])
     # plt.plot(y0,marker='o',label="tool_size")
+    last = len(y0)
+    t = t[0:last] # truncate the time vector to match the recording vector
+    print("new length of(t)= ",len(t))
     plt.plot(t,y0,marker='o',label="tool_size")
     # plt.plot(t,y0,marker='o',label="Delta_Y")
     plt.plot(t,y1,marker='o',label="insertion")
@@ -250,5 +254,6 @@ history changes
 - using csv.DictReader instead of csv.reader
 - add support of comments in the csv file.
 - adding support of sampling_gap in csv file.
-
+2023_10_13
+- fix bug of: "x and y must have same first dimension" in plt.plot(t,y0...)
 '''            
