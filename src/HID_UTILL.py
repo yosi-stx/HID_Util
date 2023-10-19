@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_10_12.b"
+util_verstion = "2023_10_16.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -584,6 +584,9 @@ def start_recordig():
     global file1
     global g_recording_gap
     global g_columns
+    
+    dummy=[]
+    recording_handler(dummy) # call just to set the g_columns of metadata
     FILE1_PATH = "log\hid_" # log.csv"
     start_date_time = get_date_time_sec()
     print("start_date_time: ", start_date_time)
@@ -597,13 +600,14 @@ def start_recordig():
     result = ', '.join(g_columns)
     L = [ "# columns=", result, "\n" ]  
     file1.writelines(L) 
-    print("Recording started...")
+    print("-------------------- Recording started...")
+    print("L= ",L)
 
 def stop_recordig():
     global file1
     if file1 != None:
         file1.close()
-        print("Recording Stopped!")
+        print("-------------------- Recording Stopped!")
         file1 = None
     else:
         print("Recording file was not found")
@@ -619,7 +623,7 @@ def recording_handler(value):
         g_columns.append("torque")
         g_columns.append("image_quality")
         result = ', '.join(g_columns)
-        print("# columns=",result)
+        print("# recording_handler() columns=",result)
     if len(value) >= READ_SIZE:
         tool_size = (int(value[CMOS_INDEX + 1]) << 8) + int(value[CMOS_INDEX])
         tool_size = uint_16_unsigned_to_int_signed(tool_size)
@@ -678,7 +682,7 @@ def hid_read( device ):
                 delta_micro = delta_1000.microseconds
                 # print(" insertion: %d    delta: %f " %(insertion,delta_micro))
                 hid_read.prev_time = current_time
-                print(last_stream_data)
+                # print("last_stream_data: %s" % hexlify(last_stream_data))
 
         # toggle the recording indication
         global recording_label
@@ -1532,7 +1536,7 @@ NOTE: \tZero value in Tool_size \
     temp_widget.grid(row=row,column=0)
 
     # user value for Recording gap
-    w = ttk.Label(frame,text="Recording gap")
+    w = ttk.Label(frame,text="    Recording gap:")
     w.grid(row=row,column=1,sticky=tk.W,)
     # w.bind("<Enter>", display_help_big_jumps)
 
@@ -1906,4 +1910,7 @@ comment:
 2023_10_12.b
 - add user value g_recording_gap for big jumps indication.
 - adding columns as meta data to recording file.
+2023_10_16
+- removal of redundant print in hid_read()
+- fix bug: missing columns in metadata, by adding recording_handler(dummy) call in start_recordig()
 '''    
