@@ -16,7 +16,7 @@ from tkinter import *
 from tkinter.filedialog import askopenfilename
 import os
 
-plot_version = "2023_10_13.a"
+plot_version = "2023_10_19.a"
 print("This Recorder Version: ",plot_version)
 
 # from ctag_hid_log_files_path import *
@@ -135,11 +135,39 @@ def get_info( file1, field):
     print("field: '%s' was not found!!!" %(field))
     return gap
 
+def get_columns_info( file1, field):
+    # search for gap indication in the file:
+    i = 0
+    labels = None
+    for line in file1:
+        i += 1
+        if i>5:
+            break
+        print(line,end='')
+        # if "gap" in line:
+        if field in line:
+            line = line.rstrip()
+            L = line.split('=')
+            print(L)
+            labels= L[1]
+            # sampling_gap = gap
+            print("labels are: %s ..." %(labels))
+            return labels
+    # field was not found
+    print("field: '%s' was not found!!!" %(field))
+    return labels
+
 
 def plot_file( file1, file_name, use_legend):
     # return
     sampling_gap = 1
     sampling_gap = get_info(file1,"gap")
+    columns_info = get_columns_info( file1, "columns")
+    print("from csv file columns line: %s" %(columns_info) )
+    if columns_info != None:
+        columns_labals = columns_info.split(',')
+        print("from csv file columns_labals: ",columns_labals )
+        print("len(columns_labals): %d" %(len(columns_labals)) )
     file1.seek(0) # to start from begining of the file.
     # plots = csv.reader(file1, delimiter=',')
     plots = csv.DictReader(filter(lambda row: row[0]!='#', file1))
@@ -202,16 +230,35 @@ def plot_file( file1, file_name, use_legend):
     last = len(y0)
     t = t[0:last] # truncate the time vector to match the recording vector
     print("new length of(t)= ",len(t))
-    plt.plot(t,y0,marker='o',label="tool_size")
+    if columns == len(columns_labals):
+        use_columns_labals = 1
+    else:
+        use_columns_labals = 0
+        
+    if use_columns_labals:
+        plt.plot(t,y0,marker='o',label=columns_labals[0])
+    else:
+        plt.plot(t,y0,marker='o',label="tool_size")
     # plt.plot(t,y0,marker='o',label="Delta_Y")
-    plt.plot(t,y1,marker='o',label="insertion")
+    if use_columns_labals:
+        plt.plot(t,y1,marker='o',label=columns_labals[1])
+    else:
+        plt.plot(t,y1,marker='o',label="insertion")
+
     try:
-        plt.plot(t,y2,label="torque")
+        if use_columns_labals:
+            plt.plot(t,y2,label=columns_labals[2])
+        else:
+            plt.plot(t,y2,label="torque")
     except:
         print("Bad file: first line dont have descriptions !!!")
         print("used only the remaining columns")
     if columns > 3:
-        plt.plot(t,y3,label="image_quality")  # 2023_03_09 added.
+        if use_columns_labals:
+            plt.plot(t,y3,label=columns_labals[3]) 
+        else:
+            plt.plot(t,y3,label="image_quality")  # 2023_03_09 added.
+
     # plt.xlabel('Time')
     display_f_name = file_name.split('\\')
     display_f_n = display_f_name[len(display_f_name)-1]
@@ -228,7 +275,10 @@ def plot_file( file1, file_name, use_legend):
     # text = 'tool_size, insertion, torque and image_quality' + "\n" + file_name
     # plt.title('tool_size, insertion, torque and image_quality "', fontweight="bold")
     if use_legend:
-        plt.suptitle('tool_size, insertion, torque and image_quality', fontsize=16, fontweight="bold")
+        if use_columns_labals:
+            plt.suptitle(columns_info, fontsize=16, fontweight="bold")
+        else:
+            plt.suptitle('tool_size, insertion, torque and image_quality', fontsize=16, fontweight="bold")
         # plt.suptitle('Delta_Y, insertion, torque and image_quality', fontsize=16, fontweight="bold")
     
     # plt.title(text)
@@ -256,4 +306,7 @@ history changes
 - adding support of sampling_gap in csv file.
 2023_10_13
 - fix bug of: "x and y must have same first dimension" in plt.plot(t,y0...)
+2023_10_19
+- add get_columns_info() function.
+- create automatic mechanism for parsing and deployment of meta date in CSV file into the plot
 '''            

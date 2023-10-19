@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_10_16.a"
+util_verstion = "2023_10_19.c"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -168,6 +168,8 @@ MAX_INT16_POSITIVE = 2**15
 MAX_UNSIGNED_INT = 2**16
 # IMAGE_QUALITY_INDEX = INSERTION_INDEX + 4
 IMAGE_QUALITY_INDEX = TORQUE_INDEX + 4
+SHUTTER_INDEX = IMAGE_QUALITY_INDEX + 2
+FRAME_AVG_INDEX = SHUTTER_INDEX + 3
 
 HID_STREAM_CHANNEL1_STYLE = "HIDStreamChannel1"
 HID_STREAM_CHANNEL2_STYLE = "HIDStreamChannel2"
@@ -595,6 +597,8 @@ def start_recordig():
     print("Recording result at: ", FILE1_PATH)
     # open recording log file:
     file1 = open(FILE1_PATH,"w") 
+    L = [ "# util_verstion=",util_verstion, "\n" ]  
+    file1.writelines(L) 
     L = [ "# gap=",str(g_recording_gap), "\n" ]  
     file1.writelines(L) 
     result = ', '.join(g_columns)
@@ -618,10 +622,12 @@ def recording_handler(value):
     if recording_handler.once:
         print("   >>> recording_handler.once")
         recording_handler.once = 0
-        g_columns.append("tool_size")
-        g_columns.append("insertion")
-        g_columns.append("torque")
-        g_columns.append("image_quality")
+        g_columns.append("Tool Size")
+        # g_columns.append("frame_avg")
+        g_columns.append("Insertion")
+        g_columns.append("Torque")
+        # g_columns.append("shutter")
+        g_columns.append("Image Quality")
         result = ', '.join(g_columns)
         print("# recording_handler() columns=",result)
     if len(value) >= READ_SIZE:
@@ -632,8 +638,13 @@ def recording_handler(value):
         torque = long_unsigned_to_long_signed(torque)
         insertion = long_unsigned_to_long_signed(insertion)
         image_quality = (int(value[IMAGE_QUALITY_INDEX]) )
+        shutter = (int(value[SHUTTER_INDEX]) )
+        frame_avg = (int(value[FRAME_AVG_INDEX]) )
         ### recording ::  tool_size, insertion, torque and  image_quality ###
         L = [ str(tool_size),",   ", str(insertion), ", " , str(torque), ", " , str(image_quality), "\n" ]  
+        # L = [ str(tool_size),",   ", str(insertion), ", " , str(shutter), ", " , str(image_quality), "\n" ]  
+        # - record  Shutter value instead of torque and Frame_Avg instead of tool_size
+        # L = [ str(frame_avg),",   ", str(insertion), ", " , str(shutter), ", " , str(image_quality), "\n" ]  
         if file1 != None:
             file1.writelines(L) 
         else:
@@ -1913,4 +1924,12 @@ comment:
 2023_10_16
 - removal of redundant print in hid_read()
 - fix bug: missing columns in metadata, by adding recording_handler(dummy) call in start_recordig()
+2023_10_19
+- adding util_verstion to the metadata.
+- temp experiments:
+-- use Shutter value instead of image_quality in recording.
+-- use Shutter value instead of torque in recording and record the image_quality in parallel.
+-- record  Shutter value instead of torque and Frame_Avg instead of tool_size
+- return the recording parameters to their default: tool_size, insertion, torque, image_quality
+-
 '''    
