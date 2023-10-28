@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_06_11.a"
+util_verstion = "2023_10_29.a"
 
 from binascii import hexlify
 import sys
@@ -65,7 +65,7 @@ OPCODE_START_STOP_STREAMING         =  0x04
 # OPCODE_GET_PIXART_REGISTER          = 0x28
 # OPCODE_SET_PIXART_REGISTER          = 0x29
 # OPCODE_RESET_CMOS_POSITION          = 0x2A
-# OPCODE_GET_STATION_PRESSURE         = 0x2B
+OPCODE_GET_STATION_PRESSURE         = 0x2B
 # OPCODE_GET_STATION_MOT_CURRENT      = 0x2C
 # OPCODE_START_STREAMING              = 0x2D  legacy opcode.
 # OPCODE_SET_MOTOR_STATE              = 0x2E
@@ -123,6 +123,12 @@ def streaming_button_CallBack():
     global special_cmd
     print("streaming_button pressed")
     special_cmd = 'I'
+
+def Get_Pwm_Value_button_CallBack():
+# Get_Pwm_Value
+    global special_cmd
+    print("Get PWM value pressed")
+    special_cmd = 'get_pwm_value'
 
 def stop_streaming_CallBack():
     global special_cmd
@@ -348,6 +354,13 @@ def gui_loop(device):  # the device is CAN device
             device.send(message)
             # print("special_cmd Stop", data )
             print("special_cmd stop ", "  data: ", Fore.YELLOW + str(data) + Style.RESET_ALL)
+            special_cmd = 0
+
+        if special_cmd == 'get_pwm_value':
+            out_opcode_id = ((OPCODE_GET_STATION_PRESSURE<<4)+SLOT_NUMBER)
+            message = can.Message(arbitration_id=out_opcode_id, data=[], is_extended_id=False)
+            device.send(message)
+            print("special_cmd get_pwm_value: %x " %(out_opcode_id))
             special_cmd = 0
 
         if special_cmd == 'special_cmd_pwm':
@@ -639,6 +652,15 @@ def my_widgets(frame):
 
     temp_widget = tk.Button(frame,text ="Stop streaming",command = stop_streaming_CallBack)#, bg="#66FFFF")
     temp_widget.grid(row=row,column=1, sticky=(tk.E))
+    
+    row += 1
+    # Seperator
+    row = my_seperator(frame, row)
+    # ------------------------------------------------------
+
+    temp_widget = tk.Button(frame,text ="Get station pressure",command = Get_Pwm_Value_button_CallBack)
+    temp_widget.grid(row=row,column=0, sticky=(tk.W))
+
     row += 1
     # Seperator
     row = my_seperator(frame, row)
@@ -769,7 +791,7 @@ def main():
     screen_height = root.winfo_screenheight() # Height of the screen
     # Calculate Starting X and Y coordinates for Window
     w = 436 #from AHK CAN_UTILL - modified.
-    h = 300
+    h = 490
     # x = (screen_width*2/3) - (w*3/4)
     x = (screen_width*1/3) - (w*3/4)
     y = (screen_height*0.08) 
@@ -841,4 +863,10 @@ history changes
 2023_06_11
 - adding time delay between multi send, use: g_start_time,current_time,current_time
 - commeting the multi thread process. 
+2023_10_29
+- adding special_cmd  'get_pwm_value' 
+we don't want so put too much load of data in the streaming data of the CAN-BUS hence we added 
+another query command to enable the PC to read back the PWM value, even though this value is 
+originated from the PC in the first place.
+
 '''    
