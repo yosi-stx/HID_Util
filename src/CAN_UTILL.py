@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_10_29.a"
+util_verstion = "2023_10_30.a"
 
 from binascii import hexlify
 import sys
@@ -21,6 +21,9 @@ from colorama import Fore, Style
 
 # create a global empty list for progressbars that will be added later in: my_widgets()
 progressbars = list()
+# create a global empty list for entries that will be added later in: my_widgets()
+entries = list()
+packets_counter_entry = list()
 # create a global empty variable root to hold the class that represents the main window or the root 
 #  window of your application.
 root = None 
@@ -210,8 +213,10 @@ def slot_entry_changed(event):
         print("Invalid value entered")
 
 stream_data = None
+g_packets_counter = 0
 def can_read(device):
     global stream_data
+    global g_packets_counter
     msg = None 
     prev_timestamp = 0
     while True:
@@ -221,6 +226,7 @@ def can_read(device):
         if msg != None:
             if msg.timestamp > prev_timestamp:
                 stream_data = msg 
+                g_packets_counter += 1
             prev_timestamp = msg.timestamp
         else:
             time.sleep(10/1000)
@@ -471,10 +477,10 @@ def gui_loop(device):  # the device is CAN device
         if msg is not None and msg.arbitration_id == (opcode_to_type(OPCODE_GET_STATION_PRESSURE) + SLOT_NUMBER):
             print("Received message with data:", hexlify(msg.data))
             # pass the binary data to the handler
-            # value = msg.data
-            # msg_type = 1
-            # gui_updater_handler(value,msg_type,do_print)
             # do_print = 0
+            value = msg.data
+            msg_type = 3
+            gui_updater_handler(value,msg_type,do_print)
 
         # reset the global and local indication of incoming streaming
         stream_data = None
@@ -487,6 +493,13 @@ def gui_loop(device):  # the device is CAN device
 #   called by:  gui_loop() each time a full packet of 64 bytes was read by device.read()
 #   function:   update auxiliary varibles and then the relevant GUI elements. // example: tool_size
 def gui_updater_handler(value,msg_type, do_print=False):
+    # initial values for handler variables
+    if gui_updater_handler.once == 1:
+        gui_updater_handler.once = 0
+        precentage_stream_channel1 = 0 # default value for debug.
+        precentage_stream_channel2 = 0 # default value for debug.
+        precentage_stream_channel3 = 0 # default value for debug.
+        
     CMOS_INDEX = 1
     MAX_TOOL_SIZE = 2495
     # for 12 bits we use tool_size: 0..1247 (aka original/2)
@@ -514,7 +527,7 @@ def gui_updater_handler(value,msg_type, do_print=False):
             if do_print:
                 print("tool_size[2bytes]: %06x    %d  " % (int(tool_size), signed_tool_size))
             # scaling to progressbar range 0..100 
-            precentage_stream_channel1 = abs(int((signed_tool_size / MAX_TOOL_SIZE) * 100))
+            gui_updater_handler.channel1 = abs(int((signed_tool_size / MAX_TOOL_SIZE) * 100))
             
             image_quality  = int(value[2])
 
@@ -535,7 +548,7 @@ def gui_updater_handler(value,msg_type, do_print=False):
             if do_print:
                 print("insertion[2bytes]: %06x    %d  " % (int(insertion), signed_insertion))
             # scaling to progressbar range 0..100 
-            precentage_stream_channel2 = abs(int((signed_insertion / 10000) * 100))
+            gui_updater_handler.channel2 = abs(int((signed_insertion / 10000) * 100))
 
             # torque = (int(value[5]) << 8) + int(value[6]) + (int(value[7]) << 16)
             # bytes  5,6,7 --now-->> (5/2),6,7 
@@ -545,7 +558,7 @@ def gui_updater_handler(value,msg_type, do_print=False):
             if do_print:
                 print("torque[2bytes]: %06x    %d  " % (int(torque), signed_torque))
             # scaling to progressbar range 0..100 
-            precentage_stream_channel3 = abs(int((signed_torque / 10000) * 100))
+            gui_updater_handler.channel3 = abs(int((signed_torque / 10000) * 100))
         elif msg_type == 2:
             #### here is the old format of:      |tool_size| insertion | torque |  ####
             # the value[] vector:
@@ -561,40 +574,60 @@ def gui_updater_handler(value,msg_type, do_print=False):
             if do_print:
                 print("tool_size[2bytes]: %06x    %d  " % (int(tool_size), signed_tool_size))
             # scaling to progressbar range 0..100 
-            precentage_stream_channel1 = abs(int((signed_tool_size / MAX_TOOL_SIZE) * 100))
+            gui_updater_handler.channel1 = abs(int((signed_tool_size / MAX_TOOL_SIZE) * 100))
 
             insertion = (int(value[2]) << 8) + int(value[3]) + (int(value[4]) << 16)
             signed_insertion = U24_bits_to_signed(insertion)
             if do_print:
                 print("insertion[2bytes]: %06x    %d  " % (int(insertion), signed_insertion))
             # scaling to progressbar range 0..100 
-            precentage_stream_channel2 = abs(int((signed_insertion / 10000) * 100))
+            gui_updater_handler.channel2 = abs(int((signed_insertion / 10000) * 100))
 
             torque = (int(value[5]) << 8) + int(value[6]) + (int(value[7]) << 16)
             signed_torque = U24_bits_to_signed(torque)
             if do_print:
                 print("torque[2bytes]: %06x    %d  " % (int(torque), signed_torque))
             # scaling to progressbar range 0..100 
-            precentage_stream_channel3 = abs(int((signed_torque / 10000) * 100))
+            gui_updater_handler.channel3 = abs(int((signed_torque / 10000) * 100))
+        else:
+            # do something
+            pass
     else:
-        precentage_stream_channel1 = 11 # default value for debug.
-        precentage_stream_channel2 = 17 # default value for debug.
-        precentage_stream_channel3 = 18 # default value for debug.
+        print("2) len(value)",len(value))
+        if msg_type == 3:
+            # do something
+            pass
+        # precentage_stream_channel1 = 11 # default value for debug.
+        # precentage_stream_channel2 = 17 # default value for debug.
+        # precentage_stream_channel3 = 18 # default value for debug.
         
     # allocation of variables (on the left side) to ProgressBars
     # that were created in my_widgets() function, were progressbars[] is global list of widgets.
-    progressbar_stream_channel1 = progressbars[0]
-    progressbar_stream_channel2 = progressbars[1]
-    progressbar_stream_channel3 = progressbars[2]
+    # progressbar_stream_channel1 = progressbars[0]
+    # progressbar_stream_channel2 = progressbars[1]
+    # progressbar_stream_channel3 = progressbars[2]
 
     # the actual update of the "value" in the GUI progressbar element associated variable
-    progressbar_stream_channel1["value"] = precentage_stream_channel1
-    progressbar_stream_channel2["value"] = precentage_stream_channel2
-    progressbar_stream_channel3["value"] = precentage_stream_channel3
+    # progressbar_stream_channel1["value"] = precentage_stream_channel1
+    # progressbar_stream_channel2["value"] = precentage_stream_channel2
+    # progressbar_stream_channel3["value"] = precentage_stream_channel3
+    progressbars[0]["value"] = gui_updater_handler.channel1
+    progressbars[1]["value"] = gui_updater_handler.channel2
+    progressbars[2]["value"] = gui_updater_handler.channel3
+
+    # Update the text in the packets_counter_entry Entry widget
+    global g_packets_counter
+    packets_counter_entry.delete(0, tk.END)
+    packets_counter_entry.insert(tk.END, "%d" % g_packets_counter)
+    
 
     # the actual updating of all the gui elements acording the above asosiated variables 
     root.update()
 gui_updater_handler.prev_signed_tool_size = 0
+gui_updater_handler.once = 1
+gui_updater_handler.channel1 = 1
+gui_updater_handler.channel2 = 1
+gui_updater_handler.channel3 = 1
 
 # my_widgets(): is the place were all the widgets are created 
 #               (aka: size, orientation, style, position etc.)
@@ -628,6 +661,16 @@ def my_widgets(frame):
     # // the usage of <Enter> caused every mouse move to call the lambda function.
     # Bind the event to the entry widget
     slot_entry.bind("<Return>", slot_entry_changed)  # Call slot_entry_changed when Enter key is pressed
+
+    # Label + Entry for packets_counter
+    ttk.Label(frame,text="Packets counter:").grid(row=row,column=0,sticky=tk.W,)
+    w = ttk.Entry(frame,width=15,)
+    entries.append(w)
+    global packets_counter_entry
+    packets_counter_entry = w
+    packets_counter_entry.insert(0, "0")  # Set the default value
+    w.grid(padx=10,pady=5,row=row,column=0,columnspan=2)#,sticky=tk.E,)
+    row += 1
     
     w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=CMOS_PROGRESS_BAR_LEN) #,style="batteryLevel")
     # adding the actual widget to the progressbars global list 
@@ -904,4 +947,8 @@ we don't want so put too much load of data in the streaming data of the CAN-BUS 
 another query command to enable the PC to read back the PWM value, even though this value is 
 originated from the PC in the first place.
 - adding settings tab. 
+- printing the _GET_STATION_PRESSURE response from device.
+2023_10_30
+- adding packets_counter_entry 
+- refactoring the function gui_updater_handler()
 '''    
