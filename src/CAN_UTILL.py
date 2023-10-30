@@ -114,6 +114,12 @@ def unsigned_to_signed( x ):
         x = x - MAX_UNSIGNED_INT
     return x
 
+def opcode_to_type( x ):
+    # opcode + DIR_MASK 
+    y = (x + 0x40)<<4 
+    return y
+
+
 
 def my_seperator(frame, row):
     ttk.Separator(frame, orient=tk.HORIZONTAL).grid(pady=10, row=row, columnspan=4, sticky=(tk.W + tk.E))
@@ -437,13 +443,15 @@ def gui_loop(device):  # the device is CAN device
             msg = stream_data
 
         # Update the GUI
+        global debug_prints_var
         #if len(value) >= READ_SIZE:
         #    handler(value, do_print=do_print)
         if msg is not None and msg.arbitration_id == (STREAMING_DATA_TYPE_1 + SLOT_NUMBER):
             skips += 1 
             if (skips%400) == 0:
-                print("Received message with data:", msg.data)
-                do_print = 1
+                if debug_prints_var.get():
+                    print("Received message with data:", msg.data)
+                    do_print = 1
             # pass the binary data to the handler
             value = msg.data
             msg_type = 1
@@ -452,13 +460,21 @@ def gui_loop(device):  # the device is CAN device
         if msg is not None and msg.arbitration_id == (STREAMING_DATA_TYPE_2 + SLOT_NUMBER):
             skips += 1 
             if (skips%400) == 0:
-                print("Received message with data:", msg.data)
-                do_print = 1
+                if debug_prints_var.get():
+                    print("Received message with data:", msg.data)
+                    do_print = 1
             # pass the binary data to the handler
             value = msg.data
             msg_type = 1
             gui_updater_handler(value,msg_type,do_print)
             do_print = 0
+        if msg is not None and msg.arbitration_id == (opcode_to_type(OPCODE_GET_STATION_PRESSURE) + SLOT_NUMBER):
+            print("Received message with data:", hexlify(msg.data))
+            # pass the binary data to the handler
+            # value = msg.data
+            # msg_type = 1
+            # gui_updater_handler(value,msg_type,do_print)
+            # do_print = 0
 
         # reset the global and local indication of incoming streaming
         stream_data = None
@@ -731,6 +747,25 @@ def my_widgets(frame):
         # w.insert(0, "Time")  # Set the default value
         w.grid(padx=2,pady=0,row=row,column=5,columnspan=1,sticky=tk.W,)
 
+    # ------------------------------------------------------
+    ###################### third tab ######################
+    # ------------------------------------------------------
+    # Create the second tab with Entry widgets
+    tab3 = ttk.Frame(notebook)
+    notebook.add(tab3, text="Settings")
+    frame = tab3
+
+    row = 0
+    # ttk.Label(frame,text="Enable debug prints:").grid(row=row,column=0,sticky=tk.W,)
+
+    # Create the "debug_prints" checkbox
+    global debug_prints_var 
+    debug_prints_var = tk.BooleanVar(value=True)  # Set the default value to True (checked)
+    debug_prints_checkbox = tk.Checkbutton(frame, text="enable streaming debug prints", variable=debug_prints_var)
+    debug_prints_checkbox.grid(row=row, column=2)
+        
+    row += 1
+    
 
 
 def init_widgets():
@@ -868,5 +903,5 @@ history changes
 we don't want so put too much load of data in the streaming data of the CAN-BUS hence we added 
 another query command to enable the PC to read back the PWM value, even though this value is 
 originated from the PC in the first place.
-
+- adding settings tab. 
 '''    
