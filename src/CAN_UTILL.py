@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_10_30.a"
+util_verstion = "2023_10_31.a"
 
 from binascii import hexlify
 import sys
@@ -647,15 +647,25 @@ def my_widgets(frame):
     notebook.add(tab1, text="User / Basic")
 
     frame = tab1
+    # Create labels to visualize column borders
+    for i in range(4):
+        separator_label = ttk.Label(frame, text=str(i), font=("Helvetica", 6),foreground="#999999")
+        separator_label.grid(row=0, column=i)    
+        # separator_label = ttk.Label(frame, text="|", font=("Helvetica", 9),foreground="#0000ff")
+        # separator_label.grid(row=1, column=i,sticky=tk.E,)    
+        # separator_label2 = ttk.Label(frame, text="!", font=("Helvetica", 9),foreground="#ff0000")
+        # separator_label2.grid(row=1, column=i,sticky=tk.W,)
+    
+    row += 1
     # Label + Entry for slot_entry
-    ttk.Label(frame,text="Enter slot number:").grid(row=row,column=0,sticky=tk.W,)
+    ttk.Label(frame,text="Slot No.:").grid(row=row,column=0,sticky=tk.W,)
     w = ttk.Entry(frame,width=5,)
     global slot_entry
     slot_entry = w
     slot_entry.insert(0, "4")  # Set the default value
     # slot_entry.bind("<<Modified>>", print_entry_value)
     # w.grid(padx=10,pady=5,row=row,column=1,columnspan=1)#,sticky=tk.E,)
-    w.grid(padx=10,pady=5,row=row,column=0,columnspan=1,sticky=tk.E,)
+    w.grid(padx=0,pady=5,row=row,column=1,columnspan=1,sticky=tk.W,)
     row += 1
     # frame.bind("<Control-s>", lambda event: set_entry_value())
     # // the usage of <Enter> caused every mouse move to call the lambda function.
@@ -663,19 +673,20 @@ def my_widgets(frame):
     slot_entry.bind("<Return>", slot_entry_changed)  # Call slot_entry_changed when Enter key is pressed
 
     # Label + Entry for packets_counter
-    ttk.Label(frame,text="Packets counter:").grid(row=row,column=0,sticky=tk.W,)
+    ttk.Label(frame,text="Packets:").grid(row=row,column=0,sticky=tk.W,)
     w = ttk.Entry(frame,width=15,)
     entries.append(w)
     global packets_counter_entry
     packets_counter_entry = w
     packets_counter_entry.insert(0, "0")  # Set the default value
-    w.grid(padx=10,pady=5,row=row,column=0,columnspan=2)#,sticky=tk.E,)
+    w.grid(padx=0,pady=5,row=row,column=1,columnspan=2,sticky=tk.W,)
     row += 1
     
+    ttk.Label(frame,text="Tool_size:").grid(row=row,column=0,sticky=tk.W,)
     w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=CMOS_PROGRESS_BAR_LEN) #,style="batteryLevel")
     # adding the actual widget to the progressbars global list 
     progressbars.append(w)
-    w.grid(row=row,column=0,columnspan=2)
+    w.grid(row=row,column=1,columnspan=2)
     
     #numeric indication label:
     global tool_size_label
@@ -683,20 +694,23 @@ def my_widgets(frame):
     tool_size_label.grid(row=row,column=3,sticky=tk.W,)
 
     row += 1
+    ttk.Label(frame,text="Insertion:").grid(row=row,column=0,sticky=tk.W,)
+
     w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN) #,style="batteryLevel")
     # adding the actual widget to the progressbars global list 
     progressbars.append(w)
-    w.grid(row=row,column=0,columnspan=2)
+    w.grid(row=row,column=1,columnspan=2)
     #numeric indication label:
     global insertion_label
     insertion_label = ttk.Label(frame,text="insertion", foreground="#0000FF")
     insertion_label.grid(row=row,column=3,sticky=tk.W,)
 
     row += 1
+    ttk.Label(frame,text="Torque:").grid(row=row,column=0,sticky=tk.W,)
     w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN) #,style="batteryLevel")
     # adding the actual widget to the progressbars global list 
     progressbars.append(w)
-    w.grid(row=row,column=0,columnspan=2)
+    w.grid(row=row,column=1,columnspan=2)
     #numeric indication label:
     global torque_label
     torque_label = ttk.Label(frame,text="torque", foreground="#0000FF")
@@ -707,33 +721,49 @@ def my_widgets(frame):
     row = my_seperator(frame, row)
     # ------------------------------------------------------ 
     temp_widget = tk.Button(frame,text ="Start streaming",command = streaming_button_CallBack, bg="#66FFFF")
-    temp_widget.grid(row=row,column=0, sticky=(tk.W))
+    temp_widget.grid(row=row,column=1, sticky=(tk.W))
 
     temp_widget = tk.Button(frame,text ="Stop streaming",command = stop_streaming_CallBack)#, bg="#66FFFF")
-    temp_widget.grid(row=row,column=1, sticky=(tk.E))
+    temp_widget.grid(row=row,column=2, sticky=(tk.E))
     
     row += 1
     # Seperator
     row = my_seperator(frame, row)
     # ------------------------------------------------------
 
-    temp_widget = tk.Button(frame,text ="Get station pressure",command = Get_Pwm_Value_button_CallBack)
-    temp_widget.grid(row=row,column=0, sticky=(tk.W))
+    # temp_widget = tk.Button(frame,text ="Get station pressure",command = Get_Pwm_Value_button_CallBack)
+    temp_widget = tk.Button(frame,text ="Get PWM",command = Get_Pwm_Value_button_CallBack)
+    temp_widget.grid(row=row,column=1, sticky=(tk.W))
+
+    row += 1
+    ttk.Label(frame,text="PWM:").grid(row=row,column=0,sticky=tk.W,)
+    w = ttk.Progressbar(frame,orient=tk.HORIZONTAL,length=LONG_PROGRESS_BAR_LEN) #,style="batteryLevel")
+    # adding the actual widget to the progressbars global list 
+    progressbars.append(w)
+    # w.grid(padx=20,pady=5,row=row,column=1,columnspan=2,sticky=tk.E,)
+    w.grid(padx=0,pady=5,row=row,column=1,columnspan=2,sticky=tk.E,)
+    #numeric indication label:
+    global pwm_label
+    pwm_label = ttk.Label(frame,text="pwm", foreground="#0000FF")
+    pwm_label.grid(row=row,column=3,sticky=tk.W,)
+
 
     row += 1
     # Seperator
     row = my_seperator(frame, row)
     # ------------------------------------------------------
+    ttk.Label(frame,text="PWM cmnd:").grid(row=row,column=0,sticky=tk.W,)
     global pwm_widget
     # pwm_widget = tk.Scale(frame, from_=0, to=2**12, orient='horizontal',length=LONG_PROGRESS_BAR_LEN)
     pwm_widget = tk.Scale(frame, from_=0, to=2**8, orient='horizontal',length=LONG_PROGRESS_BAR_LEN)
-    pwm_widget.grid(row=row,column=0,columnspan=2)
+    pwm_widget.grid(row=row,column=1,columnspan=2)
     row += 1
     # Seperator
     row = my_seperator(frame, row)
     # ------------------------------------------------------
     temp_widget = tk.Button(frame,text ="Reset Ins & Torque",command = reset_ins_and_torque_CallBack, bg="#00FF00")
-    temp_widget.grid(row=row,column=0, sticky=(tk.W))
+    # temp_widget = tk.Button(frame,text ="Reset",command = reset_ins_and_torque_CallBack, bg="#00FF00")
+    temp_widget.grid(row=row,column=1,columnspan=4, sticky=(tk.W))
 
     # ------------------------------------------------------
     ###################### second tab ######################
@@ -868,7 +898,8 @@ def main():
     screen_width = root.winfo_screenwidth()  # Width of the screen
     screen_height = root.winfo_screenheight() # Height of the screen
     # Calculate Starting X and Y coordinates for Window
-    w = 436 #from AHK CAN_UTILL - modified.
+    # w = 436 #from AHK CAN_UTILL - modified.
+    w = 450 #from AHK CAN_UTILL - modified. 2023_11_01
     h = 490
     # x = (screen_width*2/3) - (w*3/4)
     x = (screen_width*1/3) - (w*3/4)
@@ -951,4 +982,7 @@ originated from the PC in the first place.
 2023_10_30
 - adding packets_counter_entry 
 - refactoring the function gui_updater_handler()
+2023_10_31
+- adding PWM progressbars (not working yet)
+- design of the widgets locations on the frame.
 '''    
