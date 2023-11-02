@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_10_31.a"
+util_verstion = "2023_11_02.a"
 
 from binascii import hexlify
 import sys
@@ -212,6 +212,18 @@ def slot_entry_changed(event):
     except ValueError:
         print("Invalid value entered")
 
+g_incoming_msg = None 
+def rt_parser(msg):
+    # this function uses global indication to signal the other parts of slower code 
+    # it some event comes in the can 
+    global g_incoming_msg
+    if msg is not None and msg.arbitration_id == (opcode_to_type(OPCODE_GET_STATION_PRESSURE) + SLOT_NUMBER):
+        print("RT Received message with data:", hexlify(msg.data))
+        # pass the msg to other threads
+        g_incoming_msg = msg
+    
+    
+
 stream_data = None
 g_packets_counter = 0
 def can_read(device):
@@ -227,6 +239,7 @@ def can_read(device):
             if msg.timestamp > prev_timestamp:
                 stream_data = msg 
                 g_packets_counter += 1
+                rt_parser(msg)
             prev_timestamp = msg.timestamp
         else:
             time.sleep(10/1000)
@@ -474,13 +487,17 @@ def gui_loop(device):  # the device is CAN device
             msg_type = 1
             gui_updater_handler(value,msg_type,do_print)
             do_print = 0
-        if msg is not None and msg.arbitration_id == (opcode_to_type(OPCODE_GET_STATION_PRESSURE) + SLOT_NUMBER):
-            print("Received message with data:", hexlify(msg.data))
-            # pass the binary data to the handler
-            # do_print = 0
+
+        # we use g_incoming_msg to capture any can message which is not streaming data.
+        global g_incoming_msg
+        if g_incoming_msg is not None:
+            msg = g_incoming_msg
+            print("GUI Received message with data:", hexlify(msg.data))
+            g_incoming_msg = None
             value = msg.data
             msg_type = 3
             gui_updater_handler(value,msg_type,do_print)
+            
 
         # reset the global and local indication of incoming streaming
         stream_data = None
@@ -595,7 +612,15 @@ def gui_updater_handler(value,msg_type, do_print=False):
     else:
         print("2) len(value)",len(value))
         if msg_type == 3:
-            # do something
+            # update the PWM progressbar
+            input_pwm = int(value[0])
+            pwm_percent = input_pwm/256 *100
+            print("input_pwm", input_pwm,"  -->  input_pwm/256*100 = ", pwm_percent ,"%")
+            gui_updater_handler.channel4 = pwm_percent 
+            # update the PWM label indication according to percentage.
+            temp_txt = ("{:.2f}".format(pwm_percent))
+            label_pwm_text = temp_txt +"%"
+            pwm_label.config(text = label_pwm_text)
             pass
         # precentage_stream_channel1 = 11 # default value for debug.
         # precentage_stream_channel2 = 17 # default value for debug.
@@ -614,6 +639,7 @@ def gui_updater_handler(value,msg_type, do_print=False):
     progressbars[0]["value"] = gui_updater_handler.channel1
     progressbars[1]["value"] = gui_updater_handler.channel2
     progressbars[2]["value"] = gui_updater_handler.channel3
+    progressbars[3]["value"] = gui_updater_handler.channel4
 
     # Update the text in the packets_counter_entry Entry widget
     global g_packets_counter
@@ -628,6 +654,7 @@ gui_updater_handler.once = 1
 gui_updater_handler.channel1 = 1
 gui_updater_handler.channel2 = 1
 gui_updater_handler.channel3 = 1
+gui_updater_handler.channel4 = 0
 
 # my_widgets(): is the place were all the widgets are created 
 #               (aka: size, orientation, style, position etc.)
@@ -985,4 +1012,10 @@ originated from the PC in the first place.
 2023_10_31
 - adding PWM progressbars (not working yet)
 - design of the widgets locations on the frame.
+2023_11_02
+- connect the PWM scrollbar to the returned value from cmd 2B
+- add RT thread global indication g_incoming_msg, to signal the other parts of slower code 
+- adding rt_parser() function.
+- update the PWM label indication according to percentage.
+
 '''    
