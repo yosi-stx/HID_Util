@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_11_02.a"
+util_verstion = "2023_11_02.b"
 
 from binascii import hexlify
 import sys
@@ -17,6 +17,7 @@ import tkinter.messagebox
 import pickle
 import os
 from colorama import Fore, Style
+from datetime import datetime
 
 
 # create a global empty list for progressbars that will be added later in: my_widgets()
@@ -29,6 +30,8 @@ packets_counter_entry = list()
 root = None 
 special_cmd = None
 special_multi_cmd = None
+last_stream_data = None
+date_time_text = "NA"
 
 # defines from C FW project
     #define MAX_SLOT_NUMBER 7
@@ -510,12 +513,21 @@ def gui_loop(device):  # the device is CAN device
 #   called by:  gui_loop() each time a full packet of 64 bytes was read by device.read()
 #   function:   update auxiliary varibles and then the relevant GUI elements. // example: tool_size
 def gui_updater_handler(value,msg_type, do_print=False):
+    global Last_Stream_Packet_Time
+    global date_time_text
+
+    current_time = datetime.now()
     # initial values for handler variables
     if gui_updater_handler.once == 1:
         gui_updater_handler.once = 0
+        gui_updater_handler.start_streaming_time = current_time
         precentage_stream_channel1 = 0 # default value for debug.
         precentage_stream_channel2 = 0 # default value for debug.
         precentage_stream_channel3 = 0 # default value for debug.
+
+    formatted_time = current_time.strftime("%Y_%m_%d__%H:%M:%S")    # Format the date and time in the desired format
+    last_date_time_text = date_time_text + formatted_time
+    Last_Stream_Packet_Time.config(text = last_date_time_text) # for update the string field.
         
     CMOS_INDEX = 1
     MAX_TOOL_SIZE = 2495
@@ -650,6 +662,7 @@ def gui_updater_handler(value,msg_type, do_print=False):
     # the actual updating of all the gui elements acording the above asosiated variables 
     root.update()
 gui_updater_handler.prev_signed_tool_size = 0
+gui_updater_handler.start_streaming_time = 0
 gui_updater_handler.once = 1
 gui_updater_handler.channel1 = 1
 gui_updater_handler.channel2 = 1
@@ -664,6 +677,9 @@ def my_widgets(frame):
     # Create a notebook widget
     notebook = ttk.Notebook(frame)
     notebook.grid(row=0, column=0, padx=10, pady=10)
+    
+    bold_font = ("TkDefaultFont", 9, "bold")
+
 
     row = 1
     CMOS_PROGRESS_BAR_LEN = 250 
@@ -682,6 +698,14 @@ def my_widgets(frame):
         # separator_label.grid(row=1, column=i,sticky=tk.E,)    
         # separator_label2 = ttk.Label(frame, text="!", font=("Helvetica", 9),foreground="#ff0000")
         # separator_label2.grid(row=1, column=i,sticky=tk.W,)
+
+    row += 1
+    # Label for last stream packet time.
+    global Last_Stream_Packet_Time
+    global date_time_text
+    date_time_text = "Last stream packet time:  "
+    Last_Stream_Packet_Time = ttk.Label(frame,text = date_time_text,font=bold_font, foreground="#000077")
+    Last_Stream_Packet_Time.grid(row=row,column=1,sticky=tk.W,)
     
     row += 1
     # Label + Entry for slot_entry
@@ -1017,5 +1041,7 @@ originated from the PC in the first place.
 - add RT thread global indication g_incoming_msg, to signal the other parts of slower code 
 - adding rt_parser() function.
 - update the PWM label indication according to percentage.
+2023_11_02.b
+- to add time indication of the last streaming packet (using: datetime, Last_Stream_Packet_Time)
 
 '''    
