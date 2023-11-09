@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_11_02.b"
+util_verstion = "2023_11_09.a"
 
 from binascii import hexlify
 import sys
@@ -18,13 +18,19 @@ import pickle
 import os
 from colorama import Fore, Style
 from datetime import datetime
+from string_date_time import get_date_time
+from string_date_time import get_date_time_sec
 
-
+# ############
+#   globals: 
+# ############
 # create a global empty list for progressbars that will be added later in: my_widgets()
 progressbars = list()
 # create a global empty list for entries that will be added later in: my_widgets()
 entries = list()
 packets_counter_entry = list()
+Recording_gap_entry =  list()
+
 # create a global empty variable root to hold the class that represents the main window or the root 
 #  window of your application.
 root = None 
@@ -32,6 +38,12 @@ special_cmd = None
 special_multi_cmd = None
 last_stream_data = None
 date_time_text = "NA"
+# 2023_11_06 
+g_recording_flag = 0
+g_recording_gap = 1  # the default recording gap is every sample, aka: 1
+g_columns = []
+file1 = None
+READ_SIZE = 8 # The size of streaming packet
 
 # defines from C FW project
     #define MAX_SLOT_NUMBER 7
@@ -188,6 +200,68 @@ def expert_multi_send_callback(button_index):
     # with open('parameters.pkl', 'wb') as f:
         # pickle.dump(values, f)
 
+def start_stop_recording_callback():
+    # toggle recording indication
+    global recording_label
+    global g_recording_flag
+    if start_stop_recording_callback.toggle == 1:
+        # create a recording file:
+        start_recordig()
+        # put the indication
+        start_stop_recording_callback.toggle = 0
+        recording_label.config(text = "Recording ON",foreground="#FF0000",font=("TkDefaultFont", 20, "bold"))
+        g_recording_flag = 1
+    else:
+        # close the recording file:
+        stop_recordig()
+        # remove the indication
+        start_stop_recording_callback.toggle = 1
+        recording_label.config(text = ".",foreground="#0000FF",font=("TkDefaultFont", 20))
+        g_recording_flag = 0
+start_stop_recording_callback.toggle = 1
+
+def on_enter_key(event):
+    global g_recording_gap
+    g_recording_gap = int(Recording_gap_entry.get())
+    try:
+        user_numeric_value = float(g_recording_gap)
+        print("User g_recording_gap numeric value:", user_numeric_value)
+    except ValueError:
+        print("Invalid numeric value entered.")
+
+def start_recordig():
+    global file1
+    global g_recording_gap
+    global g_columns
+    
+    dummy=[]
+    recording_handler(dummy) # call just to set the g_columns of metadata
+    FILE1_PATH = "log\can_" # log.csv"
+    start_date_time = get_date_time_sec()
+    print("start_date_time: ", start_date_time)
+    #FIGURE_FILE1_PATH = FILE1_PATH + start_date_time + ".png"
+    FILE1_PATH = FILE1_PATH + start_date_time + ".csv"
+    print("Recording result at: ", FILE1_PATH)
+    # open recording log file:
+    file1 = open(FILE1_PATH,"w") 
+    L = [ "# util_verstion=",util_verstion, "\n" ]  
+    file1.writelines(L) 
+    L = [ "# gap=",str(g_recording_gap), "\n" ]  
+    file1.writelines(L) 
+    result = ', '.join(g_columns)
+    L = [ "# columns=", result, "\n" ]  
+    file1.writelines(L) 
+    print("-------------------- Recording started...")
+    print("L= ",L)
+
+def stop_recordig():
+    global file1
+    if file1 != None:
+        file1.close()
+        print("-------------------- Recording Stopped!")
+        file1 = None
+    else:
+        print("Recording file was not found")
 
 
 prev_pwm = 0
@@ -215,26 +289,78 @@ def slot_entry_changed(event):
     except ValueError:
         print("Invalid value entered")
 
+def recording_handler(value):
+    global file1
+    global g_columns
+    if recording_handler.once:
+        print("   >>> recording_handler.once")
+        recording_handler.once = 0
+        g_columns.append("Tool Size")
+        # g_columns.append("frame_avg")
+        g_columns.append("Insertion")
+        g_columns.append("Torque")
+        # g_columns.append("shutter")
+        # g_columns.append("Image Quality")
+        result = ', '.join(g_columns)
+        print("# recording_handler() columns=",result)
+    if len(value) >= READ_SIZE:
+        tool_size = ((int(value[0])&0xF) << 8) + int(value[1])
+        tool_size = U24_bits_to_signed(tool_size)
+        torque = ((int(value[5])&0x0f) << 16) + (int(value[6])<<8) + (int(value[7]))
+        torque = U20_bits_to_signed(torque)
+        insertion = (int(value[3]) << 12) + (int(value[4]) << 4) + ((int(value[5]) & 0xF0) >> 4)
+        insertion = U20_bits_to_signed(insertion)
+        # image_quality = (int(value[IMAGE_QUALITY_INDEX]) )
+        # shutter = (int(value[SHUTTER_INDEX]) )
+        # frame_avg = (int(value[FRAME_AVG_INDEX]) )
+        ### recording ::  tool_size, insertion, torque ###
+        L = [ str(tool_size),",   ", str(insertion), ", " , str(torque), "\n" ]  
+        if file1 != None:
+            file1.writelines(L) 
+        else:
+            print("try to write to closed file... file was not found !!!")
+recording_handler.once = 1
+
 g_incoming_msg = None 
 def rt_parser(msg):
     # this function uses global indication to signal the other parts of slower code 
     # it some event comes in the can 
     global g_incoming_msg
+    rt_parser.counter += 1
     if msg is not None and msg.arbitration_id == (opcode_to_type(OPCODE_GET_STATION_PRESSURE) + SLOT_NUMBER):
         print("RT Received message with data:", hexlify(msg.data))
         # pass the msg to other threads
         g_incoming_msg = msg
-    
+    else:
+        value = msg.data
+        # toggle the recording indication
+        global recording_label
+        global g_recording_flag
+        global g_recording_gap
+        if g_recording_flag == 1:
+            # do recording into the last file that was opened by the button press
+            if (rt_parser.counter % g_recording_gap) == 0:
+                recording_handler(value)
+            if (rt_parser.counter % 250)  < 175:
+                recording_label.config(text = "Recording ON",foreground="#FF0000",font=("TkDefaultFont", 20, "bold"))
+            else:
+                recording_label.config(text = " ",foreground="#FF0000",font=("TkDefaultFont", 20, "bold"))
+        else:
+                recording_label.config(text = " ",foreground="#FF0000",font=("TkDefaultFont", 20, "bold"))
+rt_parser.counter = 0
     
 
 stream_data = None
 g_packets_counter = 0
+g_always_counter = 0
 def can_read(device):
     global stream_data
     global g_packets_counter
+    global g_always_counter
     msg = None 
     prev_timestamp = 0
     while True:
+        g_always_counter += 1
         # Read the packet from the device
         msg = device.recv(timeout=0.001)
         # value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
@@ -244,8 +370,11 @@ def can_read(device):
                 g_packets_counter += 1
                 rt_parser(msg)
             prev_timestamp = msg.timestamp
+            # reset the msg to go to sleep...
+            msg = None
         else:
-            time.sleep(10/1000)
+            time.sleep(100/1000)  # 100 miliSeconds delay before next read from CAN-BUS.
+            # print(g_always_counter)
             
 def can_send(device):  # TBD... 2023_06_10__15_10
     global special_multi_cmd
@@ -685,6 +814,9 @@ def my_widgets(frame):
     CMOS_PROGRESS_BAR_LEN = 250 
     LONG_PROGRESS_BAR_LEN = 300 
 
+    # ------------------------------------------------------
+    ###################### first tab ######################
+    # ------------------------------------------------------
     # Create the first tab with Progressbar widgets
     tab1 = ttk.Frame(notebook)
     notebook.add(tab1, text="User / Basic")
@@ -705,7 +837,7 @@ def my_widgets(frame):
     global date_time_text
     date_time_text = "Last stream packet time:  "
     Last_Stream_Packet_Time = ttk.Label(frame,text = date_time_text,font=bold_font, foreground="#000077")
-    Last_Stream_Packet_Time.grid(row=row,column=1,sticky=tk.W,)
+    Last_Stream_Packet_Time.grid(row=row,column=1,columnspan=3,sticky=tk.W,)
     
     row += 1
     # Label + Entry for slot_entry
@@ -874,7 +1006,6 @@ def my_widgets(frame):
     # ------------------------------------------------------
     ###################### third tab ######################
     # ------------------------------------------------------
-    # Create the second tab with Entry widgets
     tab3 = ttk.Frame(notebook)
     notebook.add(tab3, text="Settings")
     frame = tab3
@@ -889,6 +1020,52 @@ def my_widgets(frame):
     debug_prints_checkbox.grid(row=row, column=2)
         
     row += 1
+    
+    # ------------------------------------------------------
+    ###################### 4-th tab  ######################
+    # ------------------------------------------------------
+    tab4 = ttk.Frame(notebook)
+    notebook.add(tab4, text="Recording")
+    frame = tab4
+
+    row = 3
+    # ttk.Label(frame,text="Enable debug prints:").grid(row=row,column=0,sticky=tk.W,)
+
+    # Create the "debug_prints" checkbox
+    # global debug_prints_var 
+    # debug_prints_var = tk.BooleanVar(value=True)  # Set the default value to True (checked)
+    # debug_prints_checkbox = tk.Checkbutton(frame, text="enable streaming debug prints", variable=debug_prints_var)
+    # debug_prints_checkbox.grid(row=row, column=2)
+        
+    row += 1
+
+    temp_widget = tk.Button(frame,text ="Start/Stop Recording",command = start_stop_recording_callback)
+    temp_widget.grid(row=row,column=0)
+
+    # user value for Recording gap
+    w = ttk.Label(frame,text="    Recording gap:")
+    w.grid(row=row,column=1,sticky=tk.W,)
+    # w.bind("<Enter>", display_help_big_jumps)
+
+    w = ttk.Entry(frame,width=10)
+    global Recording_gap_entry
+    global g_recording_gap
+    Recording_gap_entry = w
+    w.grid(padx=10,pady=5,row=row,column=2,columnspan=1)
+
+    Recording_gap_entry.bind('<Return>', on_enter_key)
+    Recording_gap_entry.insert(tk.END, str(g_recording_gap))
+    row += 1
+
+    recording_text = "Press the button to record"
+    global recording_label
+    recording_label = tk.Label(frame,text = recording_text, foreground="#777777")
+    recording_label.grid(row=row,column=0,columnspan=3,sticky=tk.W,)
+
+    row += 1
+
+    row = my_seperator(frame, row)
+    # ------------------------------------------------------ 
     
 
 
@@ -950,7 +1127,8 @@ def main():
     screen_height = root.winfo_screenheight() # Height of the screen
     # Calculate Starting X and Y coordinates for Window
     # w = 436 #from AHK CAN_UTILL - modified.
-    w = 450 #from AHK CAN_UTILL - modified. 2023_11_01
+    # w = 450 #from AHK CAN_UTILL - modified. 2023_11_01
+    w = 500 #from AHK CAN_UTILL - modified. 2023_11_06
     h = 490
     # x = (screen_width*2/3) - (w*3/4)
     x = (screen_width*1/3) - (w*3/4)
@@ -1043,5 +1221,10 @@ originated from the PC in the first place.
 - update the PWM label indication according to percentage.
 2023_11_02.b
 - to add time indication of the last streaming packet (using: datetime, Last_Stream_Packet_Time)
+2023_11_06.a
+- add streaming recording tab4: button, label and entry widgets.
+2023_11_09.a
+- fix the gap position on the recording TAB.
+- add the g_recording_gap functionality.
 
 '''    
