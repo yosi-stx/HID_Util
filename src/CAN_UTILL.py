@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_11_09.a"
+util_verstion = "2023_11_09.b"
 
 from binascii import hexlify
 import sys
@@ -948,6 +948,13 @@ def my_widgets(frame):
     # temp_widget = tk.Button(frame,text ="Reset",command = reset_ins_and_torque_CallBack, bg="#00FF00")
     temp_widget.grid(row=row,column=1,columnspan=4, sticky=(tk.W))
 
+    row += 1
+    row = my_seperator(frame, row)
+    # ------------------------------------------------------
+
+    temp_widget = tk.Button(frame,text ="Start/Stop Recording",command = start_stop_recording_callback)
+    temp_widget.grid(row=row,column=0)
+
     # ------------------------------------------------------
     ###################### second tab ######################
     # ------------------------------------------------------
@@ -1028,7 +1035,9 @@ def my_widgets(frame):
     notebook.add(tab4, text="Recording")
     frame = tab4
 
-    row = 3
+    for i in range(4):
+        separator_label = ttk.Label(frame, text=str(i), font=("Helvetica", 6),foreground="#999999")
+        separator_label.grid(row=0, column=i)    
     # ttk.Label(frame,text="Enable debug prints:").grid(row=row,column=0,sticky=tk.W,)
 
     # Create the "debug_prints" checkbox
@@ -1226,5 +1235,6 @@ originated from the PC in the first place.
 2023_11_09.a
 - fix the gap position on the recording TAB.
 - add the g_recording_gap functionality.
-
+2023_11_09.b
+- add "Start/Stop Recording" button in the first (main) Tab.
 '''    
