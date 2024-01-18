@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_10_19.c"
+util_verstion = "2023_12_21.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -63,6 +63,7 @@ PRODUCT_ID_TOOLS = 0x0303
 PRODUCT_ID_STATION = 0x0304
 PRODUCT_ID_GBU_TOOLS = 0x0309
 PRODUCT_ID_LAP_NEW_CAMERA = 0x2005
+PRODUCT_ID_NOT_EXIST_BOARD = 0x0333
 # 2021_01_24
 # USB\VID_24B3&PID_2005&REV_0200
 # 0x24B3 = 9395
@@ -140,7 +141,7 @@ WRITE_DATA_CMD___bytearray = bytearray(b'\x3f')  # initialization of the command
 SLEEP_AMOUNT = 0.002 # Read from HID every 2 milliseconds
 # PRINT_TIME = 1.0 # Print every 1 second
 # PRINT_TIME = 0.5 # Print every 0.5 second
-PRINT_TIME = 2 # Print every 2 second
+PRINT_TIME_2 = 2 # Print every 2 second
 
 START_INDEX = 2 + 4 # Ignore the first two bytes, then skip the version (4 bytes)
 # ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 4 * 2 + 1, 2)) + [START_INDEX + 6 * 2,]
@@ -444,6 +445,7 @@ def gui_loop(device):
         # Reset the counter
         if (do_print):
             print_time = timer()
+            # print("in start of gui_loop....  if (do_print):",print_time)
 
         # Write to the device (request data; keep alive)
         if special_cmd == 'I':
@@ -580,7 +582,7 @@ def gui_loop(device):
 #            print("---------------------- len(value) < READ_SIZE  ------------------------------")
 
         # Update the do_print flag
-        do_print = (timer() - print_time) >= PRINT_TIME
+        do_print = (timer() - print_time) >= PRINT_TIME_2
 
 def start_recordig():
     global file1
@@ -660,6 +662,7 @@ def hid_read( device ):
     global BJ_rt_insertion_hex
     global BJ_rt_prev_insertion_hex
     global g_big_jump_threshold
+    global PRODUCT_ID
     
     read_thread_counter = 0
     always_counter = 0
@@ -670,19 +673,20 @@ def hid_read( device ):
         value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
         if len(value) >= READ_SIZE:
             stream_data = value
-            insertion = stream2insertion(value)
-            BJ_rt_insertion_hex = insertion
-            rt_insertion = long_unsigned_to_long_signed(insertion)
-            if abs(rt_insertion - hid_read.prev_insertion) > g_big_jump_threshold:  #was: > 1000 
-                big_jump_rt_flag = 1
-                BJ_rt_insertion = rt_insertion
-                BJ_rt_prev_insertion = hid_read.prev_insertion
-                BJ_rt_prev_insertion_hex = hid_read.prev_insertion_hex
-                print(" rt_insertion: %d   (big jump now)" %(rt_insertion))
-            hid_read.prev_insertion = rt_insertion
-            hid_read.prev_insertion_hex = BJ_rt_insertion_hex
-            if value[1] == 38: # meaning: if "Station" streaming packet from device
-                last_stream_data = stream_data
+            if PRODUCT_ID == PRODUCT_ID_STATION: # to do only for station 2023_11_30 
+                insertion = stream2insertion(value)
+                BJ_rt_insertion_hex = insertion
+                rt_insertion = long_unsigned_to_long_signed(insertion)
+                if abs(rt_insertion - hid_read.prev_insertion) > g_big_jump_threshold:  #was: > 1000 
+                    big_jump_rt_flag = 1
+                    BJ_rt_insertion = rt_insertion
+                    BJ_rt_prev_insertion = hid_read.prev_insertion
+                    BJ_rt_prev_insertion_hex = hid_read.prev_insertion_hex
+                    print(" rt_insertion: %d   (big jump now)" %(rt_insertion))
+                hid_read.prev_insertion = rt_insertion
+                hid_read.prev_insertion_hex = BJ_rt_insertion_hex
+                if value[1] == 38: # meaning: if "Station" streaming packet from device
+                    last_stream_data = stream_data
             
             
             read_thread_counter += 1
@@ -813,9 +817,14 @@ def gui_handler(value, do_print=False):
     torque = long_unsigned_to_long_signed(torque)
     insertion = long_unsigned_to_long_signed(insertion)
 
-    if do_print:
+    if ( timer() - gui_handler.last_print_time) >= PRINT_TIME_2:  # if delta time passed PRINT_TIME_2 from last printing
         print("Received data: %s" % hexlify(value))
+        gui_handler.last_print_time = timer()
+    if do_print:
+        # print("Received data: %s" % hexlify(value))
         if PRODUCT_ID == PRODUCT_ID_STATION:
+            pass # 2023_12_19 avoid extra prints for better focus on FW big_jump counter
+        if PRODUCT_ID == PRODUCT_ID_NOT_EXIST_BOARD:
             print("insertion[4bytes]: %08x  " % (int(insertion_hex)))
             print("torque[4bytes]: %08x  " % (int(torque_hex)))
             print("insertion[byte-2-3-0-1]: %02x-%02x-%02x-%02x  || image_quality: %02x  %d" % (int(value[INSERTION_INDEX+2]),int(value[INSERTION_INDEX+3]),int(value[INSERTION_INDEX+0]),int(value[INSERTION_INDEX+1]),image_quality, image_quality))
@@ -1051,6 +1060,7 @@ gui_handler.start_streaming_time = 0
 gui_handler.last_insertion = 0
 gui_handler.insertion_hex = 0
 gui_handler.toggle = 1
+gui_handler.last_print_time = 0
 
 PROGRESS_BAR_LEN = 300
 LONG_PROGRESS_BAR_LEN = 590
@@ -1932,4 +1942,10 @@ comment:
 -- record  Shutter value instead of torque and Frame_Avg instead of tool_size
 - return the recording parameters to their default: tool_size, insertion, torque, image_quality
 -
+2023_11_30
+- make the big jump only for PRODUCT_ID_STATION 
+2023_12_19 
+- avoid extra prints for better focus on FW big_jump counter
+2023_12_21
+- if delta time passed PRINT_TIME_2 from last printing
 '''    
