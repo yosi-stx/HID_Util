@@ -141,7 +141,8 @@ WRITE_DATA_CMD___bytearray = bytearray(b'\x3f')  # initialization of the command
 SLEEP_AMOUNT = 0.002 # Read from HID every 2 milliseconds
 # PRINT_TIME = 1.0 # Print every 1 second
 # PRINT_TIME = 0.5 # Print every 0.5 second
-PRINT_TIME_2 = 2 # Print every 2 second
+# PRINT_TIME_2 = 2 # Print every 2 second
+PRINT_TIME_2 = 5 # Print every 5 second
 
 START_INDEX = 2 + 4 # Ignore the first two bytes, then skip the version (4 bytes)
 # ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 4 * 2 + 1, 2)) + [START_INDEX + 6 * 2,]

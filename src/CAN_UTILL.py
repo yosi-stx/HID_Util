@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2023_11_09.b"
+util_verstion = "2024_01_23.a"
 
 from binascii import hexlify
 import sys
@@ -172,7 +172,7 @@ def expert_send_callback(button_index):
     expert_send_index = button_index
     # Saving the values // save
     values = []
-    for entry in g_id_entry + g_data_entry + g_count_entry + g_time_entry:
+    for entry in g_id_entry + g_data_entry + g_count_entry + g_time_entry + g_desc_entry:
         values.append(entry.get())
 
     with open('parameters.pkl', 'wb') as f:
@@ -220,6 +220,21 @@ def start_stop_recording_callback():
         g_recording_flag = 0
 start_stop_recording_callback.toggle = 1
 
+def on_tab_change(event, notebook, screen):
+    selected_tab = notebook.index(notebook.select())
+    print("selected_tab =", selected_tab)
+    # x = 407
+    # y = 86
+    # h = 490
+    w,h,x,y = screen
+    if selected_tab==1:
+        w = 595  # wider widget to hold the extra info in expert tab.
+        root.geometry(f'{w}x{h}+{x}+{y}')
+    else:
+        w = 500
+        root.geometry(f'{w}x{h}+{x}+{y}')
+
+    
 def on_enter_key(event):
     global g_recording_gap
     g_recording_gap = int(Recording_gap_entry.get())
@@ -462,6 +477,7 @@ g_multi_send_button  = []
 g_time_delay   = [] 
 g_count_value  = [] 
 g_start_time   = []
+g_desc_entry   = []
 # def tool_size_changed(value):
     # global tool_size_label
     # if tool_size_label != None:
@@ -801,14 +817,18 @@ gui_updater_handler.channel4 = 0
 # my_widgets(): is the place were all the widgets are created 
 #               (aka: size, orientation, style, position etc.)
 # argument: frame - in this argument we pass the global class "root"
-def my_widgets(frame):
+notebook = None
+def my_widgets(frame,screen):
     # ...
     # Create a notebook widget
+    # global notebook
     notebook = ttk.Notebook(frame)
     notebook.grid(row=0, column=0, padx=10, pady=10)
     
+    # Bind the tab change event to the callback function
+    notebook.bind("<<NotebookTabChanged>>", lambda event: on_tab_change(event, notebook,screen))
+    
     bold_font = ("TkDefaultFont", 9, "bold")
-
 
     row = 1
     CMOS_PROGRESS_BAR_LEN = 250 
@@ -970,11 +990,13 @@ def my_widgets(frame):
     ttk.Label(frame,text="Time (ms)").grid(row=row,column=3,sticky=tk.W,)
     ttk.Label(frame,text="Tx").grid(row=row,column=4)#,sticky=tk.WE,)
     ttk.Label(frame,text="multiTx").grid(row=row,column=5)#,sticky=tk.WE,)
+    ttk.Label(frame,text="Description").grid(row=row,column=6,sticky=tk.W,)
     
     global g_id_entry
     global g_data_entry
     global g_count_entry
     global g_time_entry
+    global g_desc_entry
 
     for i in range(MAX_EXPERT_LINES):
         row += 1
@@ -1009,6 +1031,12 @@ def my_widgets(frame):
         g_send_button.append(w)
         # w.insert(0, "Time")  # Set the default value
         w.grid(padx=2,pady=0,row=row,column=5,columnspan=1,sticky=tk.W,)
+
+        w = ttk.Entry(frame,width=26,)
+        g_desc_entry.append(w)
+        w.insert(0, "Description...")  # Set the default value
+        w.grid(padx=2,pady=2,row=row,column=6,columnspan=1,sticky=tk.W,)
+
 
     # ------------------------------------------------------
     ###################### third tab ######################
@@ -1088,12 +1116,13 @@ def init_widgets():
     global g_time_delay
     global g_count_value
     global g_start_time
+    global g_desc_entry
 
     if os.path.exists('parameters.pkl'):
         try:
             with open('parameters.pkl', 'rb') as f:
                 values = pickle.load(f)
-                for i, entry in enumerate(g_id_entry + g_data_entry + g_count_entry + g_time_entry):
+                for i, entry in enumerate(g_id_entry + g_data_entry + g_count_entry + g_time_entry + g_desc_entry):
                     entry.delete(0, tk.END)  # Clear the existing value
                     entry.insert(0, values[i])
         except FileNotFoundError:
@@ -1109,6 +1138,8 @@ def init_widgets():
             g_count_entry[i].insert(0,"0")
             g_time_entry[i].delete(0, tk.END) 
             g_time_entry [i].insert(0,"50")
+            g_desc_entry[i].delete(0, tk.END) 
+            g_desc_entry[i].insert(0,"..Cmd description") 
 
     for i in range(len(g_time_entry)):
         new_value = g_time_entry[i].get()  # Get the new value from the entry field
@@ -1137,17 +1168,20 @@ def main():
     # Calculate Starting X and Y coordinates for Window
     # w = 436 #from AHK CAN_UTILL - modified.
     # w = 450 #from AHK CAN_UTILL - modified. 2023_11_01
-    w = 500 #from AHK CAN_UTILL - modified. 2023_11_06
+    # w = 500 #from AHK CAN_UTILL - modified. 2023_11_06
+    w = 595 #from AHK CAN_UTILL - modified. 2023_11_06
     h = 490
     # x = (screen_width*2/3) - (w*3/4)
     x = (screen_width*1/3) - (w*3/4)
     y = (screen_height*0.08) 
     # to enforce the size and location on the screen uncomment the next line:
-    root.geometry('%dx%d+%d+%d' % (w, h, x, y))
+    screen = (w, h, int(x), int(y))
+    # root.geometry('%dx%d+%d+%d' % (w, h, x, y))
+    root.geometry('%dx%d+%d+%d' % screen)
     util_title = "SIMBionix CAN_UTILL"+" (version:"+util_verstion+")"
     root.title(util_title)
-    # Initialize the GUI widgets
-    my_widgets(root)
+    # Initialize the GUI widgets, pass the screen size for tabs
+    my_widgets(root,screen)
     init_widgets()
 
 
@@ -1237,4 +1271,9 @@ originated from the PC in the first place.
 - add the g_recording_gap functionality.
 2023_11_09.b
 - add "Start/Stop Recording" button in the first (main) Tab.
+2024_01_23.a
+- adding the description column with g_desc_entry.
+- deleting and creating new parameters.pkl to handle the new data structure include the description.
+- resizing of the frame according to tab width when changing tab with on_tab_change.
+
 '''    
