@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\CAN_UTILL.py 
-util_verstion = "2024_01_23.a"
+util_verstion = "2024_01_24.a"
 
 from binascii import hexlify
 import sys
@@ -20,6 +20,23 @@ from colorama import Fore, Style
 from datetime import datetime
 from string_date_time import get_date_time
 from string_date_time import get_date_time_sec
+import ctypes
+
+# ############
+#   classes: 
+# ############
+class ControlBits(ctypes.LittleEndianStructure):
+    _fields_ = [
+        ("index", ctypes.c_uint8, 4),
+        ("non_volatile", ctypes.c_uint8, 1),
+        ("part", ctypes.c_uint8, 3),
+    ]
+
+class ControlUnion(ctypes.Union):
+    _fields_ = [
+        ("value", ctypes.c_uint8),
+        ("bits", ControlBits),
+    ]
 
 # ############
 #   globals: 
@@ -79,7 +96,7 @@ OPCODE_START_STOP_STREAMING         =  0x04
 # OPCODE_SET_PARAM_8                  = 0x24
 # OPCODE_SET_PARAM_16                 = 0x25
 # OPCODE_SET_PARAM_32                 = 0x26
-# OPCODE_SET_PARAM_168                = 0x27
+OPCODE_SET_PARAM_168                = 0x27
 # OPCODE_GET_PIXART_REGISTER          = 0x28
 # OPCODE_SET_PIXART_REGISTER          = 0x29
 # OPCODE_RESET_CMOS_POSITION          = 0x2A
@@ -219,6 +236,99 @@ def start_stop_recording_callback():
         recording_label.config(text = ".",foreground="#0000FF",font=("TkDefaultFont", 20))
         g_recording_flag = 0
 start_stop_recording_callback.toggle = 1
+
+def Prepare_callback():
+    # print("Prepare_callback")
+    index = g_index_entry.get()
+    non_volatile = g_non_volatile_entry.get()
+    data_21_bytes_list = g_168_data_entry.get()
+    print("Line in data base=",index,"  data_21_bytes=",data_21_bytes_list)
+    # Create an instance of the union
+    control_168 = ControlUnion()
+
+    control_168.bits.index = int(index);
+    control_168.bits.non_volatile = int(non_volatile);
+
+    control_168.bits.part = 0
+    print("index=",index,"  non_volatile=",control_168.bits.non_volatile,"  part=",control_168.bits.part,"  value= ",hex(control_168.value))
+    packet1 = [control_168.value]
+    
+    control_168.bits.part = 1
+    print("index=",index,"  non_volatile=",control_168.bits.non_volatile,"  part=",control_168.bits.part,"  value= ",hex(control_168.value))
+    packet2 = [control_168.value]
+    
+    control_168.bits.part = 2
+    print("index=",index,"  non_volatile=",control_168.bits.non_volatile,"  part=",control_168.bits.part,"  value= ",hex(control_168.value))
+    packet3 = [control_168.value]
+
+    packet1_list = g_packet1_entry.get()
+    packet2_list = g_packet2_entry.get()
+    packet3_list = g_packet3_entry.get()
+    print("packet1=",packet1_list,"  packet2=",packet2_list,"  packet3=",packet3_list)
+    
+    temp_list = [int(pair, 16) for pair in data_21_bytes_list.split()]
+    print("temp_list=",temp_list)
+
+    for i in range(0,7):
+        packet1.append(temp_list[i])
+    art_data = bytearray(packet1)
+    hex_packet1 = ' '.join(format(byte, '02X') for byte in art_data)
+    print("packet1=",packet1,"  hex_packet1=",hex_packet1)
+    g_packet1_entry.delete(0, tk.END) 
+    g_packet1_entry.insert(0, hex_packet1)  
+
+    for i in range(7,14):
+        packet2.append(temp_list[i])
+    art_data = bytearray(packet2)
+    hex_packet2 = ' '.join(format(byte, '02X') for byte in art_data)
+    print("packet2=",packet2,"  hex_packet2=",hex_packet2)
+    g_packet2_entry.delete(0, tk.END) 
+    g_packet2_entry.insert(0, hex_packet2)
+
+    for i in range(14,21):
+        packet3.append(temp_list[i])
+    art_data = bytearray(packet3)
+    hex_packet3 = ' '.join(format(byte, '02X') for byte in art_data)
+    print("packet3=",packet3,"  hex_packet3=",hex_packet3)
+    g_packet3_entry.delete(0, tk.END) 
+    g_packet3_entry.insert(0, hex_packet3)
+    
+
+def Set_Param_168_callback(device):
+    print("----------------Set_Param_168_callback-------packet1---------------")
+    packet1 = g_packet1_entry.get()
+    print("packet1=",packet1)
+    temp_list = [int(pair, 16) for pair in packet1.split()]
+    print("temp_list=",temp_list)
+    art_data = bytearray(temp_list)
+    hex_packet1 = ' '.join(format(byte, '02X') for byte in art_data)
+    print("packet1=",packet1,"  hex_packet1=",hex_packet1,"  art_data=",art_data)
+    out_opcode_id = ((OPCODE_SET_PARAM_168<<4)+SLOT_NUMBER)
+    print("OPCODE_SET_PARAM_168=",OPCODE_SET_PARAM_168,"  SLOT_NUMBER=",SLOT_NUMBER,"  OPCODE_SET_PARAM_168<<4=",OPCODE_SET_PARAM_168<<4)
+    print("out_opcode_id=",out_opcode_id,"  type(out_opcode_id)=",type(out_opcode_id))
+    message = can.Message(arbitration_id=out_opcode_id, data=art_data, is_extended_id=False)    
+    # message = can.Message(arbitration_id=int(out_opcode_id,16), data=art_data, is_extended_id=False)
+    device.send(message)
+    print("----------------Set_Param_168_callback-------packet2---------------")
+    packet2 = g_packet2_entry.get()
+    temp_list = [int(pair, 16) for pair in packet2.split()]
+    print("temp_list=",temp_list)
+    art_data = bytearray(temp_list)
+    hex_packet2 = ' '.join(format(byte, '02X') for byte in art_data)
+    print("packet2=",packet2,"  hex_packet2=",hex_packet2,"  art_data=",art_data)
+    message = can.Message(arbitration_id=out_opcode_id, data=art_data, is_extended_id=False)    
+    device.send(message)
+    print("----------------Set_Param_168_callback-------packet3---------------")
+    packet3 = g_packet3_entry.get()
+    temp_list = [int(pair, 16) for pair in packet3.split()]
+    print("temp_list=",temp_list)
+    art_data = bytearray(temp_list)
+    hex_packet3 = ' '.join(format(byte, '02X') for byte in art_data)
+    print("packet3=",packet3,"  hex_packet3=",hex_packet3,"  art_data=",art_data)
+    message = can.Message(arbitration_id=out_opcode_id, data=art_data, is_extended_id=False)    
+    device.send(message)
+
+
 
 def on_tab_change(event, notebook, screen):
     selected_tab = notebook.index(notebook.select())
@@ -478,6 +588,13 @@ g_time_delay   = []
 g_count_value  = [] 
 g_start_time   = []
 g_desc_entry   = []
+g_index_entry  = []
+g_168_data_entry = []
+g_non_volatile_entry = []
+g_packet1_entry = []
+g_packet2_entry = []
+g_packet3_entry = []
+
 # def tool_size_changed(value):
     # global tool_size_label
     # if tool_size_label != None:
@@ -818,7 +935,7 @@ gui_updater_handler.channel4 = 0
 #               (aka: size, orientation, style, position etc.)
 # argument: frame - in this argument we pass the global class "root"
 notebook = None
-def my_widgets(frame,screen):
+def my_widgets(frame,screen,device):
     # ...
     # Create a notebook widget
     # global notebook
@@ -1102,8 +1219,98 @@ def my_widgets(frame,screen):
     row += 1
 
     row = my_seperator(frame, row)
+
     # ------------------------------------------------------ 
+    # ------------------------------------------------------
+    ###################### 5-th tab  ######################
+    # ------------------------------------------------------
+    tab5 = ttk.Frame(notebook)
+    notebook.add(tab5, text="Set_Param_168")
+    frame = tab5
     
+    global g_index_entry
+    global g_168_data_entry
+    global g_non_volatile_entry
+    global g_packet1_entry
+    global g_packet2_entry
+    global g_packet3_entry
+
+    for i in range(4):
+        separator_label = ttk.Label(frame, text=str(i), font=("Helvetica", 6),foreground="#999999")
+        separator_label.grid(row=0, column=i)    
+    
+    # fields:
+    # Index   Full transfer DATA                                                non_volatile [0/1]   
+    # 06      01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21    0    
+    # Prepare (button)
+    # Set_Param_168 (button) 
+    # packet1:
+    # ?? 01 02 03 04 05 06 07
+    # packet2:
+    # ?? 08 09 10 11 12 13 14
+    # packet3:
+    # ?? 15 16 17 18 19 20 21
+    row = 1
+    ttk.Label(frame,text="Index").grid(row=row,column=0,sticky=tk.W,)
+    ttk.Label(frame,text="Full transfer DATA").grid(row=row,column=1,sticky=tk.W,)
+    ttk.Label(frame,text="non_volatile\n [0/1]").grid(row=row,column=2,sticky=tk.W,)
+
+    row += 1
+    w = ttk.Entry(frame,width=5,)
+    # g_id_entry = w 
+    g_index_entry = w
+    w.insert(0, "06")  # Set the default value
+    # w.grid(padx=10,pady=5,row=row,column=0,columnspan=1,sticky=tk.W,)
+    w.grid(padx=2,pady=2,row=row,column=0,columnspan=1,sticky=tk.W,)
+
+    w = ttk.Entry(frame,width=50,)
+    g_168_data_entry = w
+    w.insert(0, "01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21")  # Set the default value
+    w.grid(padx=2,pady=2,row=row,column=1,columnspan=1,sticky=tk.W,)
+
+    w = ttk.Entry(frame,width=4,)
+    g_non_volatile_entry = w
+    w.insert(0, "0")  # Set the default value
+    w.grid(padx=2,pady=2,row=row,column=2,columnspan=1,sticky=tk.W,)
+
+    row += 1
+
+    w = tk.Button(frame,width=21,text ="Prepare", command= Prepare_callback) #
+    g_Prepare_button = w
+    # w.insert(0, "Time")  # Set the default value
+    w.grid(padx=2,pady=0,row=row,column=0,columnspan=2,sticky=tk.W,)
+
+    row += 1
+
+    # w = tk.Button(frame,text ="Send", command=lambda idx=i: expert_send_callback(idx)) #command = expert_send_callback)
+
+    w = tk.Button(frame,width=21,text ="Set_Param_168", command=lambda  arg=device: Set_Param_168_callback(arg)) #
+    # w = tk.Button(frame,width=21,text ="Set_Param_168", command= Set_Param_168_callback) #
+    g_Set_Param_168_button = w
+    # w.insert(0, "Time")  # Set the default value
+    w.grid(padx=2,pady=0,row=row,column=0,columnspan=2,sticky=tk.W,)
+
+    row += 1
+
+    w = ttk.Entry(frame,width=21,)
+    g_packet1_entry = w
+    w.insert(0, "?? 01 02 03 04 05 06 07")  # Set the default value
+    w.grid(padx=2,pady=2,row=row,column=0,columnspan=2,sticky=tk.W,)
+
+    row += 1
+
+    w = ttk.Entry(frame,width=21,)
+    g_packet2_entry = w
+    w.insert(0, "?? 08 09 10 11 12 13 14")  # Set the default value
+    w.grid(padx=2,pady=2,row=row,column=0,columnspan=2,sticky=tk.W,)
+
+    row += 1
+
+    w = ttk.Entry(frame,width=21,)
+    g_packet3_entry = w
+    w.insert(0, "?? 15 16 17 18 19 20 21")  # Set the default value
+    w.grid(padx=2,pady=2,row=row,column=0,columnspan=2,sticky=tk.W,)
+
 
 
 def init_widgets():
@@ -1180,15 +1387,15 @@ def main():
     root.geometry('%dx%d+%d+%d' % screen)
     util_title = "SIMBionix CAN_UTILL"+" (version:"+util_verstion+")"
     root.title(util_title)
-    # Initialize the GUI widgets, pass the screen size for tabs
-    my_widgets(root,screen)
-    init_widgets()
 
-
-    
     # create a CAN bus instance
     device = can.interface.Bus(bustype='ixxat', channel=0, bitrate=1000000)
 
+    # Initialize the GUI widgets, pass the screen size for tabs
+    my_widgets(root,screen,device)
+    init_widgets()
+
+    
     # Create thread that calls gui_loop()
     threading.Thread(target=gui_loop, args=(device,), daemon=True).start()
 
@@ -1275,5 +1482,10 @@ originated from the PC in the first place.
 - adding the description column with g_desc_entry.
 - deleting and creating new parameters.pkl to handle the new data structure include the description.
 - resizing of the frame according to tab width when changing tab with on_tab_change.
-
+2024_01_23.b
+- adding a new tab for special 3 packets from host to device.
+2024_01_24.a
+- adding functionality of the parsing and sending special 3 packets from host to device
+- first we need to press the button: Prepare_callback() to prepare the packets.
+- second press: Set_Param_168_callback() for sending via the CAN-BUS
 '''    

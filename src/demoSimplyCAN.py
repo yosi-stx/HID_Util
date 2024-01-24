@@ -52,7 +52,12 @@ def receive_messages(simply):
             receive_messages.count +=1
         else:
             # print("id = 0x%03x   payload:%s " % (msg_ident,msg_payload))
-            print("id = ", Fore.GREEN + "0x%03x" % msg_ident + Style.RESET_ALL, "other Payload:", Fore.YELLOW + str(msg_payload) + Style.RESET_ALL)
+            # print("id = ", Fore.GREEN + "0x%03x" % msg_ident + Style.RESET_ALL, "other Payload:", Fore.YELLOW + str(msg_payload) + Style.RESET_ALL)
+            # Format and print the output
+            formatted_ident = "0x%03x" % msg_ident
+            formatted_payload = ' '.join(f"{item:02X}" for item in msg_payload)
+            # Print the formatted output
+            print("id =", Fore.GREEN + formatted_ident + Style.RESET_ALL, "other Payload:", Fore.YELLOW + formatted_payload + Style.RESET_ALL)
             
         # print(msg_payload)
         # print(msg_flags)
@@ -104,5 +109,5 @@ def main(ser_port, baudrate):
             time.sleep(0.01)
 
 # main("/dev/ttyACM0", 250)    # for Linux
-main("COM10", 1000)         # for Windows
+main("COM3", 1000)         # for Windows
 
