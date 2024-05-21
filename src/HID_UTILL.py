@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2023_12_21.a"
+util_verstion = "2024_05_21.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -902,15 +902,20 @@ def gui_handler(value, do_print=False):
     bool_reset = bool((digital >> 4) & 0x0001)
     bool_red_handle = bool((digital >> 7) & 0x0001)
     bool_ignore_red_handle = ignore_red_handle_state
-    if PRODUCT_ID != PRODUCT_ID_STATION:
-        int_hid_stream_channel1 = analog[1]
-        int_inner_handle_channel1 = analog[0]
-        int_inner_handle_channel2 = analog[3]
-    else:
+    int_hid_stream_channel2 = tool_size
+    if PRODUCT_ID == PRODUCT_ID_STATION:
         int_hid_stream_channel1 = insertion
         int_inner_handle_channel1 = torque
         int_inner_handle_channel2 = image_quality
-    int_hid_stream_channel2 = tool_size
+    elif PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        int_hid_stream_channel1 = analog[1] # TBD - lap_insertion?
+        int_hid_stream_channel2 = analog[4]  # yaw
+        int_inner_handle_channel1 = analog[2] # pitch
+        int_inner_handle_channel2 = analog[3] # roll
+    else:
+        int_hid_stream_channel1 = analog[1]
+        int_inner_handle_channel1 = analog[0]
+        int_inner_handle_channel2 = analog[3]
     int_clicker = clicker_analog
     int_sleepTimer = sleepTimer
     int_batteryLevel = batteryLevel
@@ -921,14 +926,14 @@ def gui_handler(value, do_print=False):
     int_hid_util_fault = hid_util_fault
     int_clicker_counter = clicker_counter
     int_hid_stream_insertion = insertion
-    if PRODUCT_ID != PRODUCT_ID_STATION:
-        precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
-        precentage_inner_handle_channel1 = int((int_inner_handle_channel1 / 4096) * 100)
-        precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 4096) * 100)
-    else:
+    if PRODUCT_ID == PRODUCT_ID_STATION:
         precentage_hid_stream_channel1 = abs(int((int_hid_stream_channel1 / 1000) * 100))
         precentage_inner_handle_channel1 = abs(int((int_inner_handle_channel1 / 1000) * 100))
         precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 255) * 100)
+    else:
+        precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
+        precentage_inner_handle_channel1 = int((int_inner_handle_channel1 / 4096) * 100)
+        precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 4096) * 100)
 
     precentage_hid_stream_channel2 = int((int_hid_stream_channel2 / 4096) * 100)
     precentage_clicker = int((int_clicker / 4096) * 100)
@@ -1072,15 +1077,20 @@ def my_channel_row(frame, row, label, style):
 
     row += 1
 
-    if PRODUCT_ID != PRODUCT_ID_STATION:
+    if PRODUCT_ID == PRODUCT_ID_STATION:
+        ttk.Label(frame,text="Torque").grid(row=row,column=0)
+        ttk.Label(frame,text="Image Quality").grid(row=row,column=1) # image_quality
+    elif PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        text_name = "Pitch = bytes 12,13)"
+        ttk.Label(frame,text=text_name).grid(row=row,column=0)
+        text_name = "Roll = bytes 14,15)"
+        ttk.Label(frame,text=text_name).grid(row=row,column=1)
+    else:
         # InnerHandle
         text_name = "Channel 4 (analog[0] = bytes 8,9)"
         ttk.Label(frame,text=text_name).grid(row=row,column=0)
         text_name = "Channel 7 (analog[3] = bytes 14,15)"
         ttk.Label(frame,text=text_name).grid(row=row,column=1)
-    else:
-        ttk.Label(frame,text="Torque").grid(row=row,column=0)
-        ttk.Label(frame,text="Image Quality").grid(row=row,column=1) # image_quality
 
     row += 1
 
@@ -1184,6 +1194,14 @@ NOTE: \tZero value in Tool_size \
 \n\t\t\t\t\t\
 \t resets the Insertion value"
         ttk.Label(frame,text=text_name).grid(row=row,sticky=tk.NW)
+    elif PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        text_name =\
+"LAP_NEW_CAMERA...  \
+\t\t\t\t\
+NOTE: \tUse normal start streaming \
+\n\t\t\t\t\t\
+\t pitch: bytes 12 13, roll: bytes 14 15, yaw: bytes 16 17"
+        ttk.Label(frame,text=text_name).grid(row=row,sticky=tk.NW)
     else:
         ttk.Label(frame,text="ADCs...").grid(row=row,sticky=tk.NW)
         
@@ -1202,6 +1220,8 @@ NOTE: \tZero value in Tool_size \
     text_name = "Channel 5 (analog[1] = bytes 10,11)"
     if PRODUCT_ID == PRODUCT_ID_STATION:
         text_name = "Insertion"
+    if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        text_name = "TBD (insertion?) = bytes 10 11"
     ttk.Label(frame,text=text_name).grid(row=row,column=0)
     
     row += 1
@@ -1217,6 +1237,8 @@ NOTE: \tZero value in Tool_size \
         text_name = "Tool Size"
         if DEBUG_SLIPPAGE == 1:
             text_name = "Delta insertion (or Tool Size)"
+    if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        text_name = "Yaw = bytes 16 17"
     ttk.Label(frame,text=text_name).grid(row=row,column=1)
 
     row += 1
@@ -1949,4 +1971,6 @@ comment:
 - avoid extra prints for better focus on FW big_jump counter
 2023_12_21
 - if delta time passed PRINT_TIME_2 from last printing
+2024_05_21
+- special for PRODUCT_ID_LAP_NEW_CAMERA
 '''    
