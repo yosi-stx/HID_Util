@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2024_06_07.a"
+util_verstion = "2024_06_07.b"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -752,6 +752,35 @@ def stream2insertion(value):
     insertion = (int(value[INSERTION_INDEX + 2]) << 24) + (int(value[INSERTION_INDEX+3]) <<16) + (int(value[INSERTION_INDEX]) <<8) + int(value[INSERTION_INDEX+1])  
     return insertion
 
+def square(list):
+    return [i ** 2 for i in list]
+
+# The square root of the product of a quaternion with its conjugate is called its norm 
+def quaternion_norm( wxyz ):
+    # display quaternion values:
+    # print("BAAB_space = %X " % BAAB_space, end="")
+    print("[w = 0x%.4X ," % QUA_Data_w, end="")
+    print("x = 0x%.4X ," % QUA_Data_x, end="")
+    print("y = 0x%.4X ," % QUA_Data_y, end="")
+    print("z = 0x%.4X ]" % QUA_Data_z, end="")
+    print()
+    print(wxyz)
+    c = 2**11/2  # to scale the reading from i2c to integers.
+    v2 = [i / c for i in wxyz]
+    s  = sum(square(v2))
+    print("sum(square(v2) = %.4f ]" % s)
+    
+    # wxyz_signed = uint_16_unsigned_to_int_signed(wxyz)
+    w = uint_16_unsigned_to_int_signed(wxyz[0])
+    x = uint_16_unsigned_to_int_signed(wxyz[1])
+    y = uint_16_unsigned_to_int_signed(wxyz[2])
+    z = uint_16_unsigned_to_int_signed(wxyz[3])
+    wxyz_signed = [w,x,y,z]
+    print(wxyz_signed)
+    # Qua_all = math.sqrt((QUA_Data_w/16384.0)*(QUA_Data_w/16384.0) + (QUA_Data_x/16384.0)*(QUA_Data_x/16384.0) + (QUA_Data_y/16384.0)*(QUA_Data_y/16384.0) + (QUA_Data_z/16384.0)*(QUA_Data_z/16384.0))
+    return 
+
+
 # this handler is called only upon a new packet from device
 def gui_handler(value, do_print=False):
     # global print_flag
@@ -831,13 +860,10 @@ def gui_handler(value, do_print=False):
     global QUA_Data_z
     if ( timer() - gui_handler.last_print_time) >= PRINT_TIME_2:  # if delta time passed PRINT_TIME_2 from last printing
         print("Received data: %s" % hexlify(value))
-        # print("BAAB_space = %X " % BAAB_space, end="")
-        print("[w = 0x%.4X ," % QUA_Data_w, end="")
-        print("x = 0x%.4X ," % QUA_Data_x, end="")
-        print("y = 0x%.4X ," % QUA_Data_y, end="")
-        print("z = 0x%.4X ]" % QUA_Data_z, end="")
-        Qua_all = math.sqrt((QUA_Data_w/16384.0)*(QUA_Data_w/16384.0) + (QUA_Data_x/16384.0)*(QUA_Data_x/16384.0) + (QUA_Data_y/16384.0)*(QUA_Data_y/16384.0) + (QUA_Data_z/16384.0)*(QUA_Data_z/16384.0))
-        print(" Qua_all =   %.2f" % Qua_all)
+        # display quaternion values:
+        quaternion_norm([QUA_Data_w,QUA_Data_x,QUA_Data_y,QUA_Data_z])
+        # Qua_all = math.sqrt((QUA_Data_w/16384.0)*(QUA_Data_w/16384.0) + (QUA_Data_x/16384.0)*(QUA_Data_x/16384.0) + (QUA_Data_y/16384.0)*(QUA_Data_y/16384.0) + (QUA_Data_z/16384.0)*(QUA_Data_z/16384.0))
+        # print(" Qua_all =   %.2f" % Qua_all)
         
         gui_handler.last_print_time = timer()
     if do_print:
@@ -2009,4 +2035,7 @@ comment:
 - special for PRODUCT_ID_LAP_NEW_CAMERA
 2024_06_07 
 - Quaternion unit reads:
+2024_06_07.b
+- adding quaternion_norm() function.
+- still issue with quaternion negative numbers... tbd !
 '''    
