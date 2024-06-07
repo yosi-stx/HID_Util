@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2024_05_21.a"
+util_verstion = "2024_06_07.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -18,6 +18,7 @@ import pywinusb.hid as win_hid
 from datetime import datetime
 import winsound
 import os
+import math
 
 import include_dll_path
 # work around to solve issue with importing the hidapi.dll
@@ -142,7 +143,8 @@ SLEEP_AMOUNT = 0.002 # Read from HID every 2 milliseconds
 # PRINT_TIME = 1.0 # Print every 1 second
 # PRINT_TIME = 0.5 # Print every 0.5 second
 # PRINT_TIME_2 = 2 # Print every 2 second
-PRINT_TIME_2 = 5 # Print every 5 second
+# PRINT_TIME_2 = 5 # Print every 5 second
+PRINT_TIME_2 = 1 # Print every 1 second
 
 START_INDEX = 2 + 4 # Ignore the first two bytes, then skip the version (4 bytes)
 # ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 4 * 2 + 1, 2)) + [START_INDEX + 6 * 2,]
@@ -232,6 +234,11 @@ g_big_jump_threshold = 1000
 Display_popup_help_Var = 1
 g_recording_gap = 1  # the default recording gap is every sample, aka: 1
 g_columns = []
+BAAB_space = 0
+QUA_Data_w = 0
+QUA_Data_x = 0
+QUA_Data_y = 0
+QUA_Data_z = 0
 
 def list_hid_devices():
     all_devices = win_hid.HidDeviceFilter().get_devices()
@@ -794,7 +801,7 @@ def gui_handler(value, do_print=False):
     global hid_util_fault
     hid_util_fault = (int(value[START_INDEX+1]) & 0xF )
     digital = (int(value[START_INDEX + 1]) << 8) + int(value[START_INDEX + 0])
-    if PRODUCT_ID == PRODUCT_ID_TOOLS:
+    if PRODUCT_ID == PRODUCT_ID_TOOLS or PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
         analog = [(int(value[i + 1]) << 8) + int(value[i]) for i in ANALOG_INDEX_LIST_TOOLS]
     else:
         analog = [(int(value[i + 1]) << 8) + int(value[i]) for i in ANALOG_INDEX_LIST]
@@ -817,9 +824,21 @@ def gui_handler(value, do_print=False):
     #global MAX_LONG_POSITIVE
     torque = long_unsigned_to_long_signed(torque)
     insertion = long_unsigned_to_long_signed(insertion)
-
+    global BAAB_space
+    global QUA_Data_w
+    global QUA_Data_x
+    global QUA_Data_y
+    global QUA_Data_z
     if ( timer() - gui_handler.last_print_time) >= PRINT_TIME_2:  # if delta time passed PRINT_TIME_2 from last printing
         print("Received data: %s" % hexlify(value))
+        # print("BAAB_space = %X " % BAAB_space, end="")
+        print("[w = 0x%.4X ," % QUA_Data_w, end="")
+        print("x = 0x%.4X ," % QUA_Data_x, end="")
+        print("y = 0x%.4X ," % QUA_Data_y, end="")
+        print("z = 0x%.4X ]" % QUA_Data_z, end="")
+        Qua_all = math.sqrt((QUA_Data_w/16384.0)*(QUA_Data_w/16384.0) + (QUA_Data_x/16384.0)*(QUA_Data_x/16384.0) + (QUA_Data_y/16384.0)*(QUA_Data_y/16384.0) + (QUA_Data_z/16384.0)*(QUA_Data_z/16384.0))
+        print(" Qua_all =   %.2f" % Qua_all)
+        
         gui_handler.last_print_time = timer()
     if do_print:
         # print("Received data: %s" % hexlify(value))
@@ -912,6 +931,12 @@ def gui_handler(value, do_print=False):
         int_hid_stream_channel2 = analog[4]  # yaw
         int_inner_handle_channel1 = analog[2] # pitch
         int_inner_handle_channel2 = analog[3] # roll
+        # Quaternion unit reads:
+        BAAB_space = analog[5]
+        QUA_Data_w = analog[6]
+        QUA_Data_x = analog[7]
+        QUA_Data_y = analog[8]
+        QUA_Data_z = analog[9]
     else:
         int_hid_stream_channel1 = analog[1]
         int_inner_handle_channel1 = analog[0]
@@ -1268,7 +1293,11 @@ NOTE: \tUse normal start streaming \
 
     # Clicker labels
 #    ttk.Label(frame,text="InnerClicker").grid(row=row,column=0,sticky=tk.W)
-    ttk.Label(frame,text="Channel 9").grid(row=row,column=0)
+    if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        ttk.Label(frame,text="Yaw (from Quaternion)").grid(row=row,column=0)
+    else:
+        ttk.Label(frame,text="Channel 9").grid(row=row,column=0)
+
     ttk.Label(frame,text="Channel_22 Numeric (bytes 44,45)").grid(row=row,column=1)  #ClickerCounter -> Channel_22 Numeric
 
     row += 1
@@ -1411,7 +1440,10 @@ NOTE: \tUse normal start streaming \
     # sleepTimer    "#0000FF" 
     # ttk.Label(frame,text="Sleep Timer",foreground="#999999").grid(row=row,column=0,sticky=tk.E,)
     # PWM_command_stream_back
-    ttk.Label(frame,text="PWM command stream back").grid(row=row,column=0,sticky=tk.E,)
+    if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        ttk.Label(frame,text="Pitch (from Quaternion)").grid(row=row,column=0,sticky=tk.E,)
+    else:
+        ttk.Label(frame,text="PWM command stream back").grid(row=row,column=0,sticky=tk.E,)
     # ttk.Label(frame,text="Sleep Timer").grid(row=row,column=0,sticky=tk.E,)
     # ttk.Label.tag_configure("blue", foreground="blue")
     # ttk.Label.tag_add("blue", "1.0", "1.4")
@@ -1469,7 +1501,9 @@ NOTE: \tUse normal start streaming \
     # ------------------------------------------------------
 
     # Motor Cur
-    if PRODUCT_ID != PRODUCT_ID_STATION:
+    if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        ttk.Label(frame,text="Roll (from Quaternion)").grid(row=row,column=0,sticky=tk.E,)
+    elif PRODUCT_ID != PRODUCT_ID_STATION:
         ttk.Label(frame,text="MotorCurrent").grid(row=row,column=0,sticky=tk.E,)
     else:
         text_name = "Station MotorCurrent (bytes 25,26)"
@@ -1973,4 +2007,6 @@ comment:
 - if delta time passed PRINT_TIME_2 from last printing
 2024_05_21
 - special for PRODUCT_ID_LAP_NEW_CAMERA
+2024_06_07 
+- Quaternion unit reads:
 '''    
