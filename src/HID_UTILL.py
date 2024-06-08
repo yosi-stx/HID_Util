@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2024_06_07.b"
+util_verstion = "2024_06_08"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -213,7 +213,7 @@ ignore_red_handle_button = None
 ignore_red_handle_checkbutton = None
 ignore_red_handle_state = False
 gui_handler_counter = 0
-debug_pwm_print = True
+debug_pwm_print = False
 debug_check_box = None
 root = None
 Fw_Version = "NA"
@@ -239,6 +239,7 @@ QUA_Data_w = 0
 QUA_Data_x = 0
 QUA_Data_y = 0
 QUA_Data_z = 0
+Euler_Angles_From_Quat = [0,0,0]
 
 def list_hid_devices():
     all_devices = win_hid.HidDeviceFilter().get_devices()
@@ -755,28 +756,65 @@ def stream2insertion(value):
 def square(list):
     return [i ** 2 for i in list]
 
+# based on example code from here:
+# https://stackoverflow.com/questions/56207448/efficient-quaternions-to-euler-transformation
+# yg: changes - use list as argument instead 4 variables
+def quaternion_to_euler_angle_list(wxyz):
+    w = wxyz[0]
+    x = wxyz[1]
+    y = wxyz[2]
+    z = wxyz[3]
+
+    ysqr = y * y
+
+    t0 = +2.0 * (w * x + y * z)
+    t1 = +1.0 - 2.0 * (x * x + ysqr)
+    X = math.degrees(math.atan2(t0, t1))
+
+    t2 = +2.0 * (w * y - z * x)
+    t2 = +1.0 if t2 > +1.0 else t2
+    t2 = -1.0 if t2 < -1.0 else t2
+    Y = math.degrees(math.asin(t2))
+
+    t3 = +2.0 * (w * z + x * y)
+    t4 = +1.0 - 2.0 * (ysqr + z * z)
+    Z = math.degrees(math.atan2(t3, t4))
+    euler = [X, Y, Z] # X: pitch ; Y: roll ; Z: yaw.
+    return euler  # used in global list: Euler_Angles_From_Quat[]
+
 # The square root of the product of a quaternion with its conjugate is called its norm 
 def quaternion_norm( wxyz ):
     # display quaternion values:
     # print("BAAB_space = %X " % BAAB_space, end="")
-    print("[w = 0x%.4X ," % QUA_Data_w, end="")
-    print("x = 0x%.4X ," % QUA_Data_x, end="")
-    print("y = 0x%.4X ," % QUA_Data_y, end="")
-    print("z = 0x%.4X ]" % QUA_Data_z, end="")
-    print()
-    print(wxyz)
-    c = 2**11/2  # to scale the reading from i2c to integers.
-    v2 = [i / c for i in wxyz]
-    s  = sum(square(v2))
-    print("sum(square(v2) = %.4f ]" % s)
-    
+    global debug_pwm_print
+    if debug_pwm_print:
+        print("[w = 0x%.4X ," % QUA_Data_w, end="")
+        print("x = 0x%.4X ," % QUA_Data_x, end="")
+        print("y = 0x%.4X ," % QUA_Data_y, end="")
+        print("z = 0x%.4X ]" % QUA_Data_z, end="")
+        print()
+        print(wxyz)
     # wxyz_signed = uint_16_unsigned_to_int_signed(wxyz)
     w = uint_16_unsigned_to_int_signed(wxyz[0])
     x = uint_16_unsigned_to_int_signed(wxyz[1])
     y = uint_16_unsigned_to_int_signed(wxyz[2])
     z = uint_16_unsigned_to_int_signed(wxyz[3])
     wxyz_signed = [w,x,y,z]
-    print(wxyz_signed)
+    if debug_pwm_print:
+        print(wxyz_signed)
+
+    c = 2**11/2 - 1  # to scale the reading from i2c to integers.
+    wxyz_float = [i / c for i in wxyz_signed]
+    if debug_pwm_print:
+        print(wxyz_float)
+    s  = sum(square(wxyz_float))
+    if debug_pwm_print:
+        print("sum(square(wxyz_float) = %.4f ]" % s)
+    global Euler_Angles_From_Quat
+    Euler_Angles_From_Quat = quaternion_to_euler_angle_list(wxyz_float)
+    if debug_pwm_print:
+        print(Euler_Angles_From_Quat)
+    
     # Qua_all = math.sqrt((QUA_Data_w/16384.0)*(QUA_Data_w/16384.0) + (QUA_Data_x/16384.0)*(QUA_Data_x/16384.0) + (QUA_Data_y/16384.0)*(QUA_Data_y/16384.0) + (QUA_Data_z/16384.0)*(QUA_Data_z/16384.0))
     return 
 
@@ -858,6 +896,7 @@ def gui_handler(value, do_print=False):
     global QUA_Data_x
     global QUA_Data_y
     global QUA_Data_z
+    global Euler_Angles_From_Quat
     if ( timer() - gui_handler.last_print_time) >= PRINT_TIME_2:  # if delta time passed PRINT_TIME_2 from last printing
         print("Received data: %s" % hexlify(value))
         # display quaternion values:
@@ -948,6 +987,10 @@ def gui_handler(value, do_print=False):
     bool_red_handle = bool((digital >> 7) & 0x0001)
     bool_ignore_red_handle = ignore_red_handle_state
     int_hid_stream_channel2 = tool_size
+    int_clicker = clicker_analog
+    int_sleepTimer = sleepTimer
+    int_batteryLevel = batteryLevel
+    int_MotorCur = MotorCur
     if PRODUCT_ID == PRODUCT_ID_STATION:
         int_hid_stream_channel1 = insertion
         int_inner_handle_channel1 = torque
@@ -963,20 +1006,30 @@ def gui_handler(value, do_print=False):
         QUA_Data_x = analog[7]
         QUA_Data_y = analog[8]
         QUA_Data_z = analog[9]
+        int_clicker = Euler_Angles_From_Quat[2]  # yaw // tbd: "Yaw (from Quaternion)"
+        int_sleepTimer = 0 # no display for "Roll (from Quaternion)" aka: "MotorCurrent"
+        int_batteryLevel = 0
+        int_MotorCur = 0
     else:
         int_hid_stream_channel1 = analog[1]
         int_inner_handle_channel1 = analog[0]
         int_inner_handle_channel2 = analog[3]
-    int_clicker = clicker_analog
-    int_sleepTimer = sleepTimer
-    int_batteryLevel = batteryLevel
-    int_MotorCur = MotorCur
     if PRODUCT_ID == PRODUCT_ID_STATION:
         counter = gui_handler_counter
     int_counter = counter
     int_hid_util_fault = hid_util_fault
     int_clicker_counter = clicker_counter
     int_hid_stream_insertion = insertion
+
+    precentage_hid_stream_channel2 = int((int_hid_stream_channel2 / 4096) * 100)
+    precentage_clicker = int((int_clicker / 4096) * 100)
+    # precentage_sleepTimer = int((int_sleepTimer / 600) * 100)
+    PWM_command_stream_back = ((int_sleepTimer/255 )*100) # PWM_command_stream_back
+    precentage_sleepTimer = round(PWM_command_stream_back, 0)
+    precentage_batteryLevel = int((int_batteryLevel / 4096) * 100)
+    if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        precentage_clicker = int(( (180 + int_clicker) / 360 ) * 100) # use the 360 degrees for full-scale.
+
     if PRODUCT_ID == PRODUCT_ID_STATION:
         precentage_hid_stream_channel1 = abs(int((int_hid_stream_channel1 / 1000) * 100))
         precentage_inner_handle_channel1 = abs(int((int_inner_handle_channel1 / 1000) * 100))
@@ -986,12 +1039,6 @@ def gui_handler(value, do_print=False):
         precentage_inner_handle_channel1 = int((int_inner_handle_channel1 / 4096) * 100)
         precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 4096) * 100)
 
-    precentage_hid_stream_channel2 = int((int_hid_stream_channel2 / 4096) * 100)
-    precentage_clicker = int((int_clicker / 4096) * 100)
-    # precentage_sleepTimer = int((int_sleepTimer / 600) * 100)
-    PWM_command_stream_back = ((int_sleepTimer/255 )*100) # PWM_command_stream_back
-    precentage_sleepTimer = round(PWM_command_stream_back, 0)
-    precentage_batteryLevel = int((int_batteryLevel / 4096) * 100)
     if PRODUCT_ID != PRODUCT_ID_STATION:
         precentage_MotorCur = int((int_MotorCur / 4096) * 100)
     else:
@@ -1320,7 +1367,7 @@ NOTE: \tUse normal start streaming \
     # Clicker labels
 #    ttk.Label(frame,text="InnerClicker").grid(row=row,column=0,sticky=tk.W)
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-        ttk.Label(frame,text="Yaw (from Quaternion)").grid(row=row,column=0)
+        ttk.Label(frame,text="Yaw (from Quaternion)[degrees]").grid(row=row,column=0)
     else:
         ttk.Label(frame,text="Channel 9").grid(row=row,column=0)
 
@@ -1467,7 +1514,8 @@ NOTE: \tUse normal start streaming \
     # ttk.Label(frame,text="Sleep Timer",foreground="#999999").grid(row=row,column=0,sticky=tk.E,)
     # PWM_command_stream_back
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-        ttk.Label(frame,text="Pitch (from Quaternion)").grid(row=row,column=0,sticky=tk.E,)
+        # ttk.Label(frame,text="Pitch (from Quaternion)").grid(row=row,column=0,sticky=tk.E,)
+        ttk.Label(frame,text="(Not Used)").grid(row=row,column=0,sticky=tk.E,)
     else:
         ttk.Label(frame,text="PWM command stream back").grid(row=row,column=0,sticky=tk.E,)
     # ttk.Label(frame,text="Sleep Timer").grid(row=row,column=0,sticky=tk.E,)
@@ -1528,7 +1576,8 @@ NOTE: \tUse normal start streaming \
 
     # Motor Cur
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-        ttk.Label(frame,text="Roll (from Quaternion)").grid(row=row,column=0,sticky=tk.E,)
+        # ttk.Label(frame,text="Roll (from Quaternion)").grid(row=row,column=0,sticky=tk.E,)
+        ttk.Label(frame,text="(Not Used)").grid(row=row,column=0,sticky=tk.E,)
     elif PRODUCT_ID != PRODUCT_ID_STATION:
         ttk.Label(frame,text="MotorCurrent").grid(row=row,column=0,sticky=tk.E,)
     else:
@@ -1565,7 +1614,10 @@ NOTE: \tUse normal start streaming \
     global debug_check_box
     debug_check_box = tk.IntVar()
     # debug_check_box.grid(row=row,column=1)#,tk.sticky='E')
-    w = tk.Checkbutton(frame,text="PWM debug print:",variable=debug_check_box,onvalue=1,offvalue=0,command=isChecked)
+    if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        w = tk.Checkbutton(frame,text="Quaternion debug print:",variable=debug_check_box,onvalue=1,offvalue=0,command=isChecked)
+    else:
+        w = tk.Checkbutton(frame,text="PWM debug print:",variable=debug_check_box,onvalue=1,offvalue=0,command=isChecked)
     # w.grid(row=row,column=1,sticky='W')
     w.grid(row=row,column=1)
     
@@ -2038,4 +2090,11 @@ comment:
 2024_06_07.b
 - adding quaternion_norm() function.
 - still issue with quaternion negative numbers... tbd !
+2024_06_08
+- handle negative numbers from the IMU 
+- adding: quaternion_to_euler_angle() function.
+- print time: PRINT_TIME_2 = 1  aka: Print every 1 second 
+- use the Euler_Angles_From_Quat[] value to set a progressbar 
+- change default of debug_pwm_print = True
+- reset the values of: int_MotorCur int_sleepTimer int_batteryLevel to disable redundant bars.
 '''    
