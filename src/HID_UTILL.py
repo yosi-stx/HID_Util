@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2024_06_08"
+util_verstion = "2024_06_11.b"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -1000,16 +1000,25 @@ def gui_handler(value, do_print=False):
         int_inner_handle_channel1 = torque
         int_inner_handle_channel2 = image_quality
     elif PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        # int_hid_stream_channel1 = analog[1] # TBD - lap_insertion?
+        # int_hid_stream_channel2 = analog[4]  # yaw     4-> channel 8 // bytes 16 17
+        # int_inner_handle_channel1 = analog[2] # pitch  2-> channel 6 // bytes 12 13 
+        # int_inner_handle_channel2 = analog[3] # roll   3-> channel 7 // bytes 14 15 // Yaw, new map.
         int_hid_stream_channel1 = analog[1] # TBD - lap_insertion?
-        int_hid_stream_channel2 = analog[4]  # yaw     4-> channel 8 // bytes 16 17
-        int_inner_handle_channel1 = analog[2] # pitch  2-> channel 6 // bytes 12 13 
-        int_inner_handle_channel2 = analog[3] # roll   3-> channel 7 // bytes 14 15 // Yaw, new map.
+        int_hid_stream_channel2 = analog[3]  # LEFT/RIGHT                   3-> channel 7  // bytes 14 15 // Yaw, new map.
+        int_inner_handle_channel1 = analog[7] # UP/DOWN (forward/backward)  7-> channel 11 // bytes 22 23
+        int_inner_handle_channel2 = analog[2] # ROTATION (Roll)             2-> channel 6  // bytes 12 13 
         # Quaternion unit reads:
         BAAB_space = analog[5]
-        QUA_Data_w = analog[6]
-        QUA_Data_x = analog[7]
-        QUA_Data_y = analog[8]
-        QUA_Data_z = analog[9]
+        # QUA_Data_w = analog[6]
+        # QUA_Data_x = analog[7]
+        # QUA_Data_y = analog[8]
+        # QUA_Data_z = analog[9]
+        # the Quaternions moved to bytes: 26..33 // channels 13..16 // analog[9..12]
+        QUA_Data_w = analog[9]
+        QUA_Data_x = analog[10]
+        QUA_Data_y = analog[11]
+        QUA_Data_z = analog[12]
         int_clicker = Euler_Angles_From_Quat[2]  # yaw // tbd: "Yaw (from Quaternion)"
         int_sleepTimer = 0 # no display for "Roll (from Quaternion)" aka: "MotorCurrent"
         int_batteryLevel = 0
@@ -1184,9 +1193,11 @@ def my_channel_row(frame, row, label, style):
         ttk.Label(frame,text="Torque").grid(row=row,column=0)
         ttk.Label(frame,text="Image Quality").grid(row=row,column=1) # image_quality
     elif PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-        text_name = "Pitch = bytes 12,13)"
+        # text_name = "Pitch = bytes 12,13)"
+        text_name = "UP/DOWN = bytes 22,23 (Bosch: pitch)"
         ttk.Label(frame,text=text_name).grid(row=row,column=0)
-        text_name = "Roll = bytes 14,15)"
+        # text_name = "Roll = bytes 14,15)"
+        text_name = "ROTATION (Roll) = bytes 12,13 (Bosch: roll)"
         ttk.Label(frame,text=text_name).grid(row=row,column=1)
     else:
         # InnerHandle
@@ -1324,7 +1335,7 @@ NOTE: \tUse normal start streaming \
     if PRODUCT_ID == PRODUCT_ID_STATION:
         text_name = "Insertion"
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-        text_name = "TBD (insertion?) = bytes 10 11"
+        text_name = "0 (not mapped yet) = bytes 10 11"
     ttk.Label(frame,text=text_name).grid(row=row,column=0)
     
     row += 1
@@ -1341,7 +1352,8 @@ NOTE: \tUse normal start streaming \
         if DEBUG_SLIPPAGE == 1:
             text_name = "Delta insertion (or Tool Size)"
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-        text_name = "Yaw = bytes 16 17"
+        # text_name = "Yaw = bytes 16 17"
+        text_name = "LEFT/RIGHT = bytes 14 15 (Bosch: yaw)"
     ttk.Label(frame,text=text_name).grid(row=row,column=1)
 
     row += 1
@@ -2104,5 +2116,13 @@ comment:
 - reset the values of: int_MotorCur int_sleepTimer int_batteryLevel to disable redundant bars.
 2024_06_11.a
 - add ruler for every 10 lines of print "Received data:"
+2024_06_11.b
+- to change the names on the labels according to their new descriptions.
+- change the bytes that are transferred to the the active progressBars.
+// LAP                         Bosch       bytes       new stream  
+// ----                        -----       -----       ----------
+// LEFT/RIGHT                  roll        14,15       yaw
+// UP/DOWN (forward/backward)  yaw         22,23       pitch
+// ROTATION (Roll)             pitch       12,13       roll
 
 '''    
