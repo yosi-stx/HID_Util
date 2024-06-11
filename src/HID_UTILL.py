@@ -898,6 +898,10 @@ def gui_handler(value, do_print=False):
     global QUA_Data_z
     global Euler_Angles_From_Quat
     if ( timer() - gui_handler.last_print_time) >= PRINT_TIME_2:  # if delta time passed PRINT_TIME_2 from last printing
+        # display ruler for bytes order reference every X line:
+        if gui_handler.ruler_modulu % 10 == 0:
+            print("Ruler:           00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263")
+        gui_handler.ruler_modulu += 1
         print("Received data: %s" % hexlify(value))
         # display quaternion values:
         quaternion_norm([QUA_Data_w,QUA_Data_x,QUA_Data_y,QUA_Data_z])
@@ -997,9 +1001,9 @@ def gui_handler(value, do_print=False):
         int_inner_handle_channel2 = image_quality
     elif PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
         int_hid_stream_channel1 = analog[1] # TBD - lap_insertion?
-        int_hid_stream_channel2 = analog[4]  # yaw
-        int_inner_handle_channel1 = analog[2] # pitch
-        int_inner_handle_channel2 = analog[3] # roll
+        int_hid_stream_channel2 = analog[4]  # yaw     4-> channel 8 // bytes 16 17
+        int_inner_handle_channel1 = analog[2] # pitch  2-> channel 6 // bytes 12 13 
+        int_inner_handle_channel2 = analog[3] # roll   3-> channel 7 // bytes 14 15 // Yaw, new map.
         # Quaternion unit reads:
         BAAB_space = analog[5]
         QUA_Data_w = analog[6]
@@ -1165,6 +1169,7 @@ gui_handler.last_insertion = 0
 gui_handler.insertion_hex = 0
 gui_handler.toggle = 1
 gui_handler.last_print_time = 0
+gui_handler.ruler_modulu = 0
 
 PROGRESS_BAR_LEN = 300
 LONG_PROGRESS_BAR_LEN = 590
@@ -2097,4 +2102,7 @@ comment:
 - use the Euler_Angles_From_Quat[] value to set a progressbar 
 - change default of debug_pwm_print = True
 - reset the values of: int_MotorCur int_sleepTimer int_batteryLevel to disable redundant bars.
+2024_06_11.a
+- add ruler for every 10 lines of print "Received data:"
+
 '''    
