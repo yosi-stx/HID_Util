@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2024_06_11.b"
+util_verstion = "2024_06_13.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -1314,7 +1314,7 @@ NOTE: \tZero value in Tool_size \
 \t\t\t\t\
 NOTE: \tUse normal start streaming \
 \n\t\t\t\t\t\
-\t pitch: bytes 12 13, roll: bytes 14 15, yaw: bytes 16 17"
+\t rotation: 12 13,    left/right:  14,15,  up/down: 22 23"
         ttk.Label(frame,text=text_name).grid(row=row,sticky=tk.NW)
     else:
         ttk.Label(frame,text="ADCs...").grid(row=row,sticky=tk.NW)
@@ -2124,5 +2124,7 @@ comment:
 // LEFT/RIGHT                  roll        14,15       yaw
 // UP/DOWN (forward/backward)  yaw         22,23       pitch
 // ROTATION (Roll)             pitch       12,13       roll
+2024_06_13.a
+- update the NOTE 
 
 '''    
