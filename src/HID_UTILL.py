@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2024_06_13.a"
+util_verstion = "2024_10_03.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -152,6 +152,7 @@ START_INDEX = 2 + 4 # Ignore the first two bytes, then skip the version (4 bytes
 ANALOG_INDEX_LIST = list(range(START_INDEX + 2, START_INDEX + 8 * 2 + 1, 2)) 
 # for 12+10=22 analog channels:
 ANALOG_INDEX_LIST_TOOLS = list(range(START_INDEX + 2, START_INDEX + 22 * 2 + 1, 2)) 
+print("ANALOG_INDEX_LIST_TOOLS=",ANALOG_INDEX_LIST_TOOLS)
 # ANALOG_INDEX_LIST = [8, 10, 12, 14, 16, 18, 20, 22]
 COUNTER_INDEX = 2 + 22 + 18 # Ignore the first two bytes, then skip XData1 (22 bytes) and OverSample (==XDataSlave1; 18 bytes)
 CMOS_INDEX = 2 + 2   # maybe + 4???
@@ -1004,10 +1005,29 @@ def gui_handler(value, do_print=False):
         # int_hid_stream_channel2 = analog[4]  # yaw     4-> channel 8 // bytes 16 17
         # int_inner_handle_channel1 = analog[2] # pitch  2-> channel 6 // bytes 12 13 
         # int_inner_handle_channel2 = analog[3] # roll   3-> channel 7 // bytes 14 15 // Yaw, new map.
+
+        # int_hid_stream_channel1 = analog[1] # TBD - lap_insertion?
+        # int_hid_stream_channel2 = analog[3]  # LEFT/RIGHT                   3-> channel 7  // bytes 14 15 // Yaw, new map.
+        # int_inner_handle_channel1 = analog[7] # UP/DOWN (forward/backward)  7-> channel 11 // bytes 22 23
+        # int_inner_handle_channel2 = analog[2] # ROTATION (Roll)             2-> channel 6  // bytes 12 13 
+
+        # the C code:
+        # prime_out_buffer[34] = yaw16 & 0xFF;
+        # prime_out_buffer[35] = yaw16>>8;
+        # prime_out_buffer[36] = roll16 & 0xFF;
+        # prime_out_buffer[37] = roll16>>8;
+        # prime_out_buffer[38] = pitch16 & 0xFF;
+        # prime_out_buffer[39] = pitch16>>8;
+
+#         00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263
+#         3f3e0109000000000000000049d257fc00005d5d0000f504abba0000000000000033e903e9071a07000000000000000000000000000000000000000000000000'
+#                          0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16
+#ANALOG_INDEX_LIST_TOOLS= [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50]
+
         int_hid_stream_channel1 = analog[1] # TBD - lap_insertion?
-        int_hid_stream_channel2 = analog[3]  # LEFT/RIGHT                   3-> channel 7  // bytes 14 15 // Yaw, new map.
-        int_inner_handle_channel1 = analog[7] # UP/DOWN (forward/backward)  7-> channel 11 // bytes 22 23
-        int_inner_handle_channel2 = analog[2] # ROTATION (Roll)             2-> channel 6  // bytes 12 13 
+        int_hid_stream_channel2 = analog[14]  # LEFT/RIGHT                   channel 14 // bytes 36 38 // (Bosch roll)
+        int_inner_handle_channel1 = analog[15] # UP/DOWN (forward/backward)  channel 15 // bytes 38 40 // (Bosch pitch)
+        int_inner_handle_channel2 = analog[13] # ROTATION (Roll)             channel 13 // bytes 34 36 // (Bosch yaw)
         # Quaternion unit reads:
         BAAB_space = analog[5]
         # QUA_Data_w = analog[6]
@@ -1015,10 +1035,22 @@ def gui_handler(value, do_print=False):
         # QUA_Data_y = analog[8]
         # QUA_Data_z = analog[9]
         # the Quaternions moved to bytes: 26..33 // channels 13..16 // analog[9..12]
-        QUA_Data_w = analog[9]
-        QUA_Data_x = analog[10]
-        QUA_Data_y = analog[11]
-        QUA_Data_z = analog[12]
+        # QUA_Data_w = analog[9]
+        # QUA_Data_x = analog[10]
+        # QUA_Data_y = analog[11]
+        # QUA_Data_z = analog[12]
+
+        # 2024_10_03__17_11
+#          00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263
+#          3f3e0109000000000000000049d257fc00005d5d0000f504abba0000000000000033e903e9071a07000000000000000000000000000000000000000000000000'
+#                           0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16
+# ANALOG_INDEX_LIST_TOOLS= [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50]
+
+        # the Quaternion moved to bytes: 12 13, 14 15, 18 19, 22 23// analog[2, 3, 5, 7]
+        QUA_Data_w = analog[5]
+        QUA_Data_x = analog[7]
+        QUA_Data_y = analog[3]
+        QUA_Data_z = analog[2]
         int_clicker = Euler_Angles_From_Quat[2]  # yaw // tbd: "Yaw (from Quaternion)"
         int_sleepTimer = 0 # no display for "Roll (from Quaternion)" aka: "MotorCurrent"
         int_batteryLevel = 0
@@ -1194,10 +1226,10 @@ def my_channel_row(frame, row, label, style):
         ttk.Label(frame,text="Image Quality").grid(row=row,column=1) # image_quality
     elif PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
         # text_name = "Pitch = bytes 12,13)"
-        text_name = "UP/DOWN = bytes 22,23 (Bosch: pitch)"
+        text_name = "UP/DOWN = bytes 38,39 (Bosch: pitch)"
         ttk.Label(frame,text=text_name).grid(row=row,column=0)
         # text_name = "Roll = bytes 14,15)"
-        text_name = "ROTATION (Roll) = bytes 12,13 (Bosch: roll)"
+        text_name = "ROTATION (Roll) = bytes 34,35 (Bosch: yaw)"
         ttk.Label(frame,text=text_name).grid(row=row,column=1)
     else:
         # InnerHandle
@@ -1314,7 +1346,7 @@ NOTE: \tZero value in Tool_size \
 \t\t\t\t\
 NOTE: \tUse normal start streaming \
 \n\t\t\t\t\t\
-\t rotation: 12 13,    left/right:  14,15,  up/down: 22 23"
+\t rotation: 34 35,    left/right:  36 37,  up/down: 38 39"
         ttk.Label(frame,text=text_name).grid(row=row,sticky=tk.NW)
     else:
         ttk.Label(frame,text="ADCs...").grid(row=row,sticky=tk.NW)
@@ -1353,7 +1385,7 @@ NOTE: \tUse normal start streaming \
             text_name = "Delta insertion (or Tool Size)"
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
         # text_name = "Yaw = bytes 16 17"
-        text_name = "LEFT/RIGHT = bytes 14 15 (Bosch: yaw)"
+        text_name = "LEFT/RIGHT = bytes 36 37 (Bosch: roll)"
     ttk.Label(frame,text=text_name).grid(row=row,column=1)
 
     row += 1
@@ -1384,7 +1416,7 @@ NOTE: \tUse normal start streaming \
     # Clicker labels
 #    ttk.Label(frame,text="InnerClicker").grid(row=row,column=0,sticky=tk.W)
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-        ttk.Label(frame,text="Yaw (from Quaternion)[degrees]").grid(row=row,column=0)
+        ttk.Label(frame,text="Yaw (from Quaternion)[degrees]-WIP=TBD").grid(row=row,column=0)
     else:
         ttk.Label(frame,text="Channel 9").grid(row=row,column=0)
 
@@ -2126,5 +2158,13 @@ comment:
 // ROTATION (Roll)             pitch       12,13       roll
 2024_06_13.a
 - update the NOTE 
+2024_10_03 
+- the Quaternion moved to bytes: 12 13, 14 15, 18 19, 22 23// analog[2, 3, 5, 7]
+- the Euler moved to bytes: 34 35 36 37 38 39
+- fix the notations on the scroll-bars : 
+(Bosch: yaw) changes into (Bosch: roll) bytes 36 36 
+(Bosch: roll) changes into (Bosch: yaw) bytes 34 35
 
+TODO: 
+handle the scale of the quaternion that is used in GUI.
 '''    
