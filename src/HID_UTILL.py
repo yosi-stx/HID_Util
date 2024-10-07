@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2024_10_03.a"
+util_verstion = "2024_10_07.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -860,6 +860,14 @@ def gui_handler(value, do_print=False):
 
     # Format the total streaming time in HH:MM:SS format
     formatted_streaming_time = f"{hours:02}:{minutes:02}:{seconds:02}"    
+
+
+    if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        if value[24] == 0xAB and value[25] == 0xBA :
+            verMain = "%0.2X" % value[2]
+            verSub  = "%0.2X" % value[3]
+            formatted_streaming_time = formatted_streaming_time + "     LAP4 demo Ver" + verMain + "." + verSub
+        
     
     # formatted_time = total_streaming_time.strftime("%Y_%m_%d__%H:%M:%S")    # Format the date and time in the desired format
     # formatted_time = gui_handler.start_streaming_time.strftime("%Y_%m_%d__%H:%M:%S")    # Format the date and time in the desired format
@@ -1694,10 +1702,12 @@ NOTE: \tUse normal start streaming \
     temp_widget = tk.Button(frame,text ="Get Board Type",command = board_type_button_callback)
     temp_widget.grid(row=row,column=0)
 
-    if PRODUCT_ID != PRODUCT_ID_CTAG: # PRODUCT_ID_LAP_NEW_CAMERA, PRODUCT_ID_STATION...
-        temp_widget = tk.Button(frame,text ="Get friendly FW version",command = alive_button_CallBack)
-    else:
+    if PRODUCT_ID == PRODUCT_ID_CTAG: 
         temp_widget = tk.Button(frame,text ="Keep alive (fast BLE)",command = alive_button_CallBack)
+    elif PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA: # this convention is not suitable to LAP4 demo FW
+        temp_widget = tk.Button(frame,text ="Get friendly FW version",command = alive_button_CallBack)
+    else:   # , PRODUCT_ID_STATION...
+        temp_widget = tk.Button(frame,text ="Get friendly FW version",command = alive_button_CallBack)
     temp_widget.grid(row=row,column=1)
     row += 1
 
@@ -2164,6 +2174,9 @@ comment:
 - fix the notations on the scroll-bars : 
 (Bosch: yaw) changes into (Bosch: roll) bytes 36 36 
 (Bosch: roll) changes into (Bosch: yaw) bytes 34 35
+2024_10_07
+- display LAP_NEW_CAMERA demo FW version
+- special treatment for the demo is filtered by FW streaming 0xAB 0xBA at bytes [24][25]
 
 TODO: 
 handle the scale of the quaternion that is used in GUI.
