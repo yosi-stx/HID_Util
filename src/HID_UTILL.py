@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2024_10_07.a"
+util_verstion = "2024_10_08.b"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -19,6 +19,7 @@ from datetime import datetime
 import winsound
 import os
 import math
+import numpy as np
 
 import include_dll_path
 # work around to solve issue with importing the hidapi.dll
@@ -864,9 +865,9 @@ def gui_handler(value, do_print=False):
 
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
         if value[24] == 0xAB and value[25] == 0xBA :
-            verMain = "%0.2X" % value[2]
-            verSub  = "%0.2X" % value[3]
-            formatted_streaming_time = formatted_streaming_time + "     LAP4 demo Ver" + verMain + "." + verSub
+            FWverMajor = "%0.2X" % value[2]
+            FWverMinor  = "%0.2X" % value[3]
+            formatted_streaming_time = formatted_streaming_time + "     LAP4 demo Ver" + FWverMajor + "." + FWverMinor
         
     
     # formatted_time = total_streaming_time.strftime("%Y_%m_%d__%H:%M:%S")    # Format the date and time in the desired format
@@ -1036,6 +1037,7 @@ def gui_handler(value, do_print=False):
         int_hid_stream_channel2 = analog[14]  # LEFT/RIGHT                   channel 14 // bytes 36 38 // (Bosch roll)
         int_inner_handle_channel1 = analog[15] # UP/DOWN (forward/backward)  channel 15 // bytes 38 40 // (Bosch pitch)
         int_inner_handle_channel2 = analog[13] # ROTATION (Roll)             channel 13 // bytes 34 36 // (Bosch yaw)
+
         # Quaternion unit reads:
         BAAB_space = analog[5]
         # QUA_Data_w = analog[6]
@@ -1055,10 +1057,20 @@ def gui_handler(value, do_print=False):
 # ANALOG_INDEX_LIST_TOOLS= [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50]
 
         # the Quaternion moved to bytes: 12 13, 14 15, 18 19, 22 23// analog[2, 3, 5, 7]
-        QUA_Data_w = analog[5]
-        QUA_Data_x = analog[7]
-        QUA_Data_y = analog[3]
-        QUA_Data_z = analog[2]
+        # QUA_Data_w = np.int16(analog[5]) / 16
+        QUA_Data_w = np.int16(analog[5])//16 
+        QUA_Data_x = np.int16(analog[7])//16 
+        QUA_Data_y = np.int16(analog[3])//16 
+        QUA_Data_z = np.int16(analog[2])//16 
+        # scaling back to previous version 
+        # QUA_Data_w = (analog[5] & 0xFFFF)  # Ensure 16-bit value
+        # QUA_Data_w = ((QUA_Data_w + 2**15) % 2**16 - 2**15) / 16
+        # QUA_Data_x = (analog[5] & 0xFFFF)  # Ensure 16-bit value
+        # QUA_Data_x = ((QUA_Data_x + 2**15) % 2**16 - 2**15) / 16
+        # QUA_Data_y = (analog[5] & 0xFFFF)  # Ensure 16-bit value
+        # QUA_Data_y = ((QUA_Data_y + 2**15) % 2**16 - 2**15) / 16
+        # QUA_Data_z = (analog[5] & 0xFFFF)  # Ensure 16-bit value
+        # QUA_Data_z = ((QUA_Data_z + 2**15) % 2**16 - 2**15) / 16
         int_clicker = Euler_Angles_From_Quat[2]  # yaw // tbd: "Yaw (from Quaternion)"
         int_sleepTimer = 0 # no display for "Roll (from Quaternion)" aka: "MotorCurrent"
         int_batteryLevel = 0
@@ -1083,10 +1095,30 @@ def gui_handler(value, do_print=False):
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
         precentage_clicker = int(( (180 + int_clicker) / 360 ) * 100) # use the 360 degrees for full-scale.
 
+
+        # int_hid_stream_channel2 = analog[14]  # LEFT/RIGHT                   channel 14 // bytes 36 38 // (Bosch roll)
+        # int_inner_handle_channel1 = analog[15] # UP/DOWN (forward/backward)  channel 15 // bytes 38 40 // (Bosch pitch)
+        # int_inner_handle_channel2 = analog[13] # ROTATION (Roll)             channel 13 // bytes 34 36 // (Bosch yaw)
+
     if PRODUCT_ID == PRODUCT_ID_STATION:
         precentage_hid_stream_channel1 = abs(int((int_hid_stream_channel1 / 1000) * 100))
         precentage_inner_handle_channel1 = abs(int((int_inner_handle_channel1 / 1000) * 100))
         precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 255) * 100)
+    elif PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        if int(FWverMinor) < 10:
+            precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
+            precentage_inner_handle_channel1 = int((int_inner_handle_channel1 / 4096) * 100)
+            precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 4096) * 100)
+        else: 
+            # 360 * 16 = 5760 // full-scale of the Bosch yaw.
+            # 180 * 16 = 2880 // full-scale one direction of Bosch roll and pitch.
+            precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
+            signed_int_hid_stream_channel2 = np.int16(int_hid_stream_channel2)
+            signed_int_inner_handle_channel1 = np.int16(int_inner_handle_channel1)
+            # print(" signed_int_hid_stream_channel2= ",signed_int_hid_stream_channel2,)
+            precentage_hid_stream_channel2 =   int(((2880+signed_int_hid_stream_channel2) / 5760) * 100) # channel 14 // bytes 36 38 // (Bosch roll)
+            precentage_inner_handle_channel1 = int(((2880+signed_int_inner_handle_channel1) / 5760) * 100)  # channel 15 // bytes 38 40 // (Bosch pitch)
+            precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 5760) * 100)  # channel 13 // bytes 34 36 // (Bosch yaw)
     else:
         precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
         precentage_inner_handle_channel1 = int((int_inner_handle_channel1 / 4096) * 100)
@@ -1133,9 +1165,19 @@ def gui_handler(value, do_print=False):
     # entry_fault = text_1_entry
     
     progressbar_style_hid_stream_channel1.configure(HID_STREAM_CHANNEL1_STYLE,text=("%d"%int_hid_stream_channel1))
-    progressbar_style_hid_stream_channel2.configure(HID_STREAM_CHANNEL2_STYLE,text=("%d"%int_hid_stream_channel2))
-    progressbar_style_inner_handle_channel1.configure(INNER_HANDLE_CHANNEL1_STYLE,text=("%d"%int_inner_handle_channel1))
     progressbar_style_inner_handle_channel2.configure(INNER_HANDLE_CHANNEL2_STYLE,text=("%d"%int_inner_handle_channel2))
+    if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
+        if int(FWverMinor) > 9:
+            progressbar_style_hid_stream_channel1.configure(HID_STREAM_CHANNEL1_STYLE,text=("%d"%int_hid_stream_channel1))
+            progressbar_style_hid_stream_channel2.configure(HID_STREAM_CHANNEL2_STYLE,text=("%d"%signed_int_hid_stream_channel2)) #(Bosch roll)
+            progressbar_style_inner_handle_channel1.configure(INNER_HANDLE_CHANNEL1_STYLE,text=("%d"%signed_int_inner_handle_channel1)) #(Bosch pitch)
+            # progressbar_style_inner_handle_channel2.configure(INNER_HANDLE_CHANNEL2_STYLE,text=("%d"%int_inner_handle_channel2)) #(Bosch yaw)
+        else: 
+            progressbar_style_hid_stream_channel2.configure(HID_STREAM_CHANNEL2_STYLE,text=("%d"%int_hid_stream_channel2)) #(Bosch roll)
+            progressbar_style_inner_handle_channel1.configure(INNER_HANDLE_CHANNEL1_STYLE,text=("%d"%int_inner_handle_channel1)) #(Bosch pitch)
+    else: 
+        progressbar_style_hid_stream_channel2.configure(HID_STREAM_CHANNEL2_STYLE,text=("%d"%int_hid_stream_channel2)) #(Bosch roll)
+        progressbar_style_inner_handle_channel1.configure(INNER_HANDLE_CHANNEL1_STYLE,text=("%d"%int_inner_handle_channel1)) #(Bosch pitch)
     progressbar_style_clicker.configure(CLICKER_STYLE,text=("%d"%int_clicker))
     # progressbar_style_sleepTimer.configure(SLEEPTIMER_STYLE,text=("%d"%sleepTimer))
     progressbar_style_sleepTimer.configure(SLEEPTIMER_STYLE,text=("%d"%precentage_sleepTimer)) # PWM_command_stream_back
@@ -2177,6 +2219,12 @@ comment:
 2024_10_07
 - display LAP_NEW_CAMERA demo FW version
 - special treatment for the demo is filtered by FW streaming 0xAB 0xBA at bytes [24][25]
+2024_10_08
+- sanity test of the Quaternion --> failed , TBD to investigate.
+2024_10_08.b
+- this version is for "IMU Checker HID Ver1.10" by comparing to int(FWverMinor)
+- Euler resolution of 0.0625 degree (aka: 3.75' minutes)
+- compensate the lack of scaling and shifting 
 
 TODO: 
 handle the scale of the quaternion that is used in GUI.
