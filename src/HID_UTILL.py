@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2024_10_08.b"
+util_verstion = "2024_10_16.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -795,7 +795,7 @@ def quaternion_norm( wxyz ):
         print("y = 0x%.4X ," % QUA_Data_y, end="")
         print("z = 0x%.4X ]" % QUA_Data_z, end="")
         print()
-        print(wxyz)
+        print("wxyz = ",wxyz)
     # wxyz_signed = uint_16_unsigned_to_int_signed(wxyz)
     w = uint_16_unsigned_to_int_signed(wxyz[0])
     x = uint_16_unsigned_to_int_signed(wxyz[1])
@@ -803,19 +803,22 @@ def quaternion_norm( wxyz ):
     z = uint_16_unsigned_to_int_signed(wxyz[3])
     wxyz_signed = [w,x,y,z]
     if debug_pwm_print:
-        print(wxyz_signed)
+        print("wxyz_signed = [w,x,y,z] = ",wxyz_signed)
 
-    c = 2**11/2 - 1  # to scale the reading from i2c to integers.
+    # c = 2**11/2 - 1  # to scale the reading from i2c to integers.
+    c = 2**10 - 1  # to scale the reading from i2c to integers.
+    # without the scaling of the /16 of the integers 2024_10_15 
+    c = 2**14 - 1  # to scale the reading from i2c to integers.
     wxyz_float = [i / c for i in wxyz_signed]
     if debug_pwm_print:
-        print(wxyz_float)
+        print("wxyz_float = ",wxyz_float)
     s  = sum(square(wxyz_float))
     if debug_pwm_print:
         print("sum(square(wxyz_float) = %.4f ]" % s)
     global Euler_Angles_From_Quat
     Euler_Angles_From_Quat = quaternion_to_euler_angle_list(wxyz_float)
     if debug_pwm_print:
-        print(Euler_Angles_From_Quat)
+        print("Euler_Angles_From_Quat = [pitch,roll,yaw] = ",Euler_Angles_From_Quat)
     
     # Qua_all = math.sqrt((QUA_Data_w/16384.0)*(QUA_Data_w/16384.0) + (QUA_Data_x/16384.0)*(QUA_Data_x/16384.0) + (QUA_Data_y/16384.0)*(QUA_Data_y/16384.0) + (QUA_Data_z/16384.0)*(QUA_Data_z/16384.0))
     return 
@@ -1058,10 +1061,10 @@ def gui_handler(value, do_print=False):
 
         # the Quaternion moved to bytes: 12 13, 14 15, 18 19, 22 23// analog[2, 3, 5, 7]
         # QUA_Data_w = np.int16(analog[5]) / 16
-        QUA_Data_w = np.int16(analog[5])//16 
-        QUA_Data_x = np.int16(analog[7])//16 
-        QUA_Data_y = np.int16(analog[3])//16 
-        QUA_Data_z = np.int16(analog[2])//16 
+        QUA_Data_w = np.int16(analog[5])#//16 
+        QUA_Data_x = np.int16(analog[7])#//16 
+        QUA_Data_y = np.int16(analog[3])#//16 
+        QUA_Data_z = np.int16(analog[2])#//16 
         # scaling back to previous version 
         # QUA_Data_w = (analog[5] & 0xFFFF)  # Ensure 16-bit value
         # QUA_Data_w = ((QUA_Data_w + 2**15) % 2**16 - 2**15) / 16
@@ -1072,6 +1075,7 @@ def gui_handler(value, do_print=False):
         # QUA_Data_z = (analog[5] & 0xFFFF)  # Ensure 16-bit value
         # QUA_Data_z = ((QUA_Data_z + 2**15) % 2**16 - 2**15) / 16
         int_clicker = Euler_Angles_From_Quat[2]  # yaw // tbd: "Yaw (from Quaternion)"
+        float_yaw = -Euler_Angles_From_Quat[2]  # yaw // tbd: "Yaw (from Quaternion)"
         int_sleepTimer = 0 # no display for "Roll (from Quaternion)" aka: "MotorCurrent"
         int_batteryLevel = 0
         int_MotorCur = 0
@@ -1093,7 +1097,8 @@ def gui_handler(value, do_print=False):
     precentage_sleepTimer = round(PWM_command_stream_back, 0)
     precentage_batteryLevel = int((int_batteryLevel / 4096) * 100)
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-        precentage_clicker = int(( (180 + int_clicker) / 360 ) * 100) # use the 360 degrees for full-scale.
+        # precentage_clicker = int(( (180 + int_clicker) / 360 ) * 100) # use the 360 degrees for full-scale.
+        precentage_clicker = ( (180 + float_yaw) / 360 ) * 100 # use the 360 degrees for full-scale.
 
 
         # int_hid_stream_channel2 = analog[14]  # LEFT/RIGHT                   channel 14 // bytes 36 38 // (Bosch roll)
@@ -1164,21 +1169,30 @@ def gui_handler(value, do_print=False):
     entry_clicker_counter = clicker_counter_entry
     # entry_fault = text_1_entry
     
-    progressbar_style_hid_stream_channel1.configure(HID_STREAM_CHANNEL1_STYLE,text=("%d"%int_hid_stream_channel1))
-    progressbar_style_inner_handle_channel2.configure(INNER_HANDLE_CHANNEL2_STYLE,text=("%d"%int_inner_handle_channel2))
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
         if int(FWverMinor) > 9:
             progressbar_style_hid_stream_channel1.configure(HID_STREAM_CHANNEL1_STYLE,text=("%d"%int_hid_stream_channel1))
-            progressbar_style_hid_stream_channel2.configure(HID_STREAM_CHANNEL2_STYLE,text=("%d"%signed_int_hid_stream_channel2)) #(Bosch roll)
-            progressbar_style_inner_handle_channel1.configure(INNER_HANDLE_CHANNEL1_STYLE,text=("%d"%signed_int_inner_handle_channel1)) #(Bosch pitch)
-            # progressbar_style_inner_handle_channel2.configure(INNER_HANDLE_CHANNEL2_STYLE,text=("%d"%int_inner_handle_channel2)) #(Bosch yaw)
+            int_roll = signed_int_hid_stream_channel2
+            float_roll = int_roll / 5760 * 360 
+            progressbar_style_hid_stream_channel2.configure(HID_STREAM_CHANNEL2_STYLE,text=("%d  (%.2f°)"%(int_roll,float_roll))) #(Bosch roll)
+            int_pitch = signed_int_inner_handle_channel1
+            float_pitch = int_pitch / 5760 * 360 
+            progressbar_style_inner_handle_channel1.configure(INNER_HANDLE_CHANNEL1_STYLE,text=("%d  (%.2f°)"%(int_pitch,float_pitch))) #(Bosch pitch)
+            int_yaw = int_inner_handle_channel2
+            float_yaw = int_yaw / 5760 * 360 
+            progressbar_style_inner_handle_channel2.configure(INNER_HANDLE_CHANNEL2_STYLE,text=("%d  (%.2f°)"%(int_yaw, float_yaw) )) #(Bosch yaw)
         else: 
             progressbar_style_hid_stream_channel2.configure(HID_STREAM_CHANNEL2_STYLE,text=("%d"%int_hid_stream_channel2)) #(Bosch roll)
             progressbar_style_inner_handle_channel1.configure(INNER_HANDLE_CHANNEL1_STYLE,text=("%d"%int_inner_handle_channel1)) #(Bosch pitch)
+            progressbar_style_inner_handle_channel2.configure(INNER_HANDLE_CHANNEL2_STYLE,text=("%d"%int_inner_handle_channel2))
+            progressbar_style_hid_stream_channel1.configure(HID_STREAM_CHANNEL1_STYLE,text=("%d"%int_hid_stream_channel1))
     else: 
         progressbar_style_hid_stream_channel2.configure(HID_STREAM_CHANNEL2_STYLE,text=("%d"%int_hid_stream_channel2)) #(Bosch roll)
         progressbar_style_inner_handle_channel1.configure(INNER_HANDLE_CHANNEL1_STYLE,text=("%d"%int_inner_handle_channel1)) #(Bosch pitch)
-    progressbar_style_clicker.configure(CLICKER_STYLE,text=("%d"%int_clicker))
+        progressbar_style_inner_handle_channel2.configure(INNER_HANDLE_CHANNEL2_STYLE,text=("%d"%int_inner_handle_channel2))
+        progressbar_style_hid_stream_channel1.configure(HID_STREAM_CHANNEL1_STYLE,text=("%d"%int_hid_stream_channel1))
+    # progressbar_style_clicker.configure(CLICKER_STYLE,text=("%d"%int_clicker))
+    progressbar_style_clicker.configure(CLICKER_STYLE,text=("%.2f°"%float_yaw))
     # progressbar_style_sleepTimer.configure(SLEEPTIMER_STYLE,text=("%d"%sleepTimer))
     progressbar_style_sleepTimer.configure(SLEEPTIMER_STYLE,text=("%d"%precentage_sleepTimer)) # PWM_command_stream_back
     progressbar_style_batteryLevel.configure(BATTERY_LEVEL_STYLE,text=("%d"%batteryLevel))
@@ -1466,7 +1480,7 @@ NOTE: \tUse normal start streaming \
     # Clicker labels
 #    ttk.Label(frame,text="InnerClicker").grid(row=row,column=0,sticky=tk.W)
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-        ttk.Label(frame,text="Yaw (from Quaternion)[degrees]-WIP=TBD").grid(row=row,column=0)
+        ttk.Label(frame,text="Yaw (from Quaternion)[degrees°]").grid(row=row,column=0)
     else:
         ttk.Label(frame,text="Channel 9").grid(row=row,column=0)
 
@@ -2225,6 +2239,11 @@ comment:
 - this version is for "IMU Checker HID Ver1.10" by comparing to int(FWverMinor)
 - Euler resolution of 0.0625 degree (aka: 3.75' minutes)
 - compensate the lack of scaling and shifting 
+2024_10_15
+- without the scaling of the /16 of the integers
+2024_10_16
+- adding ° indication in the style 
+- changing the sign of (-)float_yaw to display.
 
 TODO: 
 handle the scale of the quaternion that is used in GUI.
