@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2024_10_16.a"
+util_verstion = "2024_10_21.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -19,7 +19,7 @@ from datetime import datetime
 import winsound
 import os
 import math
-import numpy as np
+# import numpy as np
 
 import include_dll_path
 # work around to solve issue with importing the hidapi.dll
@@ -1061,10 +1061,14 @@ def gui_handler(value, do_print=False):
 
         # the Quaternion moved to bytes: 12 13, 14 15, 18 19, 22 23// analog[2, 3, 5, 7]
         # QUA_Data_w = np.int16(analog[5]) / 16
-        QUA_Data_w = np.int16(analog[5])#//16 
-        QUA_Data_x = np.int16(analog[7])#//16 
-        QUA_Data_y = np.int16(analog[3])#//16 
-        QUA_Data_z = np.int16(analog[2])#//16 
+        # QUA_Data_w = np.int16(analog[5])#//16 
+        # QUA_Data_x = np.int16(analog[7])#//16 
+        # QUA_Data_y = np.int16(analog[3])#//16 
+        # QUA_Data_z = np.int16(analog[2])#//16 
+        QUA_Data_w = (analog[5])#//16 
+        QUA_Data_x = (analog[7])#//16 
+        QUA_Data_y = (analog[3])#//16 
+        QUA_Data_z = (analog[2])#//16 
         # scaling back to previous version 
         # QUA_Data_w = (analog[5] & 0xFFFF)  # Ensure 16-bit value
         # QUA_Data_w = ((QUA_Data_w + 2**15) % 2**16 - 2**15) / 16
@@ -1118,8 +1122,8 @@ def gui_handler(value, do_print=False):
             # 360 * 16 = 5760 // full-scale of the Bosch yaw.
             # 180 * 16 = 2880 // full-scale one direction of Bosch roll and pitch.
             precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
-            signed_int_hid_stream_channel2 = np.int16(int_hid_stream_channel2)
-            signed_int_inner_handle_channel1 = np.int16(int_inner_handle_channel1)
+            signed_int_hid_stream_channel2 = uint_16_unsigned_to_int_signed(int_hid_stream_channel2)  # to set as signed !
+            signed_int_inner_handle_channel1 = uint_16_unsigned_to_int_signed(int_inner_handle_channel1)
             # print(" signed_int_hid_stream_channel2= ",signed_int_hid_stream_channel2,)
             precentage_hid_stream_channel2 =   int(((2880+signed_int_hid_stream_channel2) / 5760) * 100) # channel 14 // bytes 36 38 // (Bosch roll)
             precentage_inner_handle_channel1 = int(((2880+signed_int_inner_handle_channel1) / 5760) * 100)  # channel 15 // bytes 38 40 // (Bosch pitch)
@@ -2244,6 +2248,9 @@ comment:
 2024_10_16
 - adding ° indication in the style 
 - changing the sign of (-)float_yaw to display.
+2024_10_21 
+- removing numpy library
+- using: uint_16_unsigned_to_int_signed() instead of numpy
 
 TODO: 
 handle the scale of the quaternion that is used in GUI.
