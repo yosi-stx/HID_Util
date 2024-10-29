@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2024_10_21.a"
+util_verstion = "2024_10_29.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -846,7 +846,7 @@ def gui_handler(value, do_print=False):
     global BJ_rt_insertion_hex
     global BJ_rt_prev_insertion_hex
     global Do_Play_Sound_Var 
-
+    
     gui_handler_counter = gui_handler_counter + 1  # displayed as: PacketsCounter: 2023_08_09 
     current_time = datetime.now()
     if gui_handler.once == 0:
@@ -999,6 +999,9 @@ def gui_handler(value, do_print=False):
 
 
 
+    # Initialize float_yaw with a default value
+    float_yaw = 0.0
+    
     bool_clicker = bool((digital >> 2) & 0x0001)
     bool_reset = bool((digital >> 4) & 0x0001)
     bool_red_handle = bool((digital >> 7) & 0x0001)
@@ -2251,6 +2254,8 @@ comment:
 2024_10_21 
 - removing numpy library
 - using: uint_16_unsigned_to_int_signed() instead of numpy
+2024_10_29 
+- Initialize float_yaw with a default value
 
 TODO: 
 handle the scale of the quaternion that is used in GUI.
