@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2024_10_29.a"
+util_verstion = "2024_12_09.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -786,6 +786,8 @@ def quaternion_to_euler_angle_list(wxyz):
 
 # The square root of the product of a quaternion with its conjugate is called its norm 
 def quaternion_norm( wxyz ):
+    if PRODUCT_ID != PRODUCT_ID_LAP_NEW_CAMERA:
+        return
     # display quaternion values:
     # print("BAAB_space = %X " % BAAB_space, end="")
     global debug_pwm_print
@@ -2256,7 +2258,8 @@ comment:
 - using: uint_16_unsigned_to_int_signed() instead of numpy
 2024_10_29 
 - Initialize float_yaw with a default value
-
+2024_12_09
+- avoid printing the debug_pwm_print in quaternion_norm() if not camera board
 TODO: 
 handle the scale of the quaternion that is used in GUI.
 '''    
