@@ -59,6 +59,7 @@ special_cmd = 0
 prev_pwm = 0
 hr_slider = 0
 pulse_amp = 4
+g_hr_value = 60
 def show_hr_values():
     global hr_slider  # this is a widget
     return int(hr_slider.get())
@@ -91,10 +92,20 @@ def build_WRITE_DATA_CMD(pulse_amp, hr_value):
     
 
 def on_slider_release(event):
+    global g_hr_value
     value = int(hr_slider.get())
     slider_queue.put(value)
+    g_hr_value = value
     build_WRITE_DATA_CMD(pulse_amp,value)
 
+def on_amp_change(event):
+    global pulse_amp
+    selected_amp = int(event.widget.get())
+    pulse_amp = selected_amp
+    print(f"Amplitude changed to: {selected_amp}")
+    # Add your function call here
+    build_WRITE_DATA_CMD(pulse_amp,g_hr_value)
+    
 
 # def main_loop(device):
 def gui_loop(device):
@@ -279,6 +290,17 @@ def my_widgets(frame):
     # Bind the slider release event
     hr_slider.bind("<ButtonRelease-1>", on_slider_release)    
 
+    # Add Pulse Amplitude Combobox
+    row += 1
+    ttk.Label(frame, text="Pulse Amplitude:").grid(row=row, column=0, sticky=tk.W, padx=5, pady=5)
+    amp_combobox = ttk.Combobox(frame, values=[0, 1, 2, 3, 4], width=5, state="readonly")
+    amp_combobox.grid(row=row, column=1, sticky=tk.W, padx=5, pady=5)
+    amp_combobox.set(4)  # Set default value
+
+    # Bind the combobox to a function
+    amp_combobox.bind("<<ComboboxSelected>>", on_amp_change)
+    
+    
 def init_parser():
     parser = argparse.ArgumentParser(
         description="Read the HID data from target board.\nIf no argument is given, the program exits."
