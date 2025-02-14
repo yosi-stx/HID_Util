@@ -52,6 +52,7 @@ WRITE_DATA = bytes.fromhex("3f3ebb00b127ff00ff00ff00ffffffff00000000000000000000
 WRITE_DATA_CMD_START_0x304 = bytes.fromhex("3f048d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 WRITE_DATA_CMD_GET_FW_VERSION = bytes.fromhex("3f040600000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 WRITE_DATA_CMD_B = bytes.fromhex("3f04aa00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+WRITE_DATA_CMD_G = 0
 PRINT_TIME = 1.0 # Print every 1 second
 
 special_cmd = 0
@@ -66,9 +67,11 @@ def show_hr_values():
 slider_queue = queue.Queue()
 
 def build_WRITE_DATA_CMD(pulse_amp, hr_value):
+    global WRITE_DATA_CMD_G
+    global special_cmd
     WRITE_DATA_CMD___bytearray = bytearray(b'\x3f')  # initialization of the command
     print("hr_value=  ",int(hr_value))
-    WRITE_DATA_CMD___bytearray.append(5)
+    WRITE_DATA_CMD___bytearray.append(6)    # this is yat value in wireshark!
     WRITE_DATA_CMD___bytearray.append(0x9D) # command opcode.
     WRITE_DATA_CMD___bytearray.append(2)    # command with 2 parameters.
     WRITE_DATA_CMD___bytearray.append(0)
@@ -77,11 +80,12 @@ def build_WRITE_DATA_CMD(pulse_amp, hr_value):
     WRITE_DATA_CMD___bytearray.append(pulse_amp) # temporary use fix 4 
     # add the heart rate:
     WRITE_DATA_CMD___bytearray.append(int(hr_value))
+    # WRITE_DATA_CMD___bytearray.append(0x3d) # test with 61
     for i in range(63-6):
         WRITE_DATA_CMD___bytearray.append(0)
     # print("WRITE_DATA_CMD___bytearray = %s " % WRITE_DATA_CMD___bytearray)
     WRITE_DATA_CMD_G = bytes(WRITE_DATA_CMD___bytearray)
-    print("WRITE_DATA_CMD_G = %s " % WRITE_DATA_CMD_G)
+    # print("WRITE_DATA_CMD_G = %s " % WRITE_DATA_CMD_G)
     print("command data: %s" % hexlify(WRITE_DATA_CMD_G))
     special_cmd = 'G'
     
@@ -127,6 +131,11 @@ def gui_loop(device):
            device.write(WRITE_DATA)
            print("special_cmd B -> set_BSL_mode  --- this will stop HID communication with this GUI")
            special_cmd = 0
+        elif special_cmd == 'G':
+            print("------------ special_cmd heart_pulse ------------")
+            WRITE_DATA = WRITE_DATA_CMD_G 
+            device.write(WRITE_DATA)
+            special_cmd = 0
 #        else:
 #            WRITE_DATA = DEFAULT_WRITE_DATA
         
@@ -410,8 +419,9 @@ def main():
                     global special_cmd
                     # if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
                     if PRODUCT_ID in PRODUCT_ID_types:
-                        special_cmd = 'A'
-                        print("set in init: special_cmd = 'A'")
+                        # special_cmd = 'A'
+                        # print("set in init: special_cmd = 'A'")
+                        pass 
         elif (path_mode):
             device = hid.Device(path=PATH)
         else:
