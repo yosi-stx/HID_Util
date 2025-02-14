@@ -1,5 +1,5 @@
 # HR_util.py
-util_verstion = "2025_02_10.a"
+util_verstion = "2025_02_14.a"
 
 import tkinter as tk
 from tkinter import ttk
@@ -12,8 +12,13 @@ import sys
 import argparse
 import threading
 from time import perf_counter as timer
+# import time 
+from time import sleep
 
 from datetime import datetime
+
+import queue  # new consent from perplexity
+
 # to do connect
 VENDOR_ID = 0x2047 # Texas Instruments
 PRODUCT_ID = 0x0302 # Joystick.
@@ -43,20 +48,59 @@ SERIAL_NUMBER = "_"
 READ_SIZE = 64 # The size of the packet
 READ_TIMEOUT = 2 # 2ms
 WRITE_DATA = bytes.fromhex("3f3ebb00b127ff00ff00ff00ffffffff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+# start streaming command for station 0x303:
+WRITE_DATA_CMD_START_0x304 = bytes.fromhex("3f048d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 WRITE_DATA_CMD_GET_FW_VERSION = bytes.fromhex("3f040600000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 WRITE_DATA_CMD_B = bytes.fromhex("3f04aa00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 PRINT_TIME = 1.0 # Print every 1 second
+
+special_cmd = 0
+prev_pwm = 0
+hr_slider = 0
+pulse_amp = 4
+def show_hr_values():
+    global hr_slider  # this is a widget
+    return int(hr_slider.get())
+
+
+slider_queue = queue.Queue()
+
+def build_WRITE_DATA_CMD(pulse_amp, hr_value):
+    WRITE_DATA_CMD___bytearray = bytearray(b'\x3f')  # initialization of the command
+    print("hr_value=  ",int(hr_value))
+    WRITE_DATA_CMD___bytearray.append(5)
+    WRITE_DATA_CMD___bytearray.append(0x9D) # command opcode.
+    WRITE_DATA_CMD___bytearray.append(2)    # command with 2 parameters.
+    WRITE_DATA_CMD___bytearray.append(0)
+    WRITE_DATA_CMD___bytearray.append(0)
+    # add the amplitude // TBD to put the relevant gui value 
+    WRITE_DATA_CMD___bytearray.append(pulse_amp) # temporary use fix 4 
+    # add the heart rate:
+    WRITE_DATA_CMD___bytearray.append(int(hr_value))
+    for i in range(63-6):
+        WRITE_DATA_CMD___bytearray.append(0)
+    # print("WRITE_DATA_CMD___bytearray = %s " % WRITE_DATA_CMD___bytearray)
+    WRITE_DATA_CMD_G = bytes(WRITE_DATA_CMD___bytearray)
+    print("WRITE_DATA_CMD_G = %s " % WRITE_DATA_CMD_G)
+    print("command data: %s" % hexlify(WRITE_DATA_CMD_G))
+    special_cmd = 'G'
+    
+
+def on_slider_release(event):
+    value = int(hr_slider.get())
+    slider_queue.put(value)
+    build_WRITE_DATA_CMD(pulse_amp,value)
+
 
 # def main_loop(device):
 def gui_loop(device):
     do_print = True
     print_time = 0.0
-    time = timer()
+    current_time = timer()
     handle_time = timer()
     write_time_capture = timer()
     skip_write = 0
     prev_counter = 0
-    send_stream_request_command_once = 1
     global special_cmd
     global WRITE_DATA
     
@@ -66,41 +110,18 @@ def gui_loop(device):
             print_time = timer()
 
         # Write to the device 
-#        if send_stream_request_command_once == 1:
-#            send_stream_request_command_once = 0
-#            if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-#                print("enforce streaming of data with command 0x82"
-                # if device is attached enforce streaming of data.
-                # device.write(WRITE_DATA_CMD_START)
-        
         if special_cmd == 'I':
-            if PRODUCT_ID == PRODUCT_ID_STATION:
-                WRITE_DATA = WRITE_DATA_CMD_START_0x304
-            else:
-                WRITE_DATA = WRITE_DATA_CMD_START
+            WRITE_DATA = WRITE_DATA_CMD_START_0x304
             device.write(WRITE_DATA)
             print("special_cmd Start")
             special_cmd = 0
-#        elif special_cmd == 'S':
-#            WRITE_DATA = WRITE_DATA_CMD_GET_BOARD_TYPE
-#            device.write(WRITE_DATA)
-#            print("special_cmd CMD_GET_BOARD_TYPE")
-#            # print_flag = 1
-#            special_cmd = 0
         elif special_cmd == 'A':
             # if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
             if PRODUCT_ID in PRODUCT_ID_types:
                 WRITE_DATA = WRITE_DATA_CMD_GET_FW_VERSION
                 print("special_cmd A -> WRITE_DATA_CMD_GET_FW_VERSION")
                 device.write(WRITE_DATA)
-            else:
-                WRITE_DATA = WRITE_DATA_CMD_A
-                print("special_cmd A -> keep Alive + fast BLE update (every 20 msec)")
             special_cmd = 0
-#        elif special_cmd == 'M':
-#            WRITE_DATA = WRITE_DATA_CMD_M
-#            print("special_cmd M -> moderate BLE update rate every 50 mSec")
-#            special_cmd = 0
         elif special_cmd == 'B':
            WRITE_DATA = WRITE_DATA_CMD_B
            device.write(WRITE_DATA)
@@ -112,14 +133,14 @@ def gui_loop(device):
         if WRITE_DATA == WRITE_DATA_CMD_B:
             break
 
-        cycle_time = timer() - time
+        cycle_time = timer() - current_time
         # print("cycle timer: %.10f" % cycle_time)
 
         # If not enough time has passed, sleep for SLEEP_AMOUNT seconds
         # sleep_time = SLEEP_AMOUNT - (cycle_time)
 
         # Measure the time
-        time = timer()
+        current_time = timer()
 
         # Read the packet from the device
         value = device.read(READ_SIZE, timeout=READ_TIMEOUT)
@@ -139,14 +160,34 @@ def gui_loop(device):
                 print_every = print_every + 1
                 if print_every >= 500:
                     print_every = 0
-                    print("time:", time, end="")
+                    print("current_time:", current_time, end="")
                     print("  Received data: %s" % hexlify(value))
-            # print("time: %.6f" % time)
+            # print("current_time: %.6f" % current_time)
             handle_time = timer() 
             # prev_counter = counter
 
         # Update the do_print flag
         do_print = (timer() - print_time) >= PRINT_TIME
+
+        # Process slider queue
+        try:
+            slider_value = slider_queue.get_nowait()
+            print(f"HR Slider value: {slider_value}")
+        except queue.Empty:
+            pass
+
+        # 2025_02_13__21_33
+        if do_print:
+            # all things I want to have once a second
+            # print(print_time)
+            hr_slider_value = show_hr_values()
+            if (hr_slider_value != gui_loop.prev_hr_slider_value):
+                print(show_hr_values())
+            gui_loop.prev_hr_slider_value = hr_slider_value
+
+        # Add a small delay to prevent high CPU usage
+        sleep(0.1)  #on 2025_02_14 I get that:  AttributeError: 'float' object has no attribute 'sleep' 
+gui_loop.prev_hr_slider_value = 60            
 
 def hid_read( device ):
     global stream_data
@@ -181,11 +222,19 @@ def handler(value, do_print=False):
         print(" Please press <Enter> to Exit")
 
     return # do without gui
+    
+def my_seperator(frame, row):
+    ttk.Separator(frame, orient=tk.HORIZONTAL).grid(pady=10, row=row, columnspan=4, sticky=(tk.W + tk.E))
+    return row + 1
+    
 def my_widgets(frame):
-    global pwm_widget
-    global pwm_16_widget
+    global hr_slider  # this is a widget
     bold_font = ("TkDefaultFont", 9, "bold")
     row = 0
+    # row += 1
+
+    # Seperator
+    row = my_seperator(frame, row)
 
     # Outer Handle
     ttk.Label(frame,text="HID Streaming Values").grid(row=row,sticky=tk.W)
@@ -201,12 +250,25 @@ def my_widgets(frame):
     device_SN_label = ttk.Label(frame,text = serial_number_text, foreground="#0000FF")
     device_SN_label.grid(row=row,column=2,sticky=tk.W,)
     
-    # Add HR slider
+    # Add HR slider // from perplexity 
     row += 1
     ttk.Label(frame, text="Heart Rate (BPM):").grid(row=row, column=0, sticky=tk.W, padx=5, pady=5)
     hr_slider = ttk.Scale(frame, from_=20, to=120, orient=tk.HORIZONTAL, length=200)
     hr_slider.grid(row=row, column=1, columnspan=2, sticky=tk.W+tk.E, padx=5, pady=5)
     hr_slider.set(60)  # Set default value to 60 BPM
+
+    # Add label to display current HR value
+    hr_value_label = ttk.Label(frame, text="60")
+    hr_value_label.grid(row=row, column=3, sticky=tk.W, padx=5, pady=5)
+
+    # Update label when slider value changes
+    def update_hr_label(value):
+        hr_value_label.config(text=f"{int(float(value))}")
+
+    hr_slider.config(command=update_hr_label)
+
+    # Bind the slider release event
+    hr_slider.bind("<ButtonRelease-1>", on_slider_release)    
 
 def init_parser():
     parser = argparse.ArgumentParser(
@@ -388,3 +450,16 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# development helper:
+# the HID sending command to embedded it done by 
+# command for HeartPulse(4,120 ) with No replay from device:
+#   9D 02 00 00 04 78
+# WRITE_DATA_CMD_Heart_Pulse = bytes.fromhex("3f048d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+# WRITE_DATA_CMD_Heart_Pulse = bytes.fromhex("3f069d02000004780000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+
+'''
+
+
+
+'''

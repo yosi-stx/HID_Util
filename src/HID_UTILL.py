@@ -1324,15 +1324,7 @@ def my_channel_row(frame, row, label, style):
 
 
 def my_seperator(frame, row):
-    ttk.Separator(
-        frame,
-        orient=tk.HORIZONTAL
-    ).grid(
-        pady=10,
-        row=row,
-        columnspan=4,
-        sticky=(tk.W + tk.E)
-    )
+    ttk.Separator(frame, orient=tk.HORIZONTAL).grid(pady=10, row=row, columnspan=4, sticky=(tk.W + tk.E))
     return row + 1
 
 def my_widgets(frame):
