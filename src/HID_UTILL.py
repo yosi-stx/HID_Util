@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2024_12_09.a"
+util_verstion = "2025_03_06.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -242,6 +242,7 @@ QUA_Data_x = 0
 QUA_Data_y = 0
 QUA_Data_z = 0
 Euler_Angles_From_Quat = [0,0,0]
+FWverMinor  = "%0.2X" % 0x11
 
 def list_hid_devices():
     all_devices = win_hid.HidDeviceFilter().get_devices()
@@ -848,6 +849,7 @@ def gui_handler(value, do_print=False):
     global BJ_rt_insertion_hex
     global BJ_rt_prev_insertion_hex
     global Do_Play_Sound_Var 
+    global FWverMinor
     
     gui_handler_counter = gui_handler_counter + 1  # displayed as: PacketsCounter: 2023_08_09 
     current_time = datetime.now()
@@ -873,8 +875,14 @@ def gui_handler(value, do_print=False):
             FWverMajor = "%0.2X" % value[2]
             FWverMinor  = "%0.2X" % value[3]
             formatted_streaming_time = formatted_streaming_time + "     LAP4 demo Ver" + FWverMajor + "." + FWverMinor
-        
-    
+        else:
+            if gui_handler.popup_warning == 0:
+                gui_handler.popup_warning = 1
+                popup_txt = "PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA" + "\n" + "but there is no special 0xABBA stamp" + "\n" + "in the upcoming stream data from device!!!"
+                msg2("Workaround Info", popup_txt)
+                FWverMajor = "%0.2X" % 0x01
+                FWverMinor  = "%0.2X" % 0x11
+
     # formatted_time = total_streaming_time.strftime("%Y_%m_%d__%H:%M:%S")    # Format the date and time in the desired format
     # formatted_time = gui_handler.start_streaming_time.strftime("%Y_%m_%d__%H:%M:%S")    # Format the date and time in the desired format
     Total_Stream_Time.config(text = formatted_streaming_time) # for update the string field.
@@ -1284,7 +1292,7 @@ gui_handler.insertion_hex = 0
 gui_handler.toggle = 1
 gui_handler.last_print_time = 0
 gui_handler.ruler_modulu = 0
-
+gui_handler.popup_warning = 0
 PROGRESS_BAR_LEN = 300
 LONG_PROGRESS_BAR_LEN = 590
 
@@ -2252,6 +2260,9 @@ comment:
 - Initialize float_yaw with a default value
 2024_12_09
 - avoid printing the debug_pwm_print in quaternion_norm() if not camera board
+2025_03_06
+- workaround: Popup message if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA but there is no special 0xABBA stamp 
+- changing FWverMinor to be global variable that is set on default.
 TODO: 
 handle the scale of the quaternion that is used in GUI.
 '''    
