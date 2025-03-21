@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2025_03_06.a"
+util_verstion = "2025_03_21.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -243,6 +243,7 @@ QUA_Data_y = 0
 QUA_Data_z = 0
 Euler_Angles_From_Quat = [0,0,0]
 FWverMinor  = "%0.2X" % 0x11
+FWverMajor = "%0.2X" % 0x0 
 
 def list_hid_devices():
     all_devices = win_hid.HidDeviceFilter().get_devices()
@@ -850,6 +851,7 @@ def gui_handler(value, do_print=False):
     global BJ_rt_prev_insertion_hex
     global Do_Play_Sound_Var 
     global FWverMinor
+    global FWverMajor
     
     gui_handler_counter = gui_handler_counter + 1  # displayed as: PacketsCounter: 2023_08_09 
     current_time = datetime.now()
@@ -1127,11 +1129,7 @@ def gui_handler(value, do_print=False):
         precentage_inner_handle_channel1 = abs(int((int_inner_handle_channel1 / 1000) * 100))
         precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 255) * 100)
     elif PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-        if int(FWverMinor) < 10:
-            precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
-            precentage_inner_handle_channel1 = int((int_inner_handle_channel1 / 4096) * 100)
-            precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 4096) * 100)
-        else: 
+        if int(FWverMinor) >= 10 or int(FWverMajor) > 0:
             # 360 * 16 = 5760 // full-scale of the Bosch yaw.
             # 180 * 16 = 2880 // full-scale one direction of Bosch roll and pitch.
             precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
@@ -1141,6 +1139,11 @@ def gui_handler(value, do_print=False):
             precentage_hid_stream_channel2 =   int(((2880+signed_int_hid_stream_channel2) / 5760) * 100) # channel 14 // bytes 36 38 // (Bosch roll)
             precentage_inner_handle_channel1 = int(((2880+signed_int_inner_handle_channel1) / 5760) * 100)  # channel 15 // bytes 38 40 // (Bosch pitch)
             precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 5760) * 100)  # channel 13 // bytes 34 36 // (Bosch yaw)
+        else: 
+        # if int(FWverMinor) < 10:
+            precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
+            precentage_inner_handle_channel1 = int((int_inner_handle_channel1 / 4096) * 100)
+            precentage_inner_handle_channel2 = int((int_inner_handle_channel2 / 4096) * 100)
     else:
         precentage_hid_stream_channel1 = int((int_hid_stream_channel1 / 4096) * 100)
         precentage_inner_handle_channel1 = int((int_inner_handle_channel1 / 4096) * 100)
@@ -1187,7 +1190,7 @@ def gui_handler(value, do_print=False):
     # entry_fault = text_1_entry
     
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-        if int(FWverMinor) > 9:
+        if int(FWverMinor) > 9 or int(FWverMajor) > 0:
             progressbar_style_hid_stream_channel1.configure(HID_STREAM_CHANNEL1_STYLE,text=("%d"%int_hid_stream_channel1))
             int_roll = signed_int_hid_stream_channel2
             float_roll = int_roll / 5760 * 360 
@@ -2263,6 +2266,8 @@ comment:
 2025_03_06
 - workaround: Popup message if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA but there is no special 0xABBA stamp 
 - changing FWverMinor to be global variable that is set on default.
+2025_03_21  
+- support Lap4 new FW with the new combination of FWverMinor & FWverMajor 
 TODO: 
 handle the scale of the quaternion that is used in GUI.
 '''    
