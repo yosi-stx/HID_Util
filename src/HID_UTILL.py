@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2025_03_21.a"
+util_verstion = "2025_04_10.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -1051,7 +1051,7 @@ def gui_handler(value, do_print=False):
 #                          0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16
 #ANALOG_INDEX_LIST_TOOLS= [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50]
 
-        int_hid_stream_channel1 = analog[1] # TBD - lap_insertion?
+        int_hid_stream_channel1 = analog[7] # TBD - lap_insertion? ---> bytes 22,23 // bytes  20,21 in embedded data[] 
         int_hid_stream_channel2 = analog[14]  # LEFT/RIGHT                   channel 14 // bytes 36 38 // (Bosch roll)
         int_inner_handle_channel1 = analog[15] # UP/DOWN (forward/backward)  channel 15 // bytes 38 40 // (Bosch pitch)
         int_inner_handle_channel2 = analog[13] # ROTATION (Roll)             channel 13 // bytes 34 36 // (Bosch yaw)
@@ -1443,7 +1443,8 @@ NOTE: \tUse normal start streaming \
     if PRODUCT_ID == PRODUCT_ID_STATION:
         text_name = "Insertion"
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
-        text_name = "0 (not mapped yet) = bytes 10 11"
+        #text_name = "0 (not mapped yet) = bytes 10 11"
+        text_name = "Lap3 Ins. = bytes 20 21" #Channel 10 
     ttk.Label(frame,text=text_name).grid(row=row,column=0)
     
     row += 1
@@ -2268,6 +2269,8 @@ comment:
 - changing FWverMinor to be global variable that is set on default.
 2025_03_21  
 - support Lap4 new FW with the new combination of FWverMinor & FWverMajor 
+2025_04_10
+- adding Lap3 Ins. (aka: lap_insertion)  to "(not mapped yet)" channel. 
 TODO: 
 handle the scale of the quaternion that is used in GUI.
 '''    
