@@ -59,6 +59,7 @@ PRODUCT_ID_types =  {
   0x0306: "BOARD_TYPE: TOOLS_SLAVE",
   0x0307: "BOARD_TYPE: GBU",
   0x0308: "BOARD_TYPE: LAP camera",
+  0x030B: "BOARD_TYPE: KFIR_SINGA",
   0x2005: "BOARD_TYPE: PRODUCT_ID_LAP_NEW_CAMERA",  #board type is enforced in FW (descriptors.h)
   0x1965: "yosi"
 }

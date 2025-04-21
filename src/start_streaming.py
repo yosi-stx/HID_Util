@@ -38,6 +38,7 @@ PRODUCT_ID = 0x0302 # Joystick.
 PRODUCT_ID_JOYSTICK = 0x0302 # Joystick.
 PRODUCT_ID_ROUTER   = 0x0301 # Router
 PRODUCT_ID_STATION = 0x0304
+PRODUCT_ID_KFIR_SINGA = 0x030B
 PRODUCT_ID_LAP_NEW_CAMERA = 0x2005
 # 2021_01_24
 # USB\VID_24B3&PID_2005&REV_0200
@@ -54,6 +55,7 @@ PRODUCT_ID_types =  {
   0x0306: "BOARD_TYPE: TOOLS_SLAVE",
   0x0307: "BOARD_TYPE: GBU",
   0x0308: "BOARD_TYPE: LAP camera",
+  0x030B: "BOARD_TYPE: KFIR_SINGA",
   0x2005: "BOARD_TYPE: PRODUCT_ID_LAP_NEW_CAMERA",  #board type is enforced in FW (descriptors.h)
   0x1965: "yosi"
 }
@@ -167,7 +169,8 @@ def main_loop(device):
             # if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
             if PRODUCT_ID in PRODUCT_ID_types:
                 # WRITE_DATA = WRITE_DATA_CMD_GET_FW_VERSION
-                if PRODUCT_ID == PRODUCT_ID_STATION:
+                # if PRODUCT_ID == PRODUCT_ID_STATION:
+                if PRODUCT_ID in (PRODUCT_ID_STATION,PRODUCT_ID_KFIR_SINGA):
                     WRITE_DATA = WRITE_DATA_CMD_START_0x304
                     print("special_cmd Start streaming 0x8D")
                 else:

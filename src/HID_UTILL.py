@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2025_04_10.a"
+util_verstion = "2025_04_18.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -64,8 +64,11 @@ PRODUCT_ID_ROUTER   = 0x0301 # Router
 PRODUCT_ID_TOOLS = 0x0303
 PRODUCT_ID_STATION = 0x0304
 PRODUCT_ID_GBU_TOOLS = 0x0309
+PRODUCT_ID_KFIR_SINGA = 0x030B
 PRODUCT_ID_LAP_NEW_CAMERA = 0x2005
 PRODUCT_ID_NOT_EXIST_BOARD = 0x0333
+PRODUCT_ID_SINGA = 0x030B
+
 # 2021_01_24
 # USB\VID_24B3&PID_2005&REV_0200
 # 0x24B3 = 9395
@@ -82,6 +85,7 @@ PRODUCT_ID_types =  {
   0x0307: "BOARD_TYPE: GBU",
   0x0308: "BOARD_TYPE: LAP camera",
   0x0309: "BOARD_TYPE: GBU-TOOLS_MASTER",
+  0x030B: "BOARD_TYPE: KFIR_SINGA",
   0x2005: "BOARD_TYPE: PRODUCT_ID_LAP_NEW_CAMERA",  #board type is enforced in FW (descriptors.h)
   0x1965: "yosi"
 }
@@ -2090,6 +2094,11 @@ def main():
                 print("PRODUCT_ID = %X" % PRODUCT_ID)
                 if PRODUCT_ID in PRODUCT_ID_types:
                     print(PRODUCT_ID_types[PRODUCT_ID])
+                if PRODUCT_ID == PRODUCT_ID_SINGA:
+                    PRODUCT_ID = PRODUCT_ID_STATION
+                    print("workaround before making changes for KFIR_SINGA....")
+                    workaround_KFIR_SINGA = 1
+                    print(PRODUCT_ID_types[PRODUCT_ID])
 
             
 
@@ -2271,6 +2280,11 @@ comment:
 - support Lap4 new FW with the new combination of FWverMinor & FWverMajor 
 2025_04_10
 - adding Lap3 Ins. (aka: lap_insertion)  to "(not mapped yet)" channel. 
+2025_04_18 
+- workaround  for KFIR_SINGA
+- enable view of Enc1,2 in existing scroll bars:
+  Pressure (bytes 22,23) and 
+  Station MotorCurrent (bytes 25,26)
 TODO: 
 handle the scale of the quaternion that is used in GUI.
 '''    
