@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # C:\Work\Python\HID_Util\src\HID_UTILL.py 
 
-util_verstion = "2025_04_18.a"
+util_verstion = "2025_04_24.a"
 DEBUG_SLIPPAGE = 0
 
 from binascii import hexlify
@@ -247,7 +247,8 @@ QUA_Data_y = 0
 QUA_Data_z = 0
 Euler_Angles_From_Quat = [0,0,0]
 FWverMinor  = "%0.2X" % 0x11
-FWverMajor = "%0.2X" % 0x0 
+# FWverMajor = "%0.2X" % 0x0 
+FWverMajor = "%0.2X" % 0x01  #2025_04_24 for Singa
 
 def list_hid_devices():
     all_devices = win_hid.HidDeviceFilter().get_devices()
@@ -878,8 +879,12 @@ def gui_handler(value, do_print=False):
 
     if PRODUCT_ID == PRODUCT_ID_LAP_NEW_CAMERA:
         if value[24] == 0xAB and value[25] == 0xBA :
-            FWverMajor = "%0.2X" % value[2]
-            FWverMinor  = "%0.2X" % value[3]
+            # FWverMajor = "%0.2X" % value[2]
+            # FWverMinor  = "%0.2X" % value[3]
+            
+            # 2025_04_24 overwrite the major and minor to show today the Singa workaround
+            FWverMajor = "%0.2X" % 0x01
+            FWverMinor  = "%0.2X" % 0x11
             formatted_streaming_time = formatted_streaming_time + "     LAP4 demo Ver" + FWverMajor + "." + FWverMinor
         else:
             if gui_handler.popup_warning == 0:
@@ -2096,6 +2101,7 @@ def main():
                     print(PRODUCT_ID_types[PRODUCT_ID])
                 if PRODUCT_ID == PRODUCT_ID_SINGA:
                     PRODUCT_ID = PRODUCT_ID_STATION
+                    PRODUCT_ID = PRODUCT_ID_LAP_NEW_CAMERA
                     print("workaround before making changes for KFIR_SINGA....")
                     workaround_KFIR_SINGA = 1
                     print(PRODUCT_ID_types[PRODUCT_ID])
@@ -2285,6 +2291,7 @@ comment:
 - enable view of Enc1,2 in existing scroll bars:
   Pressure (bytes 22,23) and 
   Station MotorCurrent (bytes 25,26)
+2025_04_24  
 TODO: 
 handle the scale of the quaternion that is used in GUI.
 '''    
