@@ -40,6 +40,8 @@ PRODUCT_ID_ROUTER   = 0x0301 # Router
 PRODUCT_ID_STATION = 0x0304
 PRODUCT_ID_KFIR_SINGA = 0x030B
 PRODUCT_ID_LAP_NEW_CAMERA = 0x2005
+PRODUCT_ID_LAP_OLD_CAMERA = 0x3005
+PRODUCT_ID_LAP4_MAIN = 0x030C
 # 2021_01_24
 # USB\VID_24B3&PID_2005&REV_0200
 # 0x24B3 = 9395
@@ -55,8 +57,12 @@ PRODUCT_ID_types =  {
   0x0306: "BOARD_TYPE: TOOLS_SLAVE",
   0x0307: "BOARD_TYPE: GBU",
   0x0308: "BOARD_TYPE: LAP camera",
+  0x0309: "BOARD_TYPE: GBU-TOOLS_MASTER",
   0x030B: "BOARD_TYPE: KFIR_SINGA",
+  0x030C: "BOARD_TYPE: LAP4_MAIN",
+  0x0316: "BOARD_TYPE: LAP4_MAIN___ERROR_BAD_ID",
   0x2005: "BOARD_TYPE: PRODUCT_ID_LAP_NEW_CAMERA",  #board type is enforced in FW (descriptors.h)
+  0x3005: "BOARD_TYPE: PRODUCT_ID_LAP_OLD_CAMERA",  #board type is enforced in FW (descriptors.h)
   0x1965: "yosi"
 }
 
@@ -170,7 +176,7 @@ def main_loop(device):
             if PRODUCT_ID in PRODUCT_ID_types:
                 # WRITE_DATA = WRITE_DATA_CMD_GET_FW_VERSION
                 # if PRODUCT_ID == PRODUCT_ID_STATION:
-                if PRODUCT_ID in (PRODUCT_ID_STATION,PRODUCT_ID_KFIR_SINGA):
+                if PRODUCT_ID in (PRODUCT_ID_STATION,PRODUCT_ID_KFIR_SINGA,PRODUCT_ID_LAP4_MAIN):
                     WRITE_DATA = WRITE_DATA_CMD_START_0x304
                     print("special_cmd Start streaming 0x8D")
                 else:
@@ -381,7 +387,7 @@ def main():
             # 0x2047 = 8263
             # 0x304 = 772
             # 0x0301    // Product ID (PID) - base for Prime products family
-            for n in range(len(PRODUCT_ID_types)):
+            for n in range(len(PRODUCT_ID_types)+0x10):
                 if device is None:
                     try:
                         # print("try with other device")

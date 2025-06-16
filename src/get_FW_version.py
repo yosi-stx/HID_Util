@@ -57,6 +57,8 @@ PRODUCT_ID_types =  {
   0x0308: "BOARD_TYPE: LAP camera",
   0x0309: "BOARD_TYPE: GBU-TOOLS_MASTER",
   0x030B: "BOARD_TYPE: KFIR_SINGA",
+  0x030C: "BOARD_TYPE: LAP4_MAIN",
+  0x0316: "BOARD_TYPE: LAP4_MAIN___ERROR_BAD_ID",
   0x2005: "BOARD_TYPE: PRODUCT_ID_LAP_NEW_CAMERA",  #board type is enforced in FW (descriptors.h)
   0x3005: "BOARD_TYPE: PRODUCT_ID_LAP_OLD_CAMERA",  #board type is enforced in FW (descriptors.h)
   0x1965: "yosi"
@@ -388,7 +390,7 @@ def main():
             # 0x2047 = 8263
             # 0x304 = 772
             # 0x0301    // Product ID (PID) - base for Prime products family
-            for n in range(len(PRODUCT_ID_types)):
+            for n in range(len(PRODUCT_ID_types)+0x10):
                 if device is None:
                     try:
                         # print("try with other device")
