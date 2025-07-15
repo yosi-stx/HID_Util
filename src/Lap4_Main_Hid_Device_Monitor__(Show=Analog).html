@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<!-- WebHID Device Monitor - Handles 63-byte reports and displays byte 42 value -->
+<!-- Modified by AI Assistant to accommodate 63-byte payloads -->
+<html>
+<head>
+    <title>HID Device Monitor (for Lap4 Main)</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 20px auto; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        #status, #debug, { color: #666; margin-top: 10px; }
+        #message { color: #c896b4; margin-top: 10px; }
+        #version { color: #aaaaaa; font-size: 16px; margin-top: 20px; }
+        #output { font-size: 24px; margin-top: 20px; padding: 10px; border: 1px solid #ccc; }
+        #output2 { font-size: 24px; margin-top: 15px; padding: 10px; border: 1px solid #ccc; }
+        #output3 { font-size: 24px; margin-top: 15px; padding: 10px; border: 1px solid #ccc; }
+        #output4 { font-size: 24px; margin-top: 15px; padding: 10px; border: 1px solid #ccc; }
+        #output5 { font-size: 14px; margin-top: 15px; padding: 5px; border: 1px solid #ccc; }
+        #output6 { font-size: 14px; margin-top: 10px; padding: 5px; border: 1px solid #ccc; }
+        #output7 { font-size: 14px; margin-top: 10px; padding: 5px; border: 1px solid #ccc; }
+        #output8 { font-size: 14px; margin-top: 10px; padding: 5px; border: 1px solid #ccc; }
+        #output9 { font-size: 14px; margin-top: 10px; padding: 5px; border: 1px solid #ccc; }
+        #output10 { font-size: 14px; margin-top: 10px; padding: 5px; border: 1px solid #ccc; }
+        #output11 { font-size: 14px; margin-top: 10px; padding: 5px; border: 1px solid #ccc; }
+        #output12 { font-size: 14px; margin-top: 10px; padding: 5px; border: 1px solid #ccc; }
+        #output13 { font-size: 14px; margin-top: 10px; padding: 5px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>HID Device Monitor (Lap4 Main)</h1>
+    <button onclick="connectDevice()">Connect to HID Device</button>
+		<!-- Add this button AFTER the existing connect button -->
+		<button id="startStreamingBtn" onclick="sendStartStreaming()" disabled>Start Streaming</button>
+		<!-- <button id="startStreamingBtn" onclick="getFirmwareVersion()" disabled>get Firmware Version</button> -->
+    <div id="status">Status: Not connected</div>
+    <div id="message">User need to start the streaming!</div>
+    <div id="output">Grasper_R Value: -</div>
+    <div id="output2">Grasper_L Value: -</div>
+    <div id="output3">Grasper_R_Rot Value: -</div>
+    <div id="output4">Grasper_L_Rot Value: -</div>
+    <div id="output5">RS_1 : -</div>
+    <div id="output6">RS_2 : -</div>
+    <div id="output7">RS_3 : -</div>
+    <div id="output8">RS_4 : -</div>
+    <div id="output9">RS_5 : -</div>
+    <div id="output10">RS_6 : -</div>
+    <div id="output11">RS_7 : -</div>
+    <div id="output13">RS_8 : -</div>
+    <div id="output12">RS_9 : -</div>
+    <div id="debug"></div>
+    <div id="version">Lap4 Main Monitor version: (2025_06_17__18_33)</div>
+
+    <script>
+        let device = null;
+
+// Add this line inside connectDevice() after successful connection:
+// (After device.addEventListener('inputreport', handleInputReport);)
+// document.getElementById('startStreamingBtn').disabled = false;
+        async function connectDevice() {
+            try {
+                [device] = await navigator.hid.requestDevice({ filters: [] });
+                if (!device) {
+                    updateStatus('No device selected');
+                    return;
+                }
+                await device.open();
+                updateStatus(`Connected: ${device.productName}`);
+                device.addEventListener('inputreport', handleInputReport);
+								document.getElementById('startStreamingBtn').disabled = false;
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`);
+            }
+        }
+
+				async function sendStartStreaming() {
+						if (!device || !device.opened) {
+								updateStatus('Device not connected');
+								return;
+						}
+
+						try {
+								// The full command as a Uint8Array
+								const command = new Uint8Array([
+										0x04, 0x8d, 0x00, 0x00, 0x00, 0x00, 0x00, 
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+								]);
+								// Send with report ID (change 0x01 if your device uses different ID)
+								await device.sendReport(63, command);
+								console.log("Command sent successfully");
+								// Replace 0x01 and payload with your device's command format
+								// await device.sendReport(0x01, new Uint8Array([0xAB, 0xCD, 0x01]));
+								// Send the exact 6-byte command sequence
+//								await device.sendReport(
+//										0x00, // Report ID - verify with device documentation
+//										new Uint8Array([0x3f, 0x04, 0x8d, 0x00, 0x00, 0x00])
+//								);								
+//								updateStatus('Streaming command sent');
+//								console.log('Sent streaming command');
+						} catch (error) {
+								updateStatus(`Send error: ${error.message}`);
+								console.error('Command failed:', error);
+						}
+				}
+				async function getFirmwareVersion() {
+							// For devices that expect raw data (like your Python example)
+							const command = new Uint8Array([
+										0x3f, 0x04, 0x06, 0x00, 0x00, 0x01
+							]);						
+
+						// Try both approaches to see what works:
+						try {
+								// First try with Report ID 0x00
+								await device.sendReport(0x00, command);
+						} catch (error) {
+								// If that fails, try without Report ID (may not be possible in WebHID)
+								// Note: WebHID may require a Report ID
+								console.error("Try Report ID 0x01 if 0x00 fails");
+								await device.sendReport(0x01, command);
+						}
+				}
+
+        function handleInputReport(event) {
+            const { data, reportId } = event;
+            const timestamp = new Date().toLocaleTimeString();
+            
+            updateDebug(`Report ${reportId} (${data.byteLength} bytes) @ ${timestamp}`);
+
+            if (data.byteLength !== 63) {
+                updateDebug(`Unexpected payload length: ${data.byteLength} bytes`);
+                return;
+            }
+
+            try {
+                const byteValueHi = data.getUint8(2);
+                const byteValueLo = data.getUint8(1);
+                const InsHi = data.getUint8(4);
+                const InsLo = data.getUint8(3);
+                const Var3Hi = data.getUint8(6);
+                const Var3Lo = data.getUint8(5);
+                const Var4Hi = data.getUint8(8);
+                const Var4Lo = data.getUint8(7);
+                
+                const dig1 = data.getUint8(11);
+                const dig2 = data.getUint8(12);
+                const dig3 = data.getUint8(13);
+                const dig4 = data.getUint8(14);
+                const dig5 = data.getUint8(15);
+                const dig6 = data.getUint8(16);
+                const dig7 = data.getUint8(17);
+                const dig8 = data.getUint8(18);
+                const dig9 = data.getUint8(19);
+
+//								let byteValue = Math.floor((byteValueHi*256 + byteValueLo)/4000*100);
+//								let Insertion = Math.floor((InsHi*256 + InsLo)/4000*100);
+//								let Var3 = Math.floor((Var3Hi*256 + Var3Lo)/4000*100);
+								let byteValue = ((byteValueHi*256 + byteValueLo)/4000*3.3);
+								let Insertion = ((InsHi*256 + InsLo)/4000*3.3);
+								let Var3 = ((Var3Hi*256 + Var3Lo)/4000*3.3);
+								let Var4 = ((Var4Hi*256 + Var4Lo)/4000*3.3);
+                document.getElementById('output').textContent = (`Grasper_R: ${byteValue.toFixed(1)} Volt`);
+                document.getElementById('output2').textContent = (`Grasper_L: ${Insertion.toFixed(1)} Volt`);
+                document.getElementById('output3').textContent = (`Grasper_R_Rot: ${Var3.toFixed(1)} Volt`);
+                document.getElementById('output4').textContent = (`Grasper_L_Rot: ${Var4.toFixed(1)} Volt`);
+
+                // digital values
+                document.getElementById('output5').textContent  = (`RS_1: ${dig1} `);
+                document.getElementById('output6').textContent  = (`RS_2: ${dig2} `);
+                document.getElementById('output7').textContent  = (`RS_3: ${dig3} `);
+                document.getElementById('output8').textContent  = (`RS_4: ${dig4} `);
+                document.getElementById('output9').textContent  = (`RS_5: ${dig5} `);
+                document.getElementById('output10').textContent = (`RS_6: ${dig6} `);
+                document.getElementById('output11').textContent = (`RS_7: ${dig7} `);
+                document.getElementById('output12').textContent = (`RS_8: ${dig8} `);
+                document.getElementById('output13').textContent = (`RS_9: ${dig9} `);
+                
+            } catch (error) {
+                updateDebug(`Error parsing data: ${error.message}`);
+            }
+        }
+
+        function updateStatus(text) {
+            document.getElementById('status').textContent = `Status: ${text}`;
+        }
+
+        function updateDebug(text) {
+            document.getElementById('debug').textContent = text;
+        }
+    </script>
+</body>
+</html>

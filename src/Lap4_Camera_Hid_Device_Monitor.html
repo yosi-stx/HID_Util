@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<!-- WebHID Device Monitor - Handles 63-byte reports and displays byte 42 value -->
+<!-- Modified by AI Assistant to accommodate 63-byte payloads                   -->
+<!-- Date of human hand modification:    2025_07_15                             -->
+<html>
+<head>
+    <title>HID Device Monitor (for Lap4 Camera)</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        #status, #debug, { color: #666; margin-top: 10px; }
+        #message { color: #c896b4; margin-top: 10px;font-size: 14px; }
+        #version { color: #aaaaaa; font-size: 16px; margin-top: 20px; }
+        /* Outputs 1 & 2 on the same line with different font sizes */
+        .output-row {
+            margin-top: 10px;
+        }
+        #output1, #output2 {
+          display: inline-block; width: 272px; height: 20px; padding: 10px; border: 1px solid #ccc;
+          vertical-align: middle; margin-right: 1px;
+        }
+        #output1 { font-size: 18px; }
+        #output2 { font-size: 18px; }
+        /* Other outputs */
+        #output3, #output4, #output5{
+/*            font-size: 20px; margin-top: 10px; padding: 10px; border: 1px solid #ccc; */
+          display: inline-block; width: 171px; height: 20px; padding: 10px; border: 1px solid #ccc;
+          vertical-align: middle; margin-right: 1px; margin-top: 10px; font-size: 18px;
+        }
+        #output6, #output7 {
+          display: inline-block; width: 272px; height: 20px; padding: 10px; border: 1px solid #ccc;
+          vertical-align: middle; margin-right: 1px;
+        }
+/*        #output6 {
+            font-size: 24px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
+        }
+        #output7 {
+            font-size: 24px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
+        }
+*/
+        #output8 {
+            font-size: 20px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
+        }
+        #output9 {
+            font-size: 20px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>HID Device Monitor (Lap4 Camera)</h1>
+        <button id="connectBtn" onclick="connectDevice()" accesskey="c">Connect to HID Device</button>
+        <!-- Add this button AFTER the existing connect button -->
+        <button id="startStreamingBtn" onclick="sendStartStreaming()" disabled>Start Streaming</button>
+        <button id="ResetEncodersBtn" onclick="sendResetEncoders()" disabled>Reset Encoders</button>
+        <button id="GetVersionBtn" onclick="sendGetVersion()" disabled>Stop Streaming</button>
+        <div id="status">Status: Not connected</div>
+        <div id="message"><b>FW ver:</b> Press F12 (Developer Tools) -> [console] + Press "Stop Streaming" button!</div>
+        <!-- Outputs 1 & 2 on the same line -->
+        <div class="output-row">
+            <div id="output1">Focus Value: -</div>
+            <div id="output2">Zoom Value: -</div>
+        </div>
+        <div class="output-row">
+            <div id="output6">Hall_1 Value: -</div>
+            <div id="output7">Hall_2 Value: -</div>
+        </div>
+        <div id="output3">Yaw Value: -</div>
+        <div id="output4">Pitch Value: -</div>
+        <div id="output5">Roll Value: -</div>
+        <!-- <div id="output6">Flow Value: -</div> -->
+        <!-- <div id="output7">Digital Inputs BitArray: -</div> -->
+        <!-- <div id="output8">Analog Value: -</div> -->
+        <!-- <div id="output9">Analog Value: -</div> -->
+        <div id="debug"></div>
+        <div id="version">Lap4 Camera Monitor version: (2025_07_15__22_37)</div>
+
+    <script>
+        let device = null;
+
+// Add this line inside connectDevice() after successful connection:
+// (After device.addEventListener('inputreport', handleInputReport);)
+// document.getElementById('startStreamingBtn').disabled = false;
+
+        async function connectDevice() {
+            try {
+                [device] = await navigator.hid.requestDevice({ filters: [] });
+                if (!device) {
+                    updateStatus('No device selected');
+                    return;
+                }
+                await device.open();
+                updateStatus(`Connected: ${device.productName}`);
+                device.addEventListener('inputreport', handleInputReport);
+								document.getElementById('startStreamingBtn').disabled = false;
+								document.getElementById('ResetEncodersBtn').disabled = false;
+								document.getElementById('GetVersionBtn').disabled = false;
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`);
+            }
+        }
+
+				async function sendStartStreaming() {
+						if (!device || !device.opened) {
+								updateStatus('Device not connected');
+								return;
+						}
+
+						try {
+								// The full command as a Uint8Array [for Lap_Camera:  \h(82 00 00 00) ]
+								const command = new Uint8Array([
+										0x04, 0x82, 0x00, 0x00, 0x00, 0x00, 0x00, 
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+								]);
+								// Send with report ID (change 0x01 if your device uses different ID)
+								await device.sendReport(63, command);
+								console.log("Command sent successfully");
+						} catch (error) {
+								updateStatus(`Send error: ${error.message}`);
+								console.error('Command failed:', error);
+						}
+				}
+
+				async function sendResetEncoders() {
+						if (!device || !device.opened) {
+								updateStatus('Device not connected');
+								return;
+						}
+
+						try {
+								// The full command as a Uint8Array
+								const command = new Uint8Array([
+										0x04, 0x96, 0x00, 0x00, 0x00, 0x00, 0x00, 
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+								]);
+								// Send with report ID (change 0x01 if your device uses different ID)
+								await device.sendReport(63, command);
+								console.log("Command sent successfully");
+						} catch (error) {
+								updateStatus(`Send error: ${error.message}`);
+								console.error('Command failed:', error);
+						}
+				}
+
+				async function sendGetVersion() {
+						if (!device || !device.opened) {
+								updateStatus('Device not connected');
+								return;
+						}
+
+						try {
+								// The full command as a Uint8Array  (06 00 00 01)
+								const command = new Uint8Array([
+										0x04, 0x06, 0x00, 0x00, 0x01, 0x00, 0x00, 
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+								]);
+								// Send with report ID (change 0x01 if your device uses different ID)
+								await device.sendReport(63, command);
+								console.log("Command sendGetVersion successfully");
+						} catch (error) {
+								updateStatus(`Send error: ${error.message}`);
+								console.error('Command failed:', error);
+						}
+				}
+
+        function handleInputReport(event) {
+            const { data, reportId } = event;
+            const timestamp = new Date().toLocaleTimeString();
+            
+            updateDebug(`Report ${reportId} (${data.byteLength} bytes) @ ${timestamp}`);
+
+            if (data.byteLength !== 63) {
+                updateDebug(`Unexpected payload length: ${data.byteLength} bytes`);
+                return;
+            }
+
+//    stream_data_t U;  // this is union also can use as "uint8_t Ch[14]" // 4..17
+//    uint8_t encoder_cha; // P7.2 //18
+//    uint8_t encoder_chb; // P7.3 //19
+//    int16_t encoder_1; //        // 20,21
+//    uint8_t home_pos; // P2.4    // 22
+//    int16_t encoder_2; //        // 23,24
+//    uint8_t fault; // P7.1
+
+//    Lap4_out_buffer[34-2] = yaw16 & 0xFF;
+//    Lap4_out_buffer[35-2] = yaw16>>8;
+//    Lap4_out_buffer[36-2] = roll16 & 0xFF;
+//    Lap4_out_buffer[37-2] = roll16>>8;
+//    Lap4_out_buffer[38-2] = pitch16 & 0xFF;
+//    Lap4_out_buffer[39-2] = pitch16>>8;
+
+            try {
+                // get the analog values 
+								Ana_0_Hi = data.getUint8(2); 
+								Ana_0_Lo = data.getUint8(1); 
+								Ana_1_Hi = data.getUint8(4); 
+								Ana_1_Lo = data.getUint8(3); 
+								Ana_2_Hi = data.getUint8(6); 
+								Ana_2_Lo = data.getUint8(5); 
+								Ana_3_Hi = data.getUint8(8); 
+								Ana_3_Lo = data.getUint8(7); 
+								Ana_4_Hi = data.getUint8(10); 
+								Ana_4_Lo = data.getUint8(9); 
+								Ana_5_Hi = data.getUint8(12); 
+								Ana_5_Lo = data.getUint8(11); 
+								Ana_6_Hi = data.getUint8(14); 
+								Ana_6_Lo = data.getUint8(13); 
+								Ana_7_Hi = data.getUint8(16); 
+								Ana_7_Lo = data.getUint8(15); 
+
+								let Ana_0_w = (Ana_0_Hi*256 + Ana_0_Lo);
+								let Ana_1_w = (Ana_1_Hi*256 + Ana_1_Lo);
+								let Ana_2_w = (Ana_2_Hi*256 + Ana_2_Lo);
+								let Ana_3_w = (Ana_3_Hi*256 + Ana_3_Lo);
+								let Ana_4_w = (Ana_4_Hi*256 + Ana_4_Lo);
+								let Ana_5_w = (Ana_5_Hi*256 + Ana_5_Lo);
+								let Ana_6_w = (Ana_6_Hi*256 + Ana_6_Lo);
+								let Ana_7_w = (Ana_7_Hi*256 + Ana_7_Lo);
+
+//                const byteValueHi = data.getUint8(2); // Focus
+//                const byteValueLo = data.getUint8(1);
+//                const InsHi = data.getUint8(4);  // Zoom
+//                const InsLo = data.getUint8(3);
+//								// let byteValue = Math.floor((byteValueHi*256 + byteValueLo)/4000*100);
+//								let Focus = (byteValueHi*256 + byteValueLo);
+//								let Zoom = (InsHi*256 + InsLo);
+                document.getElementById('output1').textContent = (`Focus: ${Ana_0_w} `);
+                document.getElementById('output2').textContent = (`Zoom: ${Ana_1_w} `);
+								
+								// yaw_pitch_roll
+								yawHi = data.getUint8(34); 
+								yawLo = data.getUint8(33); 
+								pitchHi = data.getUint8(38); 
+								pitchLo = data.getUint8(37); 
+								rollHi = data.getUint8(36); 
+								rollLo = data.getUint8(35); 
+								let yaw = (yawHi*256 + yawLo);
+								let pitch = (pitchHi*256 + pitchLo);
+								let roll = (rollHi*256 + rollLo);
+								if(yaw > 2**15) 
+									yaw -= 2**16;
+								if(pitch > 2**15) 
+									pitch -= 2**16;
+								if(roll > 2**15) 
+									roll -= 2**16;
+                yaw = Math.floor(yaw/16)
+                pitch = Math.floor(pitch/16)
+                roll = Math.floor(roll/16)
+                document.getElementById('output3').textContent = (`yaw: ${yaw} `);
+                document.getElementById('output4').textContent = (`pitch: ${pitch} `);
+                document.getElementById('output5').textContent = (`roll: ${roll} `);
+
+//								flowHi = data.getUint8(2); 
+//								flowLo = data.getUint8(1); 
+//                if( flowHi >= 0x80 )
+//                  flowHi -= 0x80
+//                else
+//                  flowHi += 0x80
+//                
+//								let flow = (flowHi*256 + flowLo);
+//								if(flow > 2**15) 
+//									flow -= 2**16;
+//                flow = flow/4
+                document.getElementById('output6').textContent = (`Hall_1: ${Ana_2_w} `);
+                document.getElementById('output7').textContent = (`Hall_2: ${Ana_3_w} `);
+
+//                 let DigilalHi = data.getUint8(28); 
+//                 let DigilalLo = data.getUint8(29); 
+// 
+//                 // Convert to 8-bit binary strings
+//                 let DigilalHiBin = DigilalHi.toString(2).padStart(8, '0');
+//                 let DigilalLoBin = DigilalLo.toString(2).padStart(8, '0');
+// 
+//                 document.getElementById('output7').textContent =  `Digital Inputs BitArray: ${DigilalHiBin} ${DigilalLoBin}`;
+                
+
+                //document.getElementById('output8').textContent =  `Analog Value:\n [Arm_R=${Ana_1_w}]  [Arm_L=${Ana_2_w}]  \n[Leg_R=${Ana_3_w}]  [Leg_L=${Ana_4_w}]`;
+//                document.getElementById('output8').innerHTML =  `Analog Value Arms Legs: <br>[Arm_R=${Ana_1_w}]  [Arm_L=${Ana_2_w}]  <br>[Leg_R=${Ana_3_w}]  [Leg_L=${Ana_4_w}]`;
+//                document.getElementById('output9').innerHTML =  `Analog Value Jaw: <br>[JAW_Rot=${Ana_5_w}]  [JAW_Opti_R=${Ana_6_w}]  [JAW_Opti_L=${Ana_7_w}]`;
+     
+                // check echo of FW version:
+                // YAT: (01:21:01.322) (>>) 06 06 00 01 07 00 02 06 07 25 (10)
+                //if( flowLo == 6 ) // && flowHi == 6)
+                if( data.getUint8(1) == 6 && data.getUint8(2) == 6)
+                {
+                  a1 = data.getUint8(5); 
+                  a2 = data.getUint8(6); 
+                  a3 = data.getUint8(7); 
+                  b1 = data.getUint8(8); 
+                  b2 = data.getUint8(9); 
+                  b3 = data.getUint8(10); 
+                  console.log("check echo of FW version");
+                  console.log(`FW version ${a1}.${a2}.${a3} date: ${b1.toString(16)}.${b2.toString(16)}.${b3.toString(16)}`);
+                }
+								
+            } catch (error) {
+                updateDebug(`Error parsing data: ${error.message}`);
+            }
+        }
+
+        function updateStatus(text) {
+            document.getElementById('status').textContent = `Status: ${text}`;
+        }
+
+        function updateDebug(text) {
+            document.getElementById('debug').textContent = text;
+        }
+    </script>
+</body>
+</html>
