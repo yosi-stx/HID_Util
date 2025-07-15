@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- WebHID Device Monitor - Handles 63-byte reports and displays byte 42 value -->
 <!-- Modified by AI Assistant to accommodate 63-byte payloads                   -->
-<!-- Date of human hand modification:    2025_07_15                             -->
+<!-- Date of human hand modification:    2025_07_16                             -->
 <html>
 <head>
     <title>HID Device Monitor (for Lap4 Camera)</title>
@@ -31,6 +31,8 @@
           display: inline-block; width: 272px; height: 20px; padding: 10px; border: 1px solid #ccc;
           vertical-align: middle; margin-right: 1px;
         }
+        #output6 { font-size: 18px; }
+        #output7 { font-size: 18px; }
 /*        #output6 {
             font-size: 24px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
         }
@@ -72,7 +74,7 @@
         <!-- <div id="output8">Analog Value: -</div> -->
         <!-- <div id="output9">Analog Value: -</div> -->
         <div id="debug"></div>
-        <div id="version">Lap4 Camera Monitor version: (2025_07_15__22_37)</div>
+        <div id="version">Lap4 Camera Monitor version: (2025_07_16__00_32)</div>
 
     <script>
         let device = null;
