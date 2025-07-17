@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- WebHID Device Monitor - Handles 63-byte reports and displays byte 42 value -->
 <!-- Modified by AI Assistant to accommodate 63-byte payloads                   -->
-<!-- Date of human hand modification:    2025_07_16                             -->
+<!-- Date of human hand modification:    2025_07_17                              -->
 <html>
 <head>
     <title>HID Device Monitor (for Lap4 Camera)</title>
@@ -23,7 +23,6 @@
         #output2 { font-size: 18px; }
         /* Other outputs */
         #output3, #output4, #output5{
-/*            font-size: 20px; margin-top: 10px; padding: 10px; border: 1px solid #ccc; */
           display: inline-block; width: 171px; height: 20px; padding: 10px; border: 1px solid #ccc;
           vertical-align: middle; margin-right: 1px; margin-top: 10px; font-size: 18px;
         }
@@ -33,19 +32,18 @@
         }
         #output6 { font-size: 18px; }
         #output7 { font-size: 18px; }
-/*        #output6 {
-            font-size: 24px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
+
+        #output8, #output9 {
+          display: inline-block; width: 272px; height: 20px; padding: 10px; border: 1px solid #ccc;
+          vertical-align: middle; margin-right: 1px;
         }
-        #output7 {
-            font-size: 24px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
-        }
-*/
-        #output8 {
-            font-size: 20px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
-        }
-        #output9 {
-            font-size: 20px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
-        }
+        #output8 { font-size: 18px; }
+        #output9 { font-size: 18px; }
+        /* the following are for Digital inputs */
+        #output10 { font-size: 14px; margin-top: 10px; padding: 5px; border: 1px solid #ccc; }
+        #output11 { font-size: 14px; margin-top: 10px; padding: 5px; border: 1px solid #ccc; }
+        #output12 { font-size: 14px; margin-top: 10px; padding: 5px; border: 1px solid #ccc; }
+
     </style>
 </head>
 <body>
@@ -66,15 +64,19 @@
             <div id="output6">Hall_1 Value: -</div>
             <div id="output7">Hall_2 Value: -</div>
         </div>
+        <div class="output-row">
+            <div id="output8">Insertion Value: -</div>
+            <div id="output9">                  </div>
+        </div>
         <div id="output3">Yaw Value: -</div>
         <div id="output4">Pitch Value: -</div>
         <div id="output5">Roll Value: -</div>
-        <!-- <div id="output6">Flow Value: -</div> -->
-        <!-- <div id="output7">Digital Inputs BitArray: -</div> -->
-        <!-- <div id="output8">Analog Value: -</div> -->
-        <!-- <div id="output9">Analog Value: -</div> -->
+        <!-- Digital inputs  -->
+        <div id="output10">Button_1 : -</div>
+        <div id="output11">Button_2 : -</div>
+        <div id="output12">Button_3 : -</div>
         <div id="debug"></div>
-        <div id="version">Lap4 Camera Monitor version: (2025_07_16__00_32)</div>
+        <div id="version">Lap4 Camera Monitor version: (2025_07_17__21_31)</div>
 
     <script>
         let device = null;
@@ -216,10 +218,11 @@
 								Ana_1_Lo = data.getUint8(3); 
 								Ana_2_Hi = data.getUint8(6); 
 								Ana_2_Lo = data.getUint8(5); 
-								Ana_3_Hi = data.getUint8(8); 
+								Ana_3_Hi = data.getUint8(8); // Hall_2 bytes [06,07]
 								Ana_3_Lo = data.getUint8(7); 
-								Ana_4_Hi = data.getUint8(10); 
-								Ana_4_Lo = data.getUint8(9); 
+
+								Ana_4_Hi = data.getUint8(22); // Insertion bytes [20,21]
+								Ana_4_Lo = data.getUint8(21); 
 								Ana_5_Hi = data.getUint8(12); 
 								Ana_5_Lo = data.getUint8(11); 
 								Ana_6_Hi = data.getUint8(14); 
@@ -230,8 +233,8 @@
 								let Ana_0_w = (Ana_0_Hi*256 + Ana_0_Lo);
 								let Ana_1_w = (Ana_1_Hi*256 + Ana_1_Lo);
 								let Ana_2_w = (Ana_2_Hi*256 + Ana_2_Lo);
-								let Ana_3_w = (Ana_3_Hi*256 + Ana_3_Lo);
-								let Ana_4_w = (Ana_4_Hi*256 + Ana_4_Lo);
+								let Ana_3_w = (Ana_3_Hi*256 + Ana_3_Lo); // Hall_2
+								let Ana_4_w = (Ana_4_Hi*256 + Ana_4_Lo); // Insertion 
 								let Ana_5_w = (Ana_5_Hi*256 + Ana_5_Lo);
 								let Ana_6_w = (Ana_6_Hi*256 + Ana_6_Lo);
 								let Ana_7_w = (Ana_7_Hi*256 + Ana_7_Lo);
@@ -282,6 +285,18 @@
 //                flow = flow/4
                 document.getElementById('output6').textContent = (`Hall_1: ${Ana_2_w} `);
                 document.getElementById('output7').textContent = (`Hall_2: ${Ana_3_w} `);
+
+                document.getElementById('output8').textContent = (`Insertion: ${Ana_4_w} `);
+                
+                // Digital buttons 
+                const dig1 = data.getUint8(29);
+                const dig2 = data.getUint8(30);
+                const dig3 = data.getUint8(31);
+                
+                document.getElementById('output10').textContent = (`Button_1: ${dig1} `);
+                document.getElementById('output11').textContent = (`Button_2: ${dig2} `);
+                document.getElementById('output12').textContent = (`Button_3: ${dig3} `);
+
 
 //                 let DigilalHi = data.getUint8(28); 
 //                 let DigilalLo = data.getUint8(29); 
