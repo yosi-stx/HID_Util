@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!-- WebHID Device Monitor - Handles 63-byte reports and displays byte 42 value -->
-<!-- Modified by AI Assistant to accommodate 63-byte payloads                   -->
-<!-- Date of human hand modification:    2025_10_18                              -->
+<!-- Modified by AI Assistant to accommodate 63-byte payloads -->
+<!-- last change 2025_10_27  -->
 <html>
 <head>
-    <title>HID Device Monitor (for Lap4 Camera)</title>
+    <title>HID Device Monitor (for Lap4 Main+IMU)</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; }
         button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
@@ -28,80 +28,57 @@
         #status, #debug, { color: #666; margin-top: 10px; }
         #message { color: #c896b4; margin-top: 10px;font-size: 14px; }
         #version { color: #aaaaaa; font-size: 16px; margin-top: 20px; }
-        /* Outputs 1 & 2 on the same line with different font sizes */
-        .output-row {
-            margin-top: 10px;
-        }
-        #output1, #output2 {
-          display: inline-block; width: 272px; height: 20px; padding: 10px; border: 1px solid #ccc;
-          vertical-align: middle; margin-right: 1px;
-        }
-        #output1 { font-size: 18px; }
-        #output2 { font-size: 18px; }
         /* Other outputs */
         #output3, #output4, #output5{
+/*            font-size: 20px; margin-top: 10px; padding: 10px; border: 1px solid #ccc; */
           display: inline-block; width: 171px; height: 20px; padding: 10px; border: 1px solid #ccc;
           vertical-align: middle; margin-right: 1px; margin-top: 10px; font-size: 18px;
         }
-        #output6, #output7 {
-          display: inline-block; width: 272px; height: 20px; padding: 10px; border: 1px solid #ccc;
-          vertical-align: middle; margin-right: 1px;
+        #output6 {
+            font-size: 24px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
         }
-        #output6 { font-size: 18px; }
-        #output7 { font-size: 18px; }
-
-        #output8, #output9 {
-          display: inline-block; width: 272px; height: 20px; padding: 10px; border: 1px solid #ccc;
-          vertical-align: middle; margin-right: 1px;
+        #output7 {
+            font-size: 24px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
         }
-        #output8 { font-size: 18px; }
-        #output9 { font-size: 18px; }
-        /* the following are for Digital inputs */
-        #output10 { font-size: 14px; margin-top: 10px; padding: 5px; border: 1px solid #ccc; }
-        #output11 { font-size: 14px; margin-top: 10px; padding: 5px; border: 1px solid #ccc; }
-        #output12 { font-size: 14px; margin-top: 10px; padding: 5px; border: 1px solid #ccc; }
-        #output13 {
+        #output8 {
+            font-size: 24px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
+        }
+        #output9 {
             font-size: 20px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
         }
-
+        #output10 {
+            font-size: 20px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
+        }
     </style>
 </head>
 <body>
-    <h1>HID Device Monitor (Lap4 Camera)</h1>
+    <h1>HID Device Monitor (Lap4 Main+IMU)</h1>
         <button id="connectBtn" onclick="connectDevice()" accesskey="c">Connect to HID Device</button>
         <!-- Add this button AFTER the existing connect button -->
         <button id="startStreamingBtn" onclick="sendStartStreaming()" disabled>Start Streaming</button>
-        <button id="ResetEncodersBtn" onclick="sendResetEncoders()" disabled> TBD </button>
+        <button id="sendTBD_Btn" onclick="sendTBD()" disabled>send TBD</button>
         <button id="GetVersionBtn" onclick="sendGetVersion()" disabled>Stop Streaming</button>
+        <!-- New pink button added -->
+        <!-- <button id="pinkBtn" class="button_pink" onclick="sendResetMCU()" disabled>Reset MCU</button> -->
         <div id="status">Status: Not connected</div>
         <div id="message"><b>FW ver:</b> Press F12 (Developer Tools) -> [console] + Press "Stop Streaming" button!</div>
-        <!-- Outputs 1 & 2 on the same line -->
-        <div class="output-row">
-            <div id="output1">Focus Value: -</div>
-            <div id="output2">Zoom Value: -</div>
-        </div>
-        <div class="output-row">
-            <div id="output6">Hall_1 Value: -</div>
-            <div id="output7">Hall_2 Value: -</div>
-        </div>
-        <div class="output-row">
-            <div id="output8">Insertion Value: -</div>
-            <div id="output9">                  </div>
-        </div>
         <div id="output3">Yaw Value: -</div>
         <div id="output4">Pitch Value: -</div>
         <div id="output5">Roll Value: -</div>
-        <!-- Digital inputs  -->
-        <div id="output10">Button_1 : -</div>
-        <div id="output11">Button_2 : -</div>
-        <div id="output12">Button_3 : -</div>
-        <div id="output13">calib_status: -</div>
+        <div id="output6">Digital Inputs BitArray: -</div>
+        <div id="output7">Digital Outputs_1 BitArray: -</div>
+        <div id="output8">Digital Outputs_2 BitArray: -</div>
+        <div id="output9">Analog Value: -</div>
+        <div id="output10">calib_status: -</div>
         <button id="ResetBNO055UBtn" onclick="sendResetBNO055()" disabled>Reset BNO055</button>
         <button id="ResetMCUBtn" onclick="sendResetMCU()" disabled>Reset MCU</button>
         <button id="BslDFUBtn" class="button_pink" onclick="sendBslDFU()" disabled>MCU—►BSL=DFU</button>
         <button id="SaveCalibBtn" onclick="SaveCalibToFlash()" disabled>SaveCalibrationToFlash</button>
+        <!-- <button id="pinkBtn" class="button_pink" onclick="sendResetMCU()" disabled>Reset MCU</button> -->
         <div id="debug"></div>
-        <div id="version">Lap4 Camera Monitor version: (2025_10_18__17_03)</div>
+        <div id="version">Lap4_Main Monitor version: (2025_10_27__23_47)<br><b><u>Changes:</u></b><br>• ResetMCUBtn was added<br>
+        • DFU button<br>• Inputs + Outputs_1/2 BitArray was added<br></div>
+        <!-- <button id="GetResetBtn" onclick="sendGetVersion()" disabled>Reset MCU</button> -->
 
     <script>
         let device = null;
@@ -125,7 +102,7 @@
             updateStatus(`Connected: ${device.productName}`);
             device.addEventListener('inputreport', handleInputReport);
             document.getElementById('startStreamingBtn').disabled = false;
-            document.getElementById('ResetEncodersBtn').disabled = false;
+            // document.getElementById('sendTBD_Btn').disabled = false;
             document.getElementById('GetVersionBtn').disabled = false;
             document.getElementById('ResetMCUBtn').disabled = false;
             document.getElementById('SaveCalibBtn').disabled = false;
@@ -161,7 +138,7 @@
 						}
 				}
 
-				async function sendResetEncoders() {
+				async function sendTBD() {
 						if (!device || !device.opened) {
 								updateStatus('Device not connected');
 								return;
@@ -235,7 +212,7 @@
 								]);
 								// Send with report ID (change 0x01 if your device uses different ID)
 								await device.sendReport(63, command);
-								console.log("Command sendResetMCU successfully");
+								console.log("Command sendGetVersion successfully");
 						} catch (error) {
 								updateStatus(`Send error: ${error.message}`);
 								console.error('Command failed:', error);
@@ -276,7 +253,7 @@
 						}
 
 						try {
-                // Yat command: \h(0x8A 00 00 00)  // was : 0x83 
+                // Yat command: \h(07 00 00 00)
 								const command = new Uint8Array([
 										0x04, 0x8A, 0x00, 0x00, 0x00, 0x00, 0x00, 
 										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -334,14 +311,6 @@
                 return;
             }
 
-//    stream_data_t U;  // this is union also can use as "uint8_t Ch[14]" // 4..17
-//    uint8_t encoder_cha; // P7.2 //18
-//    uint8_t encoder_chb; // P7.3 //19
-//    int16_t encoder_1; //        // 20,21
-//    uint8_t home_pos; // P2.4    // 22
-//    int16_t encoder_2; //        // 23,24
-//    uint8_t fault; // P7.1
-
 //    Lap4_out_buffer[34-2] = yaw16 & 0xFF;
 //    Lap4_out_buffer[35-2] = yaw16>>8;
 //    Lap4_out_buffer[36-2] = roll16 & 0xFF;
@@ -350,44 +319,7 @@
 //    Lap4_out_buffer[39-2] = pitch16>>8;
 
             try {
-                // get the analog values 
-								Ana_0_Hi = data.getUint8(2); 
-								Ana_0_Lo = data.getUint8(1); 
-								Ana_1_Hi = data.getUint8(4); 
-								Ana_1_Lo = data.getUint8(3); 
-								Ana_2_Hi = data.getUint8(6); 
-								Ana_2_Lo = data.getUint8(5); 
-								Ana_3_Hi = data.getUint8(8); // Hall_2 bytes [06,07]
-								Ana_3_Lo = data.getUint8(7); 
-
-								Ana_4_Hi = data.getUint8(22); // Insertion bytes [20,21]
-								Ana_4_Lo = data.getUint8(21); 
-								Ana_5_Hi = data.getUint8(12); 
-								Ana_5_Lo = data.getUint8(11); 
-								Ana_6_Hi = data.getUint8(14); 
-								Ana_6_Lo = data.getUint8(13); 
-								Ana_7_Hi = data.getUint8(16); 
-								Ana_7_Lo = data.getUint8(15); 
-
-								let Ana_0_w = (Ana_0_Hi*256 + Ana_0_Lo);
-								let Ana_1_w = (Ana_1_Hi*256 + Ana_1_Lo);
-								let Ana_2_w = (Ana_2_Hi*256 + Ana_2_Lo);
-								let Ana_3_w = (Ana_3_Hi*256 + Ana_3_Lo); // Hall_2
-								let Ana_4_w = (Ana_4_Hi*256 + Ana_4_Lo); // Insertion 
-								let Ana_5_w = (Ana_5_Hi*256 + Ana_5_Lo);
-								let Ana_6_w = (Ana_6_Hi*256 + Ana_6_Lo);
-								let Ana_7_w = (Ana_7_Hi*256 + Ana_7_Lo);
-
-//                const byteValueHi = data.getUint8(2); // Focus
-//                const byteValueLo = data.getUint8(1);
-//                const InsHi = data.getUint8(4);  // Zoom
-//                const InsLo = data.getUint8(3);
-//								// let byteValue = Math.floor((byteValueHi*256 + byteValueLo)/4000*100);
-//								let Focus = (byteValueHi*256 + byteValueLo);
-//								let Zoom = (InsHi*256 + InsLo);
-                document.getElementById('output1').textContent = (`Focus: ${Ana_0_w} `);
-                document.getElementById('output2').textContent = (`Zoom: ${Ana_1_w} `);
-								
+                // mapping : index 0 in Lap4_out_buffer[0] is index 1 JavaScript data.getUint8(1) 
 								// yaw_pitch_roll
 								yawHi = data.getUint8(34); 
 								yawLo = data.getUint8(33); 
@@ -411,51 +343,67 @@
                 document.getElementById('output4').textContent = (`pitch: ${pitch} `);
                 document.getElementById('output5').textContent = (`roll: ${roll} `);
 
-//								flowHi = data.getUint8(2); 
-//								flowLo = data.getUint8(1); 
-//                if( flowHi >= 0x80 )
-//                  flowHi -= 0x80
-//                else
-//                  flowHi += 0x80
-//                
-//								let flow = (flowHi*256 + flowLo);
-//								if(flow > 2**15) 
-//									flow -= 2**16;
-//                flow = flow/4
-                document.getElementById('output6').textContent = (`Hall_1: ${Ana_2_w} `);
-                document.getElementById('output7').textContent = (`Hall_2: ${Ana_3_w} `);
+                let DigilalHi = data.getUint8(11); 
+                let DigilalLo = data.getUint8(12); 
 
-                document.getElementById('output8').textContent = (`Insertion: ${Ana_4_w} `);
-                
-                // Digital buttons 
-                const dig1 = data.getUint8(29);
-                const dig2 = data.getUint8(30);
-                const dig3 = data.getUint8(31);
-                
-                document.getElementById('output10').textContent = (`Button_1: ${dig1} `);
-                document.getElementById('output11').textContent = (`Button_2: ${dig2} `);
-                document.getElementById('output12').textContent = (`Button_3: ${dig3} `);
+                // Convert to 8-bit binary strings
+                let DigilalHiBin = DigilalHi.toString(2).padStart(8, '0');
+                let DigilalLoBin = DigilalLo.toString(2).padStart(8, '0');
 
-
-//                 let DigilalHi = data.getUint8(28); 
-//                 let DigilalLo = data.getUint8(29); 
-// 
-//                 // Convert to 8-bit binary strings
-//                 let DigilalHiBin = DigilalHi.toString(2).padStart(8, '0');
-//                 let DigilalLoBin = DigilalLo.toString(2).padStart(8, '0');
-// 
-//                 document.getElementById('output7').textContent =  `Digital Inputs BitArray: ${DigilalHiBin} ${DigilalLoBin}`;
+                document.getElementById('output6').textContent =  `Digital Inputs BitArray: ${DigilalHiBin} ${DigilalLoBin}`;
                 
+                DigilalHi = data.getUint8(13); 
+                DigilalLo = data.getUint8(14); 
+
+                // Convert to 8-bit binary strings
+                DigilalHiBin = DigilalHi.toString(2).padStart(8, '0');
+                DigilalLoBin = DigilalLo.toString(2).padStart(8, '0');
+
+                document.getElementById('output7').textContent =  `Digital Outputs_1 BitArray: ${DigilalHiBin} ${DigilalLoBin}`;
+                
+                DigilalHi = data.getUint8(15); 
+                DigilalLo = data.getUint8(16); 
+
+                // Convert to 8-bit binary strings
+                DigilalHiBin = DigilalHi.toString(2).padStart(8, '0');
+                DigilalLoBin = DigilalLo.toString(2).padStart(8, '0');
+
+                document.getElementById('output8').textContent =  `Digital Outputs_2 BitArray: ${DigilalHiBin} ${DigilalLoBin}`;
+                
+                // get the analog values 
+								Ana_1_Hi = data.getUint8(2); 
+								Ana_1_Lo = data.getUint8(1); 
+								Ana_2_Hi = data.getUint8(4); 
+								Ana_2_Lo = data.getUint8(3); 
+								Ana_3_Hi = data.getUint8(6); 
+								Ana_3_Lo = data.getUint8(5); 
+								Ana_4_Hi = data.getUint8(8); 
+								Ana_4_Lo = data.getUint8(7); 
+								
+                // Ana_5_Hi = data.getUint8(12); 
+								// Ana_5_Lo = data.getUint8(11); 
+								// Ana_6_Hi = data.getUint8(14); 
+								// Ana_6_Lo = data.getUint8(13); 
+								// Ana_7_Hi = data.getUint8(16); 
+								// Ana_7_Lo = data.getUint8(15); 
+
+								let Ana_1_w = (Ana_1_Hi*256 + Ana_1_Lo);
+								let Ana_2_w = (Ana_2_Hi*256 + Ana_2_Lo);
+								let Ana_3_w = (Ana_3_Hi*256 + Ana_3_Lo);
+								let Ana_4_w = (Ana_4_Hi*256 + Ana_4_Lo);
+								//let Ana_5_w = (Ana_5_Hi*256 + Ana_5_Lo);
+								//let Ana_6_w = (Ana_6_Hi*256 + Ana_6_Lo);
+								//let Ana_7_w = (Ana_7_Hi*256 + Ana_7_Lo);
 
                 //document.getElementById('output8').textContent =  `Analog Value:\n [Arm_R=${Ana_1_w}]  [Arm_L=${Ana_2_w}]  \n[Leg_R=${Ana_3_w}]  [Leg_L=${Ana_4_w}]`;
-//                document.getElementById('output8').innerHTML =  `Analog Value Arms Legs: <br>[Arm_R=${Ana_1_w}]  [Arm_L=${Ana_2_w}]  <br>[Leg_R=${Ana_3_w}]  [Leg_L=${Ana_4_w}]`;
-//                document.getElementById('output9').innerHTML =  `Analog Value Jaw: <br>[JAW_Rot=${Ana_5_w}]  [JAW_Opti_R=${Ana_6_w}]  [JAW_Opti_L=${Ana_7_w}]`;
+                document.getElementById('output9').innerHTML =  `Analog Value: <br>[Grasper_R=${Ana_1_w}]  [Grasper_L=${Ana_2_w}]  <br>[Grasper_R_Rot=${Ana_3_w}]  [Grasper_L_Rot=${Ana_4_w}]`;
+                //document.getElementById('output9').innerHTML =  `Analog Value Jaw: <br>[JAW_Rot=${Ana_5_w}]  [JAW_Opti_R=${Ana_6_w}]  [JAW_Opti_L=${Ana_7_w}]`;
      
                 // read the Current BNO055 system calibration status
                 // Lap4_out_buffer[39] = calib_status; // bno055 calibration status. --> here index 40 
                 calib_status = data.getUint8(40); 
                 let calib_statusBin = calib_status.toString(2).padStart(8, '0');
-                // document.getElementById('output13').innerHTML =  `calib_status: [${calib_statusBin}] ]`;
+                // document.getElementById('output10').innerHTML =  `calib_status: [${calib_statusBin}] ]`;
                 
                 // Split the 8-bit string into four 2-bit groups
                 let sysBits = calib_statusBin.substring(0, 2);
@@ -464,7 +412,8 @@
                 let magBits = calib_statusBin.substring(6, 8);
                 // Create the display string with fixed-width font (using monospace) and alignment
                 let outputHTML = `<pre style="font-family: monospace; margin: 0px; padding: 0px;">calib_status:   SYS  GYR  ACC  MAG<br>                ${sysBits}   ${gyrBits}   ${accBits}   ${magBits}</pre>`;
-                document.getElementById('output13').innerHTML = outputHTML;                
+                document.getElementById('output10').innerHTML = outputHTML;                
+
                 // check echo of FW version:
                 // YAT: (01:21:01.322) (>>) 06 06 00 01 07 00 02 06 07 25 (10)
                 //if( flowLo == 6 ) // && flowHi == 6)
@@ -491,6 +440,10 @@
 
         function updateDebug(text) {
             document.getElementById('debug').textContent = text;
+        }
+        function pinkButtonAction() {
+        // yat reset MCU command \h(07 00 00 00)
+            alert("Pink button clicked! replace this with the desired action");
         }
     </script>
 </body>

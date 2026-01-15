@@ -1,5 +1,5 @@
 # HR_util.py
-util_verstion = "2025_02_14.a"
+util_verstion = "2026_01_15.a"
 
 import tkinter as tk
 from tkinter import ttk
@@ -274,7 +274,7 @@ def my_widgets(frame):
     # Add HR slider // from perplexity 
     row += 1
     ttk.Label(frame, text="Heart Rate (BPM):").grid(row=row, column=0, sticky=tk.W, padx=5, pady=5)
-    hr_slider = ttk.Scale(frame, from_=20, to=120, orient=tk.HORIZONTAL, length=200)
+    hr_slider = ttk.Scale(frame, from_=20, to=200, orient=tk.HORIZONTAL, length=210)
     hr_slider.grid(row=row, column=1, columnspan=2, sticky=tk.W+tk.E, padx=5, pady=5)
     hr_slider.set(60)  # Set default value to 60 BPM
 
@@ -490,6 +490,9 @@ if __name__ == "__main__":
 #   9D 02 00 00 04 78
 # WRITE_DATA_CMD_Heart_Pulse = bytes.fromhex("3f048d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
 # WRITE_DATA_CMD_Heart_Pulse = bytes.fromhex("3f069d02000004780000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+
+# 2026_01_15__16_18
+# increase the hr_value range to 20..200
 
 '''
 

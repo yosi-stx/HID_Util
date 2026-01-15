@@ -5,8 +5,25 @@
 <head>
     <title>HID Device Monitor (for Lap4 Main)</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 500px; margin: 20px auto; }
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; }
         button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        /* New pink button style */
+        button.button_pink {
+            background-color: #ff69b4; /* Hot pink */
+            color: white;
+            border: none;
+            border-radius: 8px; /* Rounded corners */
+            box-shadow: 0 4px 6px rgba(255, 105, 180, 0.4);
+            transition: background-color 0.3s ease;
+        }
+        button.button_pink:hover:not(:disabled) {
+            background-color: #ff4da6;
+        }
+        button.button_pink:disabled {
+            background-color: #ffc3db;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
         #status, #debug, { color: #666; margin-top: 10px; }
         #message { color: #c896b4; margin-top: 10px; }
         #version { color: #aaaaaa; font-size: 16px; margin-top: 20px; }
@@ -27,9 +44,10 @@
 </head>
 <body>
     <h1>HID Device Monitor (Lap4 Main)</h1>
-    <button onclick="connectDevice()">Connect to HID Device</button>
-		<!-- Add this button AFTER the existing connect button -->
-		<button id="startStreamingBtn" onclick="sendStartStreaming()" disabled>Start Streaming</button>
+        <button id="connectBtn" onclick="connectDevice()" accesskey="c">Connect to HID Device</button>
+        <!-- Add this button AFTER the existing connect button -->
+        <button id="startStreamingBtn" onclick="sendStartStreaming()" disabled>Start Streaming</button>
+        <button id="ResetEncodersBtn" onclick="sendStartStreaming()" disabled> TBD </button>
 		<!-- <button id="startStreamingBtn" onclick="getFirmwareVersion()" disabled>get Firmware Version</button> -->
     <div id="status">Status: Not connected</div>
     <div id="message">User need to start the streaming!</div>
@@ -47,7 +65,7 @@
     <div id="output13">RS_8 : -</div>
     <div id="output12">RS_9 : -</div>
     <div id="debug"></div>
-    <div id="version">Lap4 Main Monitor version: (2025_06_17__18_33)</div>
+    <div id="version">Lap4 Main Monitor version: (2025_10_27__16_25)</div>
 
     <script>
         let device = null;
