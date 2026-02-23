@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- WebHID Device Monitor - Handles 63-byte reports and displays byte 42 value -->
 <!-- Modified by AI Assistant to accommodate 63-byte payloads -->
-<!-- last change 2026_02_21  -->
+<!-- last change 2026_02_23  -->
 <html>
 <head>
     <title>HID Device Monitor (for Lap4 Main+IMU)</title>
@@ -51,12 +51,11 @@
         }
         /* NEW: Responsive image */
         .responsive-img {
-            width: 100%;
-            height: auto;
-            display: block;
-            margin: 10px 0;
+            width: 100%;    /* Image takes full width of its parent container */
+            height: auto;   /* Height automatically scales proportionally to maintain aspect ratio*/
+            display: block; /* Makes image behave like a block element so width: 100% works properly*/
+            margin: 10px 0; /* Adds 10px top/bottom spacing between image and surrounding elements */
         }
-        
     </style>
 </head>
 <body>
@@ -106,7 +105,7 @@
         <button id="SaveCalibBtn" onclick="SaveCalibToFlash()" disabled>SaveCalibrationToFlash</button>
         <!-- <button id="pinkBtn" class="button_pink" onclick="sendResetMCU()" disabled>Reset MCU</button> -->
         <div id="debug"></div>
-        <div id="version">Lap4_Main Monitor version: (2026_02_21__21_04)<br><b><u>Changes:</u></b><br>• ResetMCUBtn was added<br>
+        <div id="version">Lap4_Main Monitor version: (2026_02_23__20_34)<br><b><u>Changes:</u></b><br>• ResetMCUBtn was added<br>
         • 18 Ind_x button<br>• DFU button<br>• Inputs + Outputs_1/2 BitArray was added<br></div>
         <!-- <button id="GetResetBtn" onclick="sendGetVersion()" disabled>Reset MCU</button> -->
 
@@ -585,7 +584,9 @@
         }
         // history:
         // 2026_02_21: 
-        // -  adding 9 x 2 buttons sendInd_1 .. 9 for setting and resetting CamPosInd_1 .. 9 output indications.
+        // - adding 9 x 2 buttons sendInd_1 .. 9 for setting and resetting CamPosInd_1 .. 9 output indications.
+        // 2026_02_23 
+        // - adding image to the app : img class="responsive-img"
 
     </script>
 </body>
