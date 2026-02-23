@@ -73,7 +73,8 @@
         <div id="output4">Pitch Value: -</div>
         <div id="output5">Roll Value: -</div>
         <div id="output6">Digital Inputs BitArray: -</div>
-        <div id="imgContainer"></div>
+        <!-- <div id="imgContainer"></div> -->
+        <canvas id="imgCanvas" class="responsive-img"></canvas>
         <div id="output7">Digital Outputs_1 BitArray: -</div>
         <div id="message"><b>Output Set:</b> Ind_9 Ind_8 Ind_7 Ind_6 Ind_5 Ind_4 Ind_3 Ind_2 Ind_1 </div>
         <button id="sendInd_9" onclick="sendInd_x(9,1)" disabled>_9</button>
@@ -117,10 +118,31 @@
 // document.getElementById('startStreamingBtn').disabled = false;
 
 //        document.getElementById("imgContainer").innerHTML =
-//                  '<img src="img/Patient_Position_Indicators_Indices.webp" alt="Patient position">';
+//            '<img class="responsive-img" src="img/Patient_Position_Indicators_Indices.webp" alt="Patient position">';
 
-        document.getElementById("imgContainer").innerHTML =
-            '<img class="responsive-img" src="img/Patient_Position_Indicators_Indices.webp" alt="Patient position">';
+        const canvas = document.getElementById('imgCanvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.src = 'img/Patient_Position_Indicators_Indices.webp';
+
+        img.onload = function() {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            // Draw image as background
+            ctx.drawImage(img, 0, 0);
+            
+            // Draw light green circle in center
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = 14;  // diameter 28px / 2
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#90EE90';  // light green
+            ctx.lineWidth = 4;
+            ctx.stroke();
+        };
 
         async function connectDevice() {
             try {
