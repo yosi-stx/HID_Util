@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- WebHID Device Monitor - Handles 63-byte reports and displays byte 42 value -->
 <!-- Modified by AI Assistant to accommodate 63-byte payloads -->
-<!-- last change 2025_10_27  -->
+<!-- last change 2026_02_21  -->
 <html>
 <head>
     <title>HID Device Monitor (for Lap4 Main+IMU)</title>
@@ -49,6 +49,14 @@
         #output10 {
             font-size: 20px; margin-top: 10px; padding: 10px; border: 1px solid #ccc;
         }
+        /* NEW: Responsive image */
+        .responsive-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 10px 0;
+        }
+        
     </style>
 </head>
 <body>
@@ -66,7 +74,29 @@
         <div id="output4">Pitch Value: -</div>
         <div id="output5">Roll Value: -</div>
         <div id="output6">Digital Inputs BitArray: -</div>
+        <div id="imgContainer"></div>
         <div id="output7">Digital Outputs_1 BitArray: -</div>
+        <div id="message"><b>Output Set:</b> Ind_9 Ind_8 Ind_7 Ind_6 Ind_5 Ind_4 Ind_3 Ind_2 Ind_1 </div>
+        <button id="sendInd_9" onclick="sendInd_x(9,1)" disabled>_9</button>
+        <button id="sendInd_8" onclick="sendInd_x(8,1)" disabled>_8</button>
+        <button id="sendInd_7" onclick="sendInd_x(7,1)" disabled>_7</button>
+        <button id="sendInd_6" onclick="sendInd_x(6,1)" disabled>_6</button>
+        <button id="sendInd_5" onclick="sendInd_x(5,1)" disabled>_5</button>
+        <button id="sendInd_4" onclick="sendInd_x(4,1)" disabled>_4</button>
+        <button id="sendInd_3" onclick="sendInd_x(3,1)" disabled>_3</button>
+        <button id="sendInd_2" onclick="sendInd_x(2,1)" disabled>_2</button>
+        <button id="sendInd_1" onclick="sendInd_x(1,1)" disabled>_1</button>
+        <div id="message"><b>Output ReSet:</b> Ind_9 Ind_8 Ind_7 Ind_6 Ind_5 Ind_4 Ind_3 Ind_2 Ind_1 </div>
+        <button id="sendInd_9_off" onclick="sendInd_x(9,0)" disabled>_9</button>
+        <button id="sendInd_8_off" onclick="sendInd_x(8,0)" disabled>_8</button>
+        <button id="sendInd_7_off" onclick="sendInd_x(7,0)" disabled>_7</button>
+        <button id="sendInd_6_off" onclick="sendInd_x(6,0)" disabled>_6</button>
+        <button id="sendInd_5_off" onclick="sendInd_x(5,0)" disabled>_5</button>
+        <button id="sendInd_4_off" onclick="sendInd_x(4,0)" disabled>_4</button>
+        <button id="sendInd_3_off" onclick="sendInd_x(3,0)" disabled>_3</button>
+        <button id="sendInd_2_off" onclick="sendInd_x(2,0)" disabled>_2</button>
+        <button id="sendInd_1_off" onclick="sendInd_x(1,0)" disabled>_1</button>
+
         <div id="output8">Digital Outputs_2 BitArray: -</div>
         <div id="output9">Analog Value: -</div>
         <div id="output10">calib_status: -</div>
@@ -76,8 +106,8 @@
         <button id="SaveCalibBtn" onclick="SaveCalibToFlash()" disabled>SaveCalibrationToFlash</button>
         <!-- <button id="pinkBtn" class="button_pink" onclick="sendResetMCU()" disabled>Reset MCU</button> -->
         <div id="debug"></div>
-        <div id="version">Lap4_Main Monitor version: (2025_10_27__23_47)<br><b><u>Changes:</u></b><br>• ResetMCUBtn was added<br>
-        • DFU button<br>• Inputs + Outputs_1/2 BitArray was added<br></div>
+        <div id="version">Lap4_Main Monitor version: (2026_02_21__21_04)<br><b><u>Changes:</u></b><br>• ResetMCUBtn was added<br>
+        • 18 Ind_x button<br>• DFU button<br>• Inputs + Outputs_1/2 BitArray was added<br></div>
         <!-- <button id="GetResetBtn" onclick="sendGetVersion()" disabled>Reset MCU</button> -->
 
     <script>
@@ -86,6 +116,12 @@
 // Add this line inside connectDevice() after successful connection:
 // (After device.addEventListener('inputreport', handleInputReport);)
 // document.getElementById('startStreamingBtn').disabled = false;
+
+//        document.getElementById("imgContainer").innerHTML =
+//                  '<img src="img/Patient_Position_Indicators_Indices.webp" alt="Patient position">';
+
+        document.getElementById("imgContainer").innerHTML =
+            '<img class="responsive-img" src="img/Patient_Position_Indicators_Indices.webp" alt="Patient position">';
 
         async function connectDevice() {
             try {
@@ -109,6 +145,26 @@
             document.getElementById('ResetBNO055UBtn').disabled = false;
             document.getElementById('BslDFUBtn').disabled = false;
             // document.getElementById('pinkBtn').disabled = false;
+
+            document.getElementById('sendInd_9').disabled = false;
+            document.getElementById('sendInd_8').disabled = false;
+            document.getElementById('sendInd_7').disabled = false;
+            document.getElementById('sendInd_6').disabled = false;
+            document.getElementById('sendInd_5').disabled = false;
+            document.getElementById('sendInd_4').disabled = false;
+            document.getElementById('sendInd_3').disabled = false;
+            document.getElementById('sendInd_2').disabled = false;
+            document.getElementById('sendInd_1').disabled = false;
+
+            document.getElementById('sendInd_9_off').disabled = false;
+            document.getElementById('sendInd_8_off').disabled = false;
+            document.getElementById('sendInd_7_off').disabled = false;
+            document.getElementById('sendInd_6_off').disabled = false;
+            document.getElementById('sendInd_5_off').disabled = false;
+            document.getElementById('sendInd_4_off').disabled = false;
+            document.getElementById('sendInd_3_off').disabled = false;
+            document.getElementById('sendInd_2_off').disabled = false;
+            document.getElementById('sendInd_1_off').disabled = false;
         }
 
 				async function sendStartStreaming() {
@@ -157,6 +213,88 @@
 										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 								]);
 								// Send with report ID (change 0x01 if your device uses different ID)
+								await device.sendReport(63, command);
+								console.log("Command sent successfully");
+						} catch (error) {
+								updateStatus(`Send error: ${error.message}`);
+								console.error('Command failed:', error);
+						}
+				}
+
+				async function sendInd_x(Ind_x, OnOff) {
+						if (!device || !device.opened) {
+								updateStatus('Device not connected');
+								return;
+						}
+
+            //Yat command:  \h(03 03 00 00 01 08 01)
+						try {
+								// The full command as a Uint8Array
+								const command = new Uint8Array([
+                    //                            port  Pin
+										0x07, 0x03, 0x03, 0x00, 0x00, 0x01, 0x01, 
+                 // OnOff
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+								]);
+                switch (Ind_x) {
+                    case 1:
+                        // PA0
+                        command[5] = 1; // port PA0
+                        command[6] = 1; // pin 
+                        break;
+                    case 2:
+                        command[5] = 1; // port PA1
+                        command[6] = 2; // pin 
+                        break;
+                    case 3:
+                        command[5] = 1; // port PA2
+                        command[6] = 4; // pin 
+                        break;
+                    case 4:
+                        command[5] = 1; // port PA3
+                        command[6] = 0x08; // pin 
+                        break;
+                    case 5:
+                        command[5] = 1; // port PA4
+                        command[6] = 0x10; // pin 
+                        break;
+                    case 6:
+                        command[5] = 1; // port PA5
+                        command[6] = 0x20; // pin 
+                        break;
+                    case 7:
+                        command[5] = 1; // port PA6
+                        command[6] = 0x40; // pin 
+                        break;
+                    case 8:
+                        command[5] = 1; // port PA7
+                        command[6] = 0x80; // pin 
+                        break;
+                    case 9:
+                        command[5] = 2; // port PB0
+                        command[6] = 0x01; // pin 
+                        break;
+                    // ... more cases
+                    default:
+                        // Code to execute if none of the cases match
+                        alert("Bad input select");
+                }
+								// Send with report ID (change 0x01 if your device uses different ID)
+                if ( OnOff == 1 ) {  // OnOff = on = 1
+                    command[7] = 1;
+                } else {    // OnOff = off = 0
+                    command[7] = 0;
+                }
+                
+								await device.sendReport(63, command);
+								console.log("Command sendAmp successfully");
+
 								await device.sendReport(63, command);
 								console.log("Command sent successfully");
 						} catch (error) {
@@ -445,6 +583,10 @@
         // yat reset MCU command \h(07 00 00 00)
             alert("Pink button clicked! replace this with the desired action");
         }
+        // history:
+        // 2026_02_21: 
+        // -  adding 9 x 2 buttons sendInd_1 .. 9 for setting and resetting CamPosInd_1 .. 9 output indications.
+
     </script>
 </body>
 </html>
