@@ -123,13 +123,45 @@
         const canvas = document.getElementById('imgCanvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
+        let imageLoaded = false;
         img.src = 'img/Patient_Position_Indicators_Indices.webp';
 
         img.onload = function() {
             canvas.width = img.width;
             canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            imageLoaded = true;
+        };
+
+//        img.onload = function() {
+//            canvas.width = img.width;
+//            canvas.height = img.height;
+//            
+//            // Draw image as background
+//            ctx.drawImage(img, 0, 0);
+//            
+//            // Draw light green circle in center
+//            const centerX = canvas.width / 2;
+//            const centerY = canvas.height / 2;
+//            const radius = 14;  // diameter 28px / 2
+//            
+//            ctx.beginPath();
+//            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+//            ctx.strokeStyle = '#90EE90';  // light green
+//            ctx.lineWidth = 4;
+//            ctx.stroke();
+//        };
+
+        
+        // NEW: Function to draw circle - call this when needed
+        function drawCircle() {
+            if (!imageLoaded) {
+                console.log('Image not loaded yet');
+                return;
+            }
             
-            // Draw image as background
+            // Redraw image first (clears previous drawings)
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0);
             
             // Draw light green circle in center
@@ -142,7 +174,7 @@
             ctx.strokeStyle = '#90EE90';  // light green
             ctx.lineWidth = 4;
             ctx.stroke();
-        };
+        }
 
         async function connectDevice() {
             try {
@@ -243,6 +275,7 @@
 				}
 
 				async function sendInd_x(Ind_x, OnOff) {
+            drawCircle();
 						if (!device || !device.opened) {
 								updateStatus('Device not connected');
 								return;
