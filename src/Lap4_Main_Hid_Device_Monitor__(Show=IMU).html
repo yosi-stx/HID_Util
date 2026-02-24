@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- WebHID Device Monitor - Handles 63-byte reports and displays byte 42 value -->
 <!-- Modified by AI Assistant to accommodate 63-byte payloads -->
-<!-- last change 2026_02_23  -->
+<!-- last change 2026_02_24  -->
 <html>
 <head>
     <title>HID Device Monitor (for Lap4 Main+IMU)</title>
@@ -73,7 +73,6 @@
         <div id="output4">Pitch Value: -</div>
         <div id="output5">Roll Value: -</div>
         <div id="output6">Digital Inputs BitArray: -</div>
-        <!-- <div id="imgContainer"></div> -->
         <canvas id="imgCanvas" class="responsive-img"></canvas>
         <div id="output7">Digital Outputs_1 BitArray: -</div>
         <div id="message"><b>Output Set:</b> Ind_9 Ind_8 Ind_7 Ind_6 Ind_5 Ind_4 Ind_3 Ind_2 Ind_1 </div>
@@ -106,9 +105,10 @@
         <button id="SaveCalibBtn" onclick="SaveCalibToFlash()" disabled>SaveCalibrationToFlash</button>
         <!-- <button id="pinkBtn" class="button_pink" onclick="sendResetMCU()" disabled>Reset MCU</button> -->
         <div id="debug"></div>
-        <div id="version">Lap4_Main Monitor version: (2026_02_23__20_34)<br><b><u>Changes:</u></b><br>• ResetMCUBtn was added<br>
+        <div id="version">Lap4_Main Monitor version: (2026_02_24__18_24)<br><b><u>Changes:</u></b><br>• ResetMCUBtn was added<br>
         • 18 Ind_x button<br>• DFU button<br>• Inputs + Outputs_1/2 BitArray was added<br></div>
         <!-- <button id="GetResetBtn" onclick="sendGetVersion()" disabled>Reset MCU</button> -->
+        <div id="imgContainer"></div>
 
     <script>
         let device = null;
@@ -117,14 +117,32 @@
 // (After device.addEventListener('inputreport', handleInputReport);)
 // document.getElementById('startStreamingBtn').disabled = false;
 
-//        document.getElementById("imgContainer").innerHTML =
-//            '<img class="responsive-img" src="img/Patient_Position_Indicators_Indices.webp" alt="Patient position">';
+        const temp_img = document.getElementById("imgContainer").innerHTML =
+            '<img src="img/Patient_Position_Indicators_Indices.webp" alt="Patient position">';
 
         const canvas = document.getElementById('imgCanvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
         let imageLoaded = false;
         img.src = 'img/Patient_Position_Indicators_Indices.webp';
+        let mouseX = 0;
+        let mouseY = 0;
+        // original image width: 717 , app-width: 600px therefore:
+        const imgSrinkFactor = 600/717; 
+        const color_light_green = '#90EE90';  // light green
+        
+        // the indications leds position:
+        const P = [
+          {x: 296.5, y: 392.125},
+          {x: 224.5, y: 427.125},
+          {x: 374.5, y: 417.125},
+          {x: 117.5, y: 321.125},
+          {x: 292.5, y: 309.125},
+          {x: 468.5, y: 295.125},
+          {x: 148.5, y: 176.125},
+          {x: 410.5, y: 155.125},
+          {x: 274.5, y: 104.125}
+        ];
 
         img.onload = function() {
             canvas.width = img.width;
@@ -132,27 +150,96 @@
             ctx.drawImage(img, 0, 0);
             imageLoaded = true;
         };
-
-//        img.onload = function() {
-//            canvas.width = img.width;
-//            canvas.height = img.height;
-//            
-//            // Draw image as background
-//            ctx.drawImage(img, 0, 0);
-//            
-//            // Draw light green circle in center
-//            const centerX = canvas.width / 2;
-//            const centerY = canvas.height / 2;
-//            const radius = 14;  // diameter 28px / 2
-//            
-//            ctx.beginPath();
-//            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-//            ctx.strokeStyle = '#90EE90';  // light green
-//            ctx.lineWidth = 4;
-//            ctx.stroke();
-//        };
-
+        let prevDigitalHi = 0; 
+        let prevDigitalLo = 0; 
         
+        // Now Ctrl+I anywhere in your app logs the current mouse coordinates to console, even if mouse isn't
+        // hovering the canvas. Works globally on your page.
+        document.addEventListener('keydown', function(e) {
+             const isCtrl = e.ctrlKey || e.metaKey;
+             
+            if (e.ctrlKey && e.key === 'i') {
+                e.preventDefault();  // Prevent browser devtools (Ctrl+i)
+                // const color = '#90EE90';  // light green
+                drawCircleXY(mouseX, mouseY, '#90EE90');
+                // drawCircleXY(mouseX, mouseY, color);
+                console.log(`mouseX ${mouseX} mouseY ${mouseY}`);
+            }
+            
+              if (isCtrl && e.key === 'd') {
+                e.preventDefault();
+                redrawImageOnly();  // Clear circle, show clean image
+              }
+
+              // Use Ctrl+Shift+P instead for  turn on the light on Current mouse position
+              if (isCtrl && e.shiftKey && e.key === 'p') {                
+                e.preventDefault();
+                const color = '#90EE90';  // light green
+                //drawCircleXY(mouseX, mouseY, '#90EE90');
+                drawCircleXY(mouseX, mouseY, color);
+                console.log(`ctrl+p : mouseX ${mouseX} mouseY ${mouseY}`);
+              }
+
+              if (isCtrl && e.key === '5') {
+                e.preventDefault();
+                // const color = '#90EE90';  // light green
+                // drawCircleXY(148, 175, color);  
+                drawCircleXY(P[5].x, P[5].y, 'blue');
+              }
+
+              if (isCtrl && e.key === '4') {
+                e.preventDefault();
+                setLedIndication( 4 );
+                // drawCircleXY(P[4].x, P[4].y, 'blue');
+              }
+
+
+              if (isCtrl && e.shiftKey && e.key === 'E') {
+                e.preventDefault();
+                const color = '#EE9090' ; // light red
+                drawCircleXY(148, 175, color);  
+              }
+
+        });
+        
+
+        // Mouse move - track position relative to canvas
+        canvas.addEventListener('mousemove', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            // drawMouseCircle();  // Redraw with new position
+        });
+
+        // Mouse leave - hide circle
+        canvas.addEventListener('mouseleave', function() {
+            // redrawImageOnly();  // Clear circle, show clean image
+        });
+        
+        function setLedIndication( index )
+        {
+          drawCircleXY(P[index].x, P[index].y, color_light_green );
+        }
+        
+        function drawCircleXY(x, y, color) {
+            if (!imageLoaded) {
+                console.log('Image not loaded yet');
+                return;
+            }
+            
+            // Redraw image first (clears previous drawings)
+            // ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // ctx.drawImage(img, 0, 0);
+            
+            const radius = 21;  // diameter 28px / 2
+            
+            ctx.beginPath();
+            ctx.arc(x * 1/imgSrinkFactor, y * 1/imgSrinkFactor, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = color; // '#EE9090';  // light red
+            ctx.lineWidth = 5;
+            ctx.stroke();
+        }
+
         // NEW: Function to draw circle - call this when needed
         function drawCircle() {
             if (!imageLoaded) {
@@ -167,13 +254,42 @@
             // Draw light green circle in center
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
-            const radius = 14;  // diameter 28px / 2
+            const radius = 15;  // diameter 28px / 2
             
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
             ctx.strokeStyle = '#90EE90';  // light green
-            ctx.lineWidth = 4;
+            ctx.lineWidth = 5;
             ctx.stroke();
+        }
+
+        // NEW: Draw circle at mouse position (only when hovering)
+        function drawMouseCircle() {
+            if (!imageLoaded) return;
+            
+            const radius = 21;  // diameter = 2x radius
+
+            // Redraw clean image first
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+            
+            // Draw circle at mouse position
+            ctx.beginPath();
+            let scaledMousX = 0;
+            let scaledMousY = 0;
+            scaledMousX = mouseX* 1/imgSrinkFactor; // 717/600;
+            scaledMousY = mouseY* 1/imgSrinkFactor; // 717/600;
+            ctx.arc(scaledMousX, scaledMousY, radius, 0, 2 * Math.PI);  // radius 14px (diameter 28px)
+            ctx.strokeStyle = '#90EE90';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+        }
+
+        // NEW: Show image without circle
+        function redrawImageOnly() {
+            if (!imageLoaded) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
         }
 
         async function connectDevice() {
@@ -535,32 +651,57 @@
                 document.getElementById('output4').textContent = (`pitch: ${pitch} `);
                 document.getElementById('output5').textContent = (`roll: ${roll} `);
 
-                let DigilalHi = data.getUint8(11); 
-                let DigilalLo = data.getUint8(12); 
+                let DigitalHi = data.getUint8(11); 
+                let DigitalLo = data.getUint8(12); 
 
                 // Convert to 8-bit binary strings
-                let DigilalHiBin = DigilalHi.toString(2).padStart(8, '0');
-                let DigilalLoBin = DigilalLo.toString(2).padStart(8, '0');
+                let DigitalHiBin = DigitalHi.toString(2).padStart(8, '0');
+                let DigitalLoBin = DigitalLo.toString(2).padStart(8, '0');
 
-                document.getElementById('output6').textContent =  `Digital Inputs BitArray: ${DigilalHiBin} ${DigilalLoBin}`;
+                document.getElementById('output6').textContent =  `Digital Inputs BitArray: ${DigitalHiBin} ${DigitalLoBin}`;
                 
-                DigilalHi = data.getUint8(13); 
-                DigilalLo = data.getUint8(14); 
-
-                // Convert to 8-bit binary strings
-                DigilalHiBin = DigilalHi.toString(2).padStart(8, '0');
-                DigilalLoBin = DigilalLo.toString(2).padStart(8, '0');
-
-                document.getElementById('output7').textContent =  `Digital Outputs_1 BitArray: ${DigilalHiBin} ${DigilalLoBin}`;
+                DigitalHi = data.getUint8(13); 
+                DigitalLo = data.getUint8(14); 
                 
-                DigilalHi = data.getUint8(15); 
-                DigilalLo = data.getUint8(16); 
+                // on change in digital input 
+                if (prevDigitalHi != DigitalHi || prevDigitalLo != DigitalLo)  // Fixed = to !=
+                {
+                  // erase the previous Image
+                  redrawImageOnly();
+
+                  for (let i = 0; i < 9; i++) {
+                    let isOn;
+
+                    if (i < 8) {
+                      isOn = (DigitalLo >> i) & 1;   // LEDs 1–8 from DigitalLo
+                    } else {
+                      isOn = (DigitalHi >> 0) & 1;   // LED9 from DigitalHi
+                    }
+
+                    if (isOn) {
+                      setLedIndication(i + 1);
+                    }
+                  }
+                }
+                // Update previous values
+                prevDigitalHi = DigitalHi ; 
+                prevDigitalLo = DigitalLo ; 
+                
 
                 // Convert to 8-bit binary strings
-                DigilalHiBin = DigilalHi.toString(2).padStart(8, '0');
-                DigilalLoBin = DigilalLo.toString(2).padStart(8, '0');
+                DigitalHiBin = DigitalHi.toString(2).padStart(8, '0');
+                DigitalLoBin = DigitalLo.toString(2).padStart(8, '0');
 
-                document.getElementById('output8').textContent =  `Digital Outputs_2 BitArray: ${DigilalHiBin} ${DigilalLoBin}`;
+                document.getElementById('output7').textContent =  `Digital Outputs_1 BitArray: ${DigitalHiBin} ${DigitalLoBin}`;
+                
+                DigitalHi = data.getUint8(15); 
+                DigitalLo = data.getUint8(16); 
+
+                // Convert to 8-bit binary strings
+                DigitalHiBin = DigitalHi.toString(2).padStart(8, '0');
+                DigitalLoBin = DigitalLo.toString(2).padStart(8, '0');
+
+                document.getElementById('output8').textContent =  `Digital Outputs_2 BitArray: ${DigitalHiBin} ${DigitalLoBin}`;
                 
                 // get the analog values 
 								Ana_1_Hi = data.getUint8(2); 
@@ -642,6 +783,8 @@
         // - adding 9 x 2 buttons sendInd_1 .. 9 for setting and resetting CamPosInd_1 .. 9 output indications.
         // 2026_02_23 
         // - adding image to the app : img class="responsive-img"
+        // 2026_02_24
+        // - adding leds indications on the img by using setLedIndication() function
 
     </script>
 </body>
