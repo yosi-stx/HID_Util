@@ -105,7 +105,7 @@
         <button id="SaveCalibBtn" onclick="SaveCalibToFlash()" disabled>SaveCalibrationToFlash</button>
         <!-- <button id="pinkBtn" class="button_pink" onclick="sendResetMCU()" disabled>Reset MCU</button> -->
         <div id="debug"></div>
-        <div id="version">Lap4_Main Monitor version: (2026_02_24__18_24)<br><b><u>Changes:</u></b><br>• ResetMCUBtn was added<br>
+        <div id="version">Lap4_Main Monitor version: (2026_02_24__21_47)<br><b><u>Changes:</u></b><br>• ResetMCUBtn was added<br>
         • 18 Ind_x button<br>• DFU button<br>• Inputs + Outputs_1/2 BitArray was added<br></div>
         <!-- <button id="GetResetBtn" onclick="sendGetVersion()" disabled>Reset MCU</button> -->
         <div id="imgContainer"></div>
@@ -132,6 +132,15 @@
         const color_light_green = '#90EE90';  // light green
         
         // the indications leds position:
+//  1)  mouseX 296.5    mouseY 392.125
+//  2)  mouseX 224.5    mouseY 427.125
+//  3)  mouseX 374.5    mouseY 417.125
+//  4)  mouseX 117.5    mouseY 321.125
+//  5)  mouseX 292.5    mouseY 309.125
+//  6)  mouseX 468.5    mouseY 295.125
+//  7)  mouseX 148.5    mouseY 176.125
+//  8)  mouseX 410.5    mouseY 155.125
+//  9)  mouseX 274.5    mouseY 104.125
         const P = [
           {x: 296.5, y: 392.125},
           {x: 224.5, y: 427.125},
@@ -174,8 +183,8 @@
               // Use Ctrl+Shift+P instead for  turn on the light on Current mouse position
               if (isCtrl && e.shiftKey && e.key === 'p') {                
                 e.preventDefault();
-                const color = '#90EE90';  // light green
-                //drawCircleXY(mouseX, mouseY, '#90EE90');
+                //const color = '#90EE90';  // light green
+                const color = 'blue';  // light green
                 drawCircleXY(mouseX, mouseY, color);
                 console.log(`ctrl+p : mouseX ${mouseX} mouseY ${mouseY}`);
               }
@@ -216,11 +225,18 @@
             // redrawImageOnly();  // Clear circle, show clean image
         });
         
+        
         function setLedIndication( index )
         {
           drawCircleXY(P[index].x, P[index].y, color_light_green );
         }
         
+        function resetPrevDigital()
+        {
+           prevDigitalHi = 0; 
+           prevDigitalLo = 0; 
+        }
+
         function drawCircleXY(x, y, color) {
             if (!imageLoaded) {
                 console.log('Image not loaded yet');
@@ -258,7 +274,8 @@
             
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-            ctx.strokeStyle = '#90EE90';  // light green
+            // ctx.strokeStyle = '#90EE90';  // light green
+            ctx.strokeStyle = 'yellow';  // light green
             ctx.lineWidth = 5;
             ctx.stroke();
         }
@@ -391,7 +408,6 @@
 				}
 
 				async function sendInd_x(Ind_x, OnOff) {
-            drawCircle();
 						if (!device || !device.opened) {
 								updateStatus('Device not connected');
 								return;
@@ -412,6 +428,7 @@
 										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 										0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 								]);
+                resetPrevDigital();
                 switch (Ind_x) {
                     case 1:
                         // PA0
@@ -785,6 +802,9 @@
         // - adding image to the app : img class="responsive-img"
         // 2026_02_24
         // - adding leds indications on the img by using setLedIndication() function
+        // 2026_02_24b
+        // - adding resetPrevDigital() to sendInd_x()
+        // - removing redundant drawCircle();
 
     </script>
 </body>
