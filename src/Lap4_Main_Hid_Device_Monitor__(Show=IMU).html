@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- WebHID Device Monitor - Handles 63-byte reports and displays byte 42 value -->
 <!-- Modified by AI Assistant to accommodate 63-byte payloads -->
-<!-- last change 2026_02_24  -->
+<!-- last change 2026_02_26  -->
 <html>
 <head>
     <title>HID Device Monitor (for Lap4 Main+IMU)</title>
@@ -28,6 +28,7 @@
         #status, #debug, { color: #666; margin-top: 10px; }
         #message { color: #c896b4; margin-top: 10px;font-size: 14px; }
         #version { color: #aaaaaa; font-size: 16px; margin-top: 20px; }
+        #other { color: #0000ff; font-size: 16px; margin-top: 40px; }
         /* Other outputs */
         #output3, #output4, #output5{
 /*            font-size: 20px; margin-top: 10px; padding: 10px; border: 1px solid #ccc; */
@@ -105,9 +106,10 @@
         <button id="SaveCalibBtn" onclick="SaveCalibToFlash()" disabled>SaveCalibrationToFlash</button>
         <!-- <button id="pinkBtn" class="button_pink" onclick="sendResetMCU()" disabled>Reset MCU</button> -->
         <div id="debug"></div>
-        <div id="version">Lap4_Main Monitor version: (2026_02_24__21_47)<br><b><u>Changes:</u></b><br>• ResetMCUBtn was added<br>
+        <div id="version">Lap4_Main Monitor version: (2026_02_26__19_10)<br><b><u>Changes:</u></b><br>• ResetMCUBtn was added<br>
         • 18 Ind_x button<br>• DFU button<br>• Inputs + Outputs_1/2 BitArray was added<br></div>
         <!-- <button id="GetResetBtn" onclick="sendGetVersion()" disabled>Reset MCU</button> -->
+        <div id="other"><br><br>Original image when all Leds are on:<br></div>
         <div id="imgContainer"></div>
 
     <script>
@@ -118,13 +120,13 @@
 // document.getElementById('startStreamingBtn').disabled = false;
 
         const temp_img = document.getElementById("imgContainer").innerHTML =
-            '<img src="img/Patient_Position_Indicators_Indices.webp" alt="Patient position">';
+            '<img src="img/Camera_Port_LEDs_Indices.webp" alt="Patient position">';
 
         const canvas = document.getElementById('imgCanvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
         let imageLoaded = false;
-        img.src = 'img/Patient_Position_Indicators_Indices.webp';
+        img.src = 'img/Patient_Position_Indicators_Indices_fixed.webp';
         let mouseX = 0;
         let mouseY = 0;
         // original image width: 717 , app-width: 600px therefore:
@@ -696,7 +698,7 @@
                     }
 
                     if (isOn) {
-                      setLedIndication(i + 1);
+                      setLedIndication(i);
                     }
                   }
                 }
@@ -805,6 +807,10 @@
         // 2026_02_24b
         // - adding resetPrevDigital() to sendInd_x()
         // - removing redundant drawCircle();
+        // 2026_02_26
+        // - fix the index of setLedIndication() call parameter
+        // - change the picture in canvas to : Patient_Position_Indicators_Indices_fixed.webp
+        // - adding picture : Camera_Port_LEDs_Indices.webp
 
     </script>
 </body>
